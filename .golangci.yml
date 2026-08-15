@@ -186,6 +186,14 @@ linters:
         text: "G115:"
         linters:
           - gosec
+      - path: internal/farm/
+        text: "G115:"
+        linters:
+          - gosec
+      - path: cmd/tilapou/serve\.go
+        text: "G704:"
+        linters:
+          - gosec
       - path: cmd/api/main\.go
         text: "G704:"
         linters:

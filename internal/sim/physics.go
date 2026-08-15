@@ -168,3 +168,7 @@ func killFish(batch *Batch, ratePPM int64, seed Seed, key RollKey) FishCount {
 
 	return deaths
 }
+
+func MassRootOf(mass Micrograms) int64 {
+	return massRootOf(mass)
+}

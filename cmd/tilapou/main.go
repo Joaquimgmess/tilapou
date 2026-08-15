@@ -6,7 +6,7 @@ import (
 	"os"
 )
 
-var errUsage = errors.New("uso: tilapou <sim|serve|play|status> [flags]")
+var errUsage = errors.New("uso: tilapou <serve|play|sim|status|health> [flags]")
 
 func main() {
 	if err := run(os.Args[1:]); err != nil {
@@ -23,6 +23,10 @@ func run(args []string) error {
 	switch args[0] {
 	case "sim":
 		return runSim(args[1:])
+	case "serve":
+		return runServe(args[1:])
+	case "health":
+		return runHealth(args[1:])
 	default:
 		return fmt.Errorf("%w: comando desconhecido %q", errUsage, args[0])
 	}

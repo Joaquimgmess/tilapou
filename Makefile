@@ -1,13 +1,12 @@
-.PHONY: build run test lint fmt tidy check up down migrate migrate-status migrate-create vuln
+.PHONY: build run test lint fmt tidy check up down golden migrate-create vuln
 
-BIN := bin/api
+BIN := bin/tilapou
 
 build:
-	go build -o $(BIN) ./cmd/api
-	go build -o bin/migrate ./cmd/migrate
+	go build -o $(BIN) ./cmd/tilapou
 
 run:
-	go run ./cmd/api
+	go run ./cmd/tilapou serve
 
 test:
 	go test ./... -race -cover
@@ -29,11 +28,8 @@ up:
 down:
 	docker compose down -v
 
-migrate:
-	go run ./cmd/migrate
-
-migrate-status:
-	go run ./cmd/migrate -status
+golden:
+	go test ./internal/sim/scenario/ -run TestScenarios -update
 
 migrate-create:
 	@test -n "$(name)" || (echo "usage: make migrate-create name=add_something" && exit 1)
