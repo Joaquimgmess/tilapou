@@ -185,23 +185,15 @@ func treatItem(t client.Tank) menuItem {
 	return item
 }
 
-func loanFor(t client.Tank) (amount int64, why string) {
-	missing := t.BreakEven - int64(t.Fish)
-	short := missing - t.StockAdvice
-	if missing <= 0 || short <= 0 || t.CostPerFish <= 0 {
-		return defaultLoan, "juros correm todo dia sobre o saldo"
+func loanHint(t client.Tank) string {
+	if short := t.BreakEven - int64(t.Fish) - t.StockAdvice; short > 0 {
+		return fmt.Sprintf("cobre os %d peixes que faltam para o tanque %d pagar a manutencao", short, t.ID)
+	}
+	if t.LoanAdvice <= 0 {
+		return "sem espaco no limite de credito"
 	}
 
-	return roundLoan(short * t.CostPerFish),
-		fmt.Sprintf("cobre os %d peixes que faltam para o tanque %d pagar a manutencao", short, t.ID)
-}
-
-func roundLoan(cents int64) int64 {
-	if cents <= 0 {
-		return defaultLoan
-	}
-
-	return (cents + loanStep - 1) / loanStep * loanStep
+	return fmt.Sprintf("cobre o que falta para encher o tanque %d", t.ID)
 }
 
 func stockBlocked(t client.Tank) string {
@@ -306,11 +298,11 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 }
 
 func creditItems(s client.Snapshot, t client.Tank) []menuItem {
-	loan, why := loanFor(t)
+	loan := t.LoanAdvice
 
 	items := []menuItem{{
 		label:   "Pegar emprestimo de " + coins(loan),
-		hint:    why,
+		hint:    loanHint(t),
 		enabled: loan > 0,
 		status:  "pegando emprestimo",
 		action:  client.Action{Kind: "borrow", Amount: loan},

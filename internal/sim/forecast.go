@@ -168,3 +168,32 @@ func feedToRaise(b *Balance, at Tick) Coins {
 
 	return Coins(mulDivCeil(feed, int64(MarketAt(b, at).FeedKg), int64(MicrogramsPerKilogram)))
 }
+
+func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) Coins {
+	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
+	if room <= 0 {
+		return 0
+	}
+
+	t := s.tank(tank)
+	if t == nil {
+		return room
+	}
+
+	fish, perFish := s.StockAdvice(b, tank)
+	if perFish <= 0 {
+		return room
+	}
+
+	goal := int64(breakEven)
+	if int64(t.Fish())+int64(fish) >= goal {
+		goal = t.Capacity(b)
+	}
+
+	short := goal - int64(t.Fish()) - int64(fish)
+	if short <= 0 {
+		return 0
+	}
+
+	return min(Coins(mulDivCeil(int64(perFish), short, 1)), room)
+}
