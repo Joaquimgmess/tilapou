@@ -1,4 +1,9 @@
-.PHONY: build run test lint fmt tidy check up down golden migrate-create vuln
+-include .env
+export
+
+TILAPOU_DAEMON ?= http://localhost:$(or $(API_PORT),8080)
+
+.PHONY: build run play status test lint fmt tidy check up down golden migrate-create vuln
 
 BIN := bin/tilapou
 
@@ -7,6 +12,12 @@ build:
 
 run:
 	go run ./cmd/tilapou serve
+
+play:
+	TILAPOU_DAEMON=$(TILAPOU_DAEMON) go run ./cmd/tilapou play
+
+status:
+	TILAPOU_DAEMON=$(TILAPOU_DAEMON) go run ./cmd/tilapou status
 
 test:
 	go test ./... -race -cover

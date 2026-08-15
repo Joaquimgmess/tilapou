@@ -5,9 +5,13 @@ cara de Game Boy se conecta nele. A física é de tilápia de verdade — cresci
 que despenca de madrugada, conversão alimentar emergente — calibrada contra dados de campo.
 
 ```sh
-make up                      # postgres + daemon em :8080
-go run ./cmd/tilapou play
+cp .env.example .env         # portas locais; o compose e o make leem daqui
+make up                      # postgres + daemon
+make play                    # a TUI
 ```
+
+O `.env` existe porque 5432 e 8080 costumam estar ocupados. Mude `POSTGRES_PORT` e `API_PORT` ali
+e tanto o compose quanto o `make play`/`make status` acompanham.
 
 ## Os quatro modos
 
