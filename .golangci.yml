@@ -3,7 +3,6 @@ version: "2"
 linters:
   default: all
   disable:
-    - depguard
     - dupword
     - exhaustruct
     - funlen
@@ -25,7 +24,67 @@ linters:
       check-type-assertions: true
       check-blank: true
     exhaustive:
-      default-signifies-exhaustive: true
+      default-signifies-exhaustive: false
+    depguard:
+      rules:
+        sim-puro:
+          files:
+            - "**/internal/sim/**"
+          deny:
+            - pkg: time
+              desc: sim usa Tick inteiro; time.Now quebra determinismo
+            - pkg: context
+              desc: sim nao faz I/O; use StepBudget para limitar trabalho
+            - pkg: os
+              desc: sim e puro
+            - pkg: net/http
+              desc: sim e puro
+            - pkg: database/sql
+              desc: sim e puro
+            - pkg: log
+              desc: sim e puro
+            - pkg: log/slog
+              desc: sim e puro
+            - pkg: math/rand
+              desc: use math/rand/v2 com PCG derivado de semente e tick
+            - pkg: github.com/Joaquimgmess/catalog/internal/platform
+              desc: sim nao depende de nada do projeto
+            - pkg: github.com/Joaquimgmess/catalog/internal/farm
+              desc: sim nao depende de nada do projeto
+            - pkg: github.com/Joaquimgmess/catalog/internal/player
+              desc: sim nao depende de nada do projeto
+            - pkg: github.com/Joaquimgmess/catalog/internal/balance
+              desc: balance e passado como argumento, nao importado
+        tui-sem-regra-de-jogo:
+          files:
+            - "**/internal/tui/**"
+          deny:
+            - pkg: github.com/Joaquimgmess/catalog/internal/sim
+              desc: a TUI nao calcula nada; ela desenha o snapshot do servidor
+            - pkg: github.com/Joaquimgmess/catalog/internal/farm
+              desc: a TUI fala com o daemon pelo client, nao com o slice
+            - pkg: github.com/Joaquimgmess/catalog/internal/platform/postgres
+              desc: a TUI nao toca no banco
+            - pkg: database/sql
+              desc: a TUI nao toca no banco
+            - pkg: net/http
+              desc: HTTP e responsabilidade do internal/client
+        slices-nao-se-importam:
+          files:
+            - "**/internal/farm/**"
+          deny:
+            - pkg: github.com/Joaquimgmess/catalog/internal/tui
+              desc: slice nao conhece cliente
+            - pkg: github.com/Joaquimgmess/catalog/internal/client
+              desc: slice nao conhece cliente
+        client-so-transporte:
+          files:
+            - "**/internal/client/**"
+          deny:
+            - pkg: github.com/Joaquimgmess/catalog/internal/sim
+              desc: o client transporta DTO, nao roda simulacao
+            - pkg: github.com/Joaquimgmess/catalog/internal/farm
+              desc: o client fala HTTP, nao chama o slice direto
     gocognit:
       min-complexity: 25
     gocritic:
