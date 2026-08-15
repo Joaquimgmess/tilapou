@@ -312,6 +312,9 @@ func viability(ratio, viable int64) string {
 }
 
 func (m Model) renderKeys() string {
+	if m.menu != nil {
+		return dimStyle.Render(menuKeys)
+	}
 	if m.effectiveWidth() < wideWidth {
 		return dimStyle.Render("j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair")
 	}

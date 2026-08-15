@@ -11,7 +11,10 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/tui/gb"
 )
 
-const boxPadding = 2
+const (
+	boxPadding = 2
+	menuKeys   = "setas escolhem   j/k move   z confirma   x fecha"
+)
 
 var (
 	screenStyle = lipgloss.NewStyle().
@@ -176,7 +179,7 @@ func tankAdvice(t client.Tank) string {
 
 func (m Model) renderGameBoyKeys() string {
 	if m.menu != nil {
-		return screenStyle.Render("setas escolhem   z confirma   x fecha   q sai")
+		return screenStyle.Render(menuKeys)
 	}
 
 	return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despescar  tab numeros  q sai")

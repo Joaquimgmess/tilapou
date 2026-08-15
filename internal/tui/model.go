@@ -307,6 +307,18 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 
 func (m Model) onMenuKey(key string) (tea.Model, tea.Cmd) {
 	switch key {
+	case "j":
+		m.menu.move(1)
+		m.view = ""
+
+		return m, nil
+
+	case "k":
+		m.menu.move(-1)
+		m.view = ""
+
+		return m, nil
+
 	case "x", "esc", "q":
 		m.menu = nil
 		m.view = ""

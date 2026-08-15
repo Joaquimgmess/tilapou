@@ -109,3 +109,51 @@ func TestEachSessionStartsFromADifferentIdempotencyKey(t *testing.T) {
 		seen[key] = true
 	}
 }
+
+func TestTheFooterOnlyPromisesKeysThatWork(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+
+	for _, mode := range []Mode{ModeDashboard, ModeGameBoy} {
+		m := New(nil)
+		m.snapshot, m.mode = snap, mode
+		m.width, m.height = 120, 40
+		m.menu = tankMenu(snap, snap.Tanks[0])
+
+		footer := plain(m.render())
+		footer = footer[strings.LastIndex(footer, "\n")+1:]
+
+		for _, dead := range []string{"f trato", "c racao", "h despescar", "tab mapa", "q sair", "q sai"} {
+			if strings.Contains(footer, dead) {
+				t.Errorf("modo %d: com menu aberto o rodape promete %q, que nao faz nada: %q", mode, dead, footer)
+			}
+		}
+		if !strings.Contains(footer, "z confirma") {
+			t.Errorf("modo %d: o rodape do menu nao diz como confirmar: %q", mode, footer)
+		}
+	}
+}
+
+func TestJAndKMoveTheMenuCursor(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	m := New(nil)
+	m.snapshot = snap
+	m.menu = tankMenu(snap, snap.Tanks[0])
+
+	next, _ := m.onMenuKey("j")
+	moved, ok := next.(Model)
+	if !ok {
+		t.Fatal("onMenuKey devolveu outro tipo")
+	}
+	if moved.menu.cursor != 1 {
+		t.Errorf("j deixou o cursor em %d, queria 1", moved.menu.cursor)
+	}
+
+	back, _ := moved.onMenuKey("k")
+	if back.(Model).menu.cursor != 0 {
+		t.Errorf("k nao voltou o cursor: %d", back.(Model).menu.cursor)
+	}
+}
