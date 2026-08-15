@@ -1,10 +1,14 @@
 package tui
 
 import (
+	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"testing"
@@ -71,7 +75,15 @@ func TestQASession(t *testing.T) {
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
 	d.run(d.model.(Model).Init())
 
-	for step := range strings.SplitSeq(os.Getenv("QA_SCRIPT"), ",") {
+	qaPlay(t, d, os.Getenv("QA_SCRIPT"))
+
+	fmt.Fprintf(os.Stdout, "\n%s\n", plainFrame.ReplaceAllString(d.model.(Model).render(), ""))
+}
+
+func qaPlay(t *testing.T, d *driver, script string) {
+	t.Helper()
+
+	for step := range strings.SplitSeq(script, ",") {
 		step = strings.TrimSpace(step)
 		if step == "" {
 			continue
@@ -94,10 +106,39 @@ func TestQASession(t *testing.T) {
 			continue
 		}
 
-		d.model, _ = d.model.Update(qaKey(step))
-		d.run(nil)
+		var cmd tea.Cmd
+		d.model, cmd = d.model.Update(qaKey(step))
+		d.run(cmd)
 		d.press("r")
 	}
+}
 
-	fmt.Fprintf(os.Stdout, "\n%s\n", plainFrame.ReplaceAllString(d.model.(Model).render(), ""))
+func TestQAHarnessActuallySendsTheAction(t *testing.T) {
+	t.Parallel()
+
+	var posted []string
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		snap := sizedSnapshot()
+		if r.Method == http.MethodPost {
+			var action client.Action
+			_ = json.NewDecoder(r.Body).Decode(&action)
+			posted = append(posted, action.Kind)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.run(d.model.(Model).Init())
+
+	qaPlay(t, d, "f,c,h")
+
+	for _, want := range []string{"feed", "buy_feed", "harvest"} {
+		if !slices.Contains(posted, want) {
+			t.Errorf("o script mandou a tecla mas o daemon nao recebeu %q; recebeu %v", want, posted)
+		}
+	}
 }
