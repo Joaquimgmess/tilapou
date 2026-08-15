@@ -72,33 +72,54 @@ func waitForAll(t *testing.T, tm *teatest.TestModel, wants ...string) {
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }
 
-func TestTuiShowsFarmState(t *testing.T) {
+func TestGameBoyScreenShowsTheFarm(t *testing.T) {
 	t.Parallel()
 
 	server := fakeDaemon(t, sampleSnapshot())
-	model := tui.New(client.New(server.URL, time.Second))
+	tm := teatest.NewTestModel(t, tui.New(client.New(server.URL, time.Second)),
+		teatest.WithInitialTermSize(120, 60))
 
-	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(100, 40))
-
-	waitForAll(t, tm, "TILAPOU", "1234,56 TC", "612 kg", "2000", "306 g", "180 kg")
+	waitForAll(t, tm, "TILAPOU", "TANQUE 1", "306 g", "setas mover")
 }
 
-func TestTuiWarnsWhenOxygenIsLow(t *testing.T) {
+func TestDashboardShowsTheNumbers(t *testing.T) {
 	t.Parallel()
 
 	server := fakeDaemon(t, sampleSnapshot())
-	model := tui.New(client.New(server.URL, time.Second))
+	tm := teatest.NewTestModel(t, tui.New(client.New(server.URL, time.Second)),
+		teatest.WithInitialTermSize(120, 60))
 
-	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(100, 40))
+	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
+		return bytes.Contains(b, []byte("TILAPOU"))
+	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
 
-	waitForAll(t, tm, "1900 ug/L", "morreram por falta de oxigenio")
+	tm.Send(tea.KeyPressMsg{Code: 'm', Text: "m"})
+
+	waitForAll(t, tm, "biomassa", "612 kg", "306 g", "eventos")
+}
+
+func TestGameBoyWarnsAboutSuffocation(t *testing.T) {
+	t.Parallel()
+
+	server := fakeDaemon(t, sampleSnapshot())
+	tm := teatest.NewTestModel(t, tui.New(client.New(server.URL, time.Second)),
+		teatest.WithInitialTermSize(120, 60))
+
+	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
+		return bytes.Contains(b, []byte("TILAPOU"))
+	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
+
+	tm.Send(tea.KeyPressMsg{Code: 'w', Text: "w"})
+	tm.Send(tea.KeyPressMsg{Code: 'w', Text: "w"})
+
+	waitForAll(t, tm, "sufocando")
 }
 
 func TestTuiShowsDaemonFailure(t *testing.T) {
 	t.Parallel()
 
 	model := tui.New(client.New("http://127.0.0.1:1", 200*time.Millisecond))
-	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(100, 40))
+	tm := teatest.NewTestModel(t, model, teatest.WithInitialTermSize(120, 60))
 
 	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
 		return bytes.Contains(b, []byte("daemon fora do ar"))

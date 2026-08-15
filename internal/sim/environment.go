@@ -54,3 +54,10 @@ func triangular(hour, peak int64) int64 {
 func TemperatureAt(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
 	return temperatureAt(b, tick, zone)
 }
+
+func (s *State) SeedOxygen(b *Balance) {
+	for i := range s.TankCount {
+		t := &s.Tanks[i]
+		t.Oxygen = oxygenAt(b, t, s.Tick, s.Zone)
+	}
+}

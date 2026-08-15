@@ -27,6 +27,8 @@ func run(args []string) error {
 		return runPlay(args[1:])
 	case "serve":
 		return runServe(args[1:])
+	case "status":
+		return runStatus(args[1:])
 	case "health":
 		return runHealth(args[1:])
 	default:

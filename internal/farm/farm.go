@@ -37,6 +37,7 @@ func New(id, playerID uuid.UUID, name string, epoch time.Time, zone sim.ZoneOffs
 	if ok {
 		state.StockTank(tank, startingFish, startingMass)
 		state.LoadFeed(tank, startingFeed)
+		state.SeedOxygen(b)
 	}
 
 	return Farm{

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	tea "charm.land/bubbletea/v2"
@@ -23,7 +24,19 @@ type snapshotMsg struct {
 
 type tickMsg time.Time
 
+type Mode uint8
+
+const (
+	ModeGameBoy Mode = iota
+	ModeDashboard
+)
+
 type Model struct {
+	mode     Mode
+	farm     farmMap
+	you      avatar
+	frame    int
+	message  string
 	client   *client.Client
 	snapshot client.Snapshot
 	err      error
@@ -36,7 +49,7 @@ type Model struct {
 }
 
 func New(c *client.Client) Model {
-	return Model{client: c, nextKey: uint64(1)}
+	return Model{client: c, nextKey: uint64(1), farm: newFarmMap(1), you: newAvatar()}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -52,10 +65,14 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tickMsg:
+		m.frame++
+		m.view = ""
+
 		return m, tea.Batch(m.fetch(), tick())
 
 	case snapshotMsg:
 		m.snapshot, m.err = msg.snapshot, msg.err
+		m.farm = newFarmMap(len(msg.snapshot.Tanks))
 		if msg.err == nil && msg.snapshot.LastReason != "" && msg.snapshot.LastReason != "none" {
 			m.status = "recusado: " + msg.snapshot.LastReason
 		}
@@ -70,8 +87,30 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+var movements = map[string]struct {
+	dx, dy int
+	facing byte
+}{
+	"up":    {0, -1, 'u'},
+	"w":     {0, -1, 'u'},
+	"down":  {0, 1, 'd'},
+	"s":     {0, 1, 'd'},
+	"left":  {-1, 0, 'l'},
+	"right": {1, 0, 'r'},
+}
+
 func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
-	switch msg.String() {
+	key := msg.String()
+
+	if move, ok := movements[key]; ok && m.mode == ModeGameBoy {
+		return m.move(move.dx, move.dy, move.facing), nil
+	}
+
+	if index := strings.IndexByte("12345", key[0]); len(key) == 1 && index >= 0 {
+		return m.buyUpgrade(index)
+	}
+
+	switch key {
 	case "q", "ctrl+c":
 		m.quitting = true
 
@@ -80,34 +119,65 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	case "r":
 		return m, m.fetch()
 
+	case "m":
+		m.mode, m.view = m.otherMode(), ""
+
+		return m, nil
+
+	case "z", "enter":
+		return m.onInteract()
+
 	case "f":
-		return m.act(client.Action{Kind: "buy_feed", Tank: m.firstTank(), Amount: feedPurchaseKg}, "comprando 100 kg de racao")
+		return m.act(client.Action{Kind: "buy_feed", Tank: m.firstTank(), Amount: feedPurchaseKg}, "comprando racao")
 
 	case "a":
-		aerating := int64(1)
-		if m.firstTankIsAerating() {
-			aerating = 0
-		}
-
-		return m.act(client.Action{Kind: "aerate", Tank: m.firstTank(), Amount: aerating}, "alternando aerador")
+		return m.act(client.Action{Kind: "aerate", Tank: m.firstTank(), Amount: m.aeratorToggle()}, "alternando aerador")
 
 	case "h":
 		return m.act(client.Action{Kind: "harvest", Tank: m.firstTank(), Batch: m.firstBatch()}, "despescando o lote")
 
-	case "s":
-		return m.act(client.Action{Kind: "stock", Tank: m.firstTank(), Amount: fingerlingsPerBuy}, "povoando com 500 alevinos")
+	case "S":
+		return m.act(client.Action{Kind: "stock", Tank: m.firstTank(), Amount: fingerlingsPerBuy}, "povoando com alevinos")
 
 	case "t":
 		return m.act(client.Action{Kind: "buy_tank", TankKind: "viveiro_escavado"}, "comprando viveiro")
 
 	case "p":
 		return m.act(client.Action{Kind: "prestige"}, "tilapando: vendendo tudo e recomecando")
-
-	case "1", "2", "3", "4", "5":
-		return m.buyUpgrade(int(msg.String()[0] - '1'))
 	}
 
 	return m, nil
+}
+
+func (m Model) otherMode() Mode {
+	if m.mode == ModeGameBoy {
+		return ModeDashboard
+	}
+
+	return ModeGameBoy
+}
+
+func (m Model) aeratorToggle() int64 {
+	if m.firstTankIsAerating() {
+		return 0
+	}
+
+	return 1
+}
+
+func (m Model) onInteract() (tea.Model, tea.Cmd) {
+	updated, target := m.interact()
+	switch {
+	case target == "feed":
+		return updated.act(client.Action{Kind: "buy_feed", Tank: updated.firstTank(), Amount: feedPurchaseKg}, "comprando 100 kg de racao")
+	case strings.HasPrefix(target, "tank:"):
+		updated.message = ""
+		updated.view = ""
+
+		return updated, nil
+	}
+
+	return updated, nil
 }
 
 func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
@@ -130,6 +200,7 @@ func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {
 	action.Key = m.nextKey
 	m.nextKey++
 	m.status = status
+	m.message = status
 	m.view = ""
 
 	c := m.client

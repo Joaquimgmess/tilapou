@@ -52,6 +52,9 @@ func (m Model) View() tea.View {
 }
 
 func (m Model) render() string {
+	if m.err == nil && m.snapshot.FarmID != "" && m.mode == ModeGameBoy {
+		return m.renderGameBoy()
+	}
 	if m.err != nil {
 		return dangerStyle.Render("daemon fora do ar: "+m.err.Error()) +
 			dimStyle.Render("\n\nsuba com: tilapou serve\n[r] tentar de novo   [q] sair\n")

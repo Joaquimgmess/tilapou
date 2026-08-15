@@ -1,101 +1,112 @@
-# catalog
+# tilapou
 
-Go HTTP API template: DDD inside a vertical slice, no framework leaking into the domain.
-`product` is the reference slice — copy it to add a new one.
+Idle game de piscicultura no terminal. Um daemon simula a fazenda em segundo plano; uma TUI com
+cara de Game Boy se conecta nele. A física é de tilápia de verdade — crescimento por TGC, oxigênio
+que despenca de madrugada, conversão alimentar emergente — calibrada contra dados de campo.
+
+```sh
+make up                      # postgres + daemon em :8080
+go run ./cmd/tilapou play
+```
+
+## Os quatro modos
+
+```
+tilapou serve     daemon: API, simulação, persistência
+tilapou play      TUI: mapa navegável, painéis e ações
+tilapou status    uma linha para tmux ou prompt
+tilapou sim       simulador headless de balanceamento
+```
+
+O daemon é a fonte da verdade. A TUI não calcula nada — nem para prévia. É o que mantém dois
+clientes coerentes e o que torna trapaça impossível por construção.
 
 ## Layout
 
 ```
-cmd/api                     process entrypoint: config, wiring, graceful shutdown
-cmd/migrate                 applies pending migrations, tracked in schema_migrations
-internal/product            the vertical slice
-  product.go                aggregate + invariants (New)
-  create.go / get.go        use cases: pure decision, I/O only through Store
-  database.go               Store port + Postgres adapter
-  handler.go                HTTP transport: DTOs, routes, error mapping
-  errors.go                 domain errors (ErrNotFound, InvalidError)
-internal/platform           shared kernel, no business rules
-  config                    environment, fail fast on startup
-  httpx                     router, middlewares, RFC 7807 errors, metrics, health
-  logging                   structured slog + request_id propagated via context
-  postgres                  connection pool
-internal/migrations         goose migrations embedded in the binary
+cmd/tilapou            subcomandos
+internal/sim           NÚCLEO PURO: física, ações, eventos, determinismo
+  scenario             cenários golden — o SSOT de teste
+  save                 codec do estado
+internal/balance       balance.toml calibrado, quantizado para inteiro
+internal/farm          slice: porta Store, catch-up, ações idempotentes, HTTP
+internal/client        cliente tipado do daemon
+internal/tui           TUI (bubbletea v2)
+  gb                   canvas de pixels, paleta de 4 tons, sprites
+internal/platform      shared kernel: config, httpx, logging, postgres
+internal/migrations    goose embutido
+internal/arch          testes de fronteira arquitetural
 ```
 
-## Rules the template enforces
+## As regras que o repo executa, não promete
 
-- **A slice owns its full stack.** Domain, use case, persistence and transport live in one
-  package because they change together. Slices never import each other; the consumer declares
-  the port it needs and `cmd/api` wires the implementation.
-- **Decision separated from I/O.** `New` applies the invariants and touches nothing external.
-  Use cases read and write only at the edges, through `Store`.
-- **Invariants live in the type.** A `Product` cannot exist invalid — there is no path to one
-  except `New`, so validation is not scattered across handlers.
-- **Interfaces only where they are actually swapped.** `Store` exists because tests replace it;
-  the pool and the logger are concrete types.
-- **Testable without a container.** Every test runs on `go test ./...` with a fake store.
-- **Observability at the edges.** Each request gets a `request_id` carried in the context; the
-  slice logs with it, no argument threading. Latency and status are exported per route on
-  `/metrics` in Prometheus text format.
-- **One error shape.** Every failure path — validation, domain, panic, 404, 405, 415 — answers
-  `application/problem+json` with `instance` set to the request id.
-- **Bounded I/O.** Every query runs under `DB_TIMEOUT`, every request under `REQUEST_TIMEOUT`,
-  request bodies are capped at 1 MiB, and the server shuts down gracefully.
-- **Versioned surface.** Slices register into a `huma.Group` prefixed with `/v1`; health checks
-  stay outside it. Unknown query parameters and non-JSON content types are rejected.
+- **`internal/sim` é puro.** Não importa nada do projeto, nem `time`, `context`, `os`, `net/http`
+  ou `math/rand`. Cobrado pelo `depguard` e por um teste que varre `go list -deps`.
+- **Determinismo é testado, não assumido.** `Advance(0→N)` tem que dar exatamente o mesmo estado e
+  os mesmos eventos que qualquer particionamento do intervalo. Fuzz nativo, centenas de milhares
+  de execuções.
+- **Zero float no estado persistido.** Massa em micrograma, dinheiro em centavo, temperatura em
+  milésimo de grau. O teste de determinismo compara por igualdade exata.
+- **A TUI não alcança a simulação nem o banco.** Também via `depguard`: quebra o build.
+- **Ganho offline não é caso especial.** A simulação é preguiçosa; voltar depois de dois dias usa
+  o mesmo código de quando o jogo está aberto.
+- **Zero comentários em código.** Nome e tipo explicam; o lint cobra o resto.
 
-## Adding a slice
+## A física, e de onde vieram os números
 
-1. `internal/<name>/` with the aggregate and its `New`.
-2. One file per use case, taking `ctx`, the port and a command struct.
-3. `database.go`: the port the slice needs, plus the Postgres adapter.
-4. `handler.go`: DTOs, `RegisterRoutes`, and the domain error to HTTP mapping.
-5. Wire it in `cmd/api/main.go`. Needs data from another slice? Declare a narrow interface in
-   the consumer and wire the adapter in `main` — never import the other slice.
+Calibrada contra Embrapa, Peixe BR, CEPEA e literatura zootécnica, e travada por teste:
 
-## Running
+| Medida | Campo | Modelo |
+| --- | --- | --- |
+| 140 dias a 22 °C | 49 g | 44 g |
+| 140 dias a 30 °C | 398 g | 389 g |
+| GPD a 28 °C com 400 g | 4–5 g/dia | 4,9 g/dia |
+| Ciclo 30 g → 800 g | 119–199 dias | 199 dias a 28 °C |
+
+O oxigênio segue o ciclo diurno real: as algas produzem de dia e consomem à noite, então a queda é
+de madrugada. Densidade alta derruba a curva — 12.000 peixes num viveiro de 1.000 m³ perdem 65% do
+lote numa noite, e o aerador salva 4.000 deles. Nada disso é regra escrita: cai da física.
+
+`internal/balance/balance.toml` é o arquivo de balanceamento. Mexer nele não exige recompilar
+lógica, e o `tilapou sim` mostra o efeito em segundos.
+
+## Progressão
+
+Comedouro, aerador automático, peão, técnico e contrato — cada automação remove um clique e libera
+atenção para a camada seguinte, que é a mesma progressão tecnológica da aquicultura real. Custo em
+escada `base × 1.15ⁿ`. Quando o vitalício justificar, dá para **tilapar**: vender tudo, recomeçar e
+ficar com matrizes genéticas que multiplicam o crescimento para sempre.
+
+## Cenários golden
 
 ```sh
-cp .env.example .env
-make up          # postgres, migrations, then the api on :8080
-make check       # fmt, lint, test -race, build, govulncheck
+go run ./cmd/tilapou sim -list
+go run ./cmd/tilapou sim -run densidade-contra-oxigenio
+make golden                  # regenera os arquivos após mudar o balanceamento
 ```
 
-OpenAPI at `http://localhost:8080/docs`, health at `/healthz` and `/readyz`.
-
-## Endpoints
-
-| Method | Path                | Description      |
-| ------ | ------------------- | ---------------- |
-| POST   | `/v1/products`      | Create a product |
-| GET    | `/v1/products/{id}` | Get a product    |
-| GET    | `/healthz`          | Liveness         |
-| GET    | `/readyz`           | Readiness (DB)   |
-| GET    | `/metrics`          | Prometheus text  |
-
-Errors follow RFC 7807 (`application/problem+json`), with `instance` carrying the request id
-so a client report maps straight to a log line.
+Cada cenário é código Go que produz uma tabela diffável. Mudou a física ou os números? O diff do
+golden mostra exatamente o que mudou, para você aprovar de propósito.
 
 ## Migrations
 
-SQL files live in `internal/migrations/sql`, embedded in the binary and applied by [goose](https://github.com/pressly/goose)
-through `cmd/migrate` — as a library, so deploys ship one binary and no extra CLI. Each migration
-runs in its own transaction and is recorded in `goose_db_version`, making re-runs a no-op. Compose
-runs it as a job that must finish before the API starts.
+SQL em `internal/migrations/sql`, embutido no binário e aplicado pelo goose como biblioteca — o
+deploy leva um binário só. Mudança de schema sai como expand → backfill → contract, nunca um
+`ALTER` destrutivo num deploy só.
+
+## Checks
 
 ```sh
-make migrate                          # apply pending
-make migrate-status                   # list pending
-make migrate-create name=add_stock    # scaffold a new pair of Up/Down
+make check                   # fmt, lint, test -race, build, govulncheck
 ```
 
-Schema changes go out as expand → backfill → contract, never a destructive `ALTER` in a single
-deploy: add the nullable column, write to both, backfill, move reads, then drop the old one.
+O `golangci-lint` roda com `default: all` — cerca de 100 linters, incluindo as fronteiras de
+arquitetura.
 
 ## Stack
 
-chi (routing + middleware) · huma (OpenAPI, validation, RFC 7807 errors) · goose (migrations) · pgx (Postgres) · slog (logs) · golangci-lint
+chi · huma (OpenAPI e RFC 7807) · pgx · goose · bubbletea v2 · lipgloss v2 · slog
 
-## License
+## Licença
 
-MIT — see [LICENSE](LICENSE).
+MIT — veja [LICENSE](LICENSE).
