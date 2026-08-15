@@ -14,6 +14,7 @@ const (
 	PurposeWeather
 	PurposeMarket
 	PurposeEvent
+	PurposeDiseaseDeath
 )
 
 const (

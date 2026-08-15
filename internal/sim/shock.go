@@ -128,6 +128,6 @@ func killByDisease(s *State, b *Balance, t *Tank, batch *Batch, tick Tick) {
 	}
 
 	deaths := killFish(batch, int64(spec.DeathPPM), s.Seed,
-		RollKey{Tick: tick, Tank: t.ID, Batch: batch.ID, Purpose: PurposeDisease})
+		RollKey{Tick: tick, Tank: t.ID, Batch: batch.ID, Purpose: PurposeDiseaseDeath})
 	t.Accrual.DiseaseDeaths = FishCount(addSat(int64(t.Accrual.DiseaseDeaths), int64(deaths)))
 }
