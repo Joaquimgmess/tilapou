@@ -14,16 +14,16 @@ import (
 const litresPerCubicMetre = 1_000
 
 type TankView struct {
-	ID        uint32 `json:"id"`
-	Kind      string `json:"kind"`
-	Fish      int32  `json:"fish"`
-	MeanGrams int64  `json:"mean_grams"`
-	FeedKg    int64  `json:"feed_kg"`
-	OxygenUgL int32  `json:"oxygen_ugl"`
-	Aerating  bool   `json:"aerating"`
-	DensityKg int64  `json:"density_kg_m3"`
-	Ready     bool   `json:"ready_to_harvest"`
-	BatchID   uint32 `json:"batch_id"`
+	ID           uint32 `json:"id"`
+	Kind         string `json:"kind"`
+	Fish         int32  `json:"fish"`
+	MeanGrams    int64  `json:"mean_grams"`
+	FeedKg       int64  `json:"feed_kg"`
+	OxygenUgL    int32  `json:"oxygen_ugl"`
+	Aerating     bool   `json:"aerating"`
+	DensityMilli int64  `json:"density_milli_kg_m3"`
+	Ready        bool   `json:"ready_to_harvest"`
+	BatchID      uint32 `json:"batch_id"`
 
 	Capacity  int64         `json:"capacity_fish"`
 	ServedFor int64         `json:"served_for_ticks"`
@@ -266,7 +266,7 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 			Upgrades:  upgradesOf(tank, b),
 		}
 		if tank.Litres > 0 {
-			tv.DensityKg = int64(tank.Biomass()) / (litresPerCubicMetre * int64(tank.Litres))
+			tv.DensityMilli = int64(tank.Biomass()) / (litresPerCubicMetre * int64(tank.Litres))
 		}
 		if tank.BatchCount > 0 {
 			batch := &tank.Batches[0]

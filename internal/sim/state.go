@@ -38,6 +38,7 @@ type Batch struct {
 	StockedAt       Tick
 	FeedEaten       Micrograms
 	MassGained      Micrograms
+	Accrued         Micrograms
 	HypoxiaTicks    int32
 	StarvationTicks int32
 }

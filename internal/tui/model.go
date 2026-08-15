@@ -92,6 +92,7 @@ func (m Model) onSnapshot(msg snapshotMsg) Model {
 		if failure := explain(msg.snapshot.LastOutcome, msg.snapshot.CashCents); failure != "" {
 			m.message = failure
 		}
+		m.menu = m.refreshedMenu()
 	}
 	m.view = ""
 
@@ -268,14 +269,13 @@ func (m Model) onMenuKey(key string) (tea.Model, tea.Cmd) {
 
 	case "z", "enter":
 		item, ok := m.menu.current()
-		m.menu = nil
 		m.view = ""
 
 		if !ok {
 			return m, nil
 		}
 		if item.panel {
-			m.mode = ModeDashboard
+			m.menu, m.mode = nil, ModeDashboard
 
 			return m, nil
 		}
@@ -351,6 +351,25 @@ func tick() tea.Cmd {
 	return tea.Tick(refreshEvery, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
+}
+
+func (m Model) refreshedMenu() *menu {
+	if m.menu == nil {
+		return nil
+	}
+
+	tank, ok := m.tank()
+	if !ok {
+		return nil
+	}
+
+	rebuilt := tankMenu(m.snapshot, tank)
+	if m.menu.title == shedTitle {
+		rebuilt = shedMenu(m.snapshot, tank)
+	}
+	rebuilt.cursor = min(m.menu.cursor, len(rebuilt.items)-1)
+
+	return rebuilt
 }
 
 func (m Model) otherMode() Mode {

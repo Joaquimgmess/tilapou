@@ -36,8 +36,7 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 				continue
 			}
 
-			eaten, wanted := feedBatch(t, batch, b, tempMult, feeding)
-			growBatch(batch, b, tempMult, eaten, wanted, s.prestigeBonus(b), t.Owns(AutoTechnician))
+			eaten := feedAndGrow(t, batch, b, tempMult, feeding, s.prestigeBonus(b), t.Owns(AutoTechnician))
 			killByHypoxia(t, batch, b, oxygen, tick, s.Seed)
 			killByStarvation(t, batch, b, eaten, tick, s.Seed)
 		}
@@ -50,39 +49,66 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 	}
 }
 
-func feedBatch(t *Tank, batch *Batch, b *Balance, tempMult PPM, feeding bool) (eatenMass, wantedMass Micrograms) {
+func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult PPM, feeding bool, bonus PPM, technician bool) Micrograms {
 	if !feeding {
-		return 0, 0
+		return 0
 	}
 
-	step := b.Ration.For(batch.MeanMass)
-	if step.RatePPMDay <= 0 {
-		return 0, 0
-	}
+	maintenance := carryTake(
+		mulDivFloor(int64(batch.Biomass()), int64(b.Ration.MaintenancePPM), int64(UnitPPM)),
+		int64(TicksPerDay), &t.FeedCarry)
 
-	daily := mulDivFloor(int64(batch.Biomass()), int64(step.RatePPMDay), int64(UnitPPM))
-	daily = mulDivFloor(daily, int64(tempMult), int64(UnitPPM))
+	delta := growthDelta(batch, b, tempMult, bonus, technician)
+	gain := gainFor(batch, delta)
 
-	wanted := carryTake(daily, int64(TicksPerDay), &t.FeedCarry)
+	wanted := addSat(maintenance, mulDivCeil(int64(gain), int64(b.Ration.TargetFCRPPM), int64(UnitPPM)))
+	wanted = min(wanted, rationCap(t, batch, b, tempMult))
 	if wanted <= 0 {
-		return 0, 0
+		return 0
 	}
 
 	eaten := min(wanted, int64(t.FeedStock))
 	if eaten <= 0 {
-		return 0, Micrograms(wanted)
+		return 0
 	}
 
 	t.FeedStock = Micrograms(subSat(int64(t.FeedStock), eaten))
 	batch.FeedEaten = Micrograms(addSat(int64(batch.FeedEaten), eaten))
 	t.Accrual.FeedEaten = Micrograms(addSat(int64(t.Accrual.FeedEaten), eaten))
 
-	return Micrograms(eaten), Micrograms(wanted)
+	forGrowth := subSat(eaten, maintenance)
+	available := subSat(wanted, maintenance)
+	if forGrowth <= 0 || available <= 0 {
+		batch.GrowthCarry = addSat(batch.GrowthCarry, delta)
+
+		return Micrograms(eaten)
+	}
+	if forGrowth < available {
+		delta = mulDivFloor(delta, forGrowth, available)
+	}
+
+	applyGrowth(batch, delta)
+
+	return Micrograms(eaten)
 }
 
-func growBatch(batch *Batch, b *Balance, tempMult PPM, eaten, wanted Micrograms, bonus PPM, technician bool) {
-	if eaten <= 0 || wanted <= 0 || tempMult <= 0 {
-		return
+func rationCap(t *Tank, batch *Batch, b *Balance, tempMult PPM) int64 {
+	step := b.Ration.For(batch.MeanMass)
+	if step.RatePPMDay <= 0 {
+		return 0
+	}
+
+	daily := mulDivFloor(int64(batch.Biomass()), int64(step.RatePPMDay), int64(UnitPPM))
+	daily = mulDivFloor(daily, int64(tempMult), int64(UnitPPM))
+
+	_ = t
+
+	return daily / int64(TicksPerDay)
+}
+
+func growthDelta(batch *Batch, b *Balance, tempMult, bonus PPM, technician bool) int64 {
+	if tempMult <= 0 {
+		return 0
 	}
 
 	if batch.MassRoot <= 0 {
@@ -94,25 +120,39 @@ func growBatch(batch *Batch, b *Balance, tempMult PPM, eaten, wanted Micrograms,
 
 	headroom := int64(UnitPPM) - mulDivFloor(int64(batch.MeanMass), int64(UnitPPM), int64(b.Growth.MaxMass))
 	if headroom <= 0 {
-		return
+		return 0
 	}
 	dailyRoot = mulDivFloor(dailyRoot, headroom, int64(UnitPPM))
-
 	dailyRoot = mulDivFloor(dailyRoot, int64(bonus), int64(UnitPPM))
+
 	if technician {
 		dailyRoot = mulDivFloor(dailyRoot, int64(UnitPPM)+technicianBonusPPM, int64(UnitPPM))
 	}
 
-	adequacy := mulDivFloor(int64(eaten), int64(UnitPPM), int64(wanted))
-	dailyRoot = mulDivFloor(dailyRoot, min(adequacy, int64(UnitPPM)), int64(UnitPPM))
+	return carryTake(dailyRoot, int64(TicksPerDay), &batch.GrowthCarry)
+}
 
-	delta := carryTake(dailyRoot, int64(TicksPerDay), &batch.GrowthCarry)
+func gainFor(batch *Batch, delta int64) Micrograms {
+	if delta <= 0 {
+		return 0
+	}
+
+	after := massFromRoot(batch.MassRoot + delta)
+	if after <= batch.MeanMass {
+		return 0
+	}
+
+	return Micrograms(mulDivFloor(int64(after-batch.MeanMass), int64(batch.Fish), 1))
+}
+
+func applyGrowth(batch *Batch, delta int64) {
 	if delta <= 0 {
 		return
 	}
 
 	before := batch.MeanMass
 	batch.MassRoot += delta
+
 	after := massFromRoot(batch.MassRoot)
 	if after <= before {
 		return
@@ -121,6 +161,7 @@ func growBatch(batch *Batch, b *Balance, tempMult PPM, eaten, wanted Micrograms,
 	batch.MeanMass = after
 	gained := Micrograms(mulDivFloor(int64(after-before), int64(batch.Fish), 1))
 	batch.MassGained = Micrograms(addSat(int64(batch.MassGained), int64(gained)))
+	batch.Accrued = Micrograms(addSat(int64(batch.Accrued), int64(gained)))
 }
 
 func killByHypoxia(t *Tank, batch *Batch, b *Balance, oxygen MicrogramsPerLiter, tick Tick, seed Seed) {

@@ -130,7 +130,8 @@ func tankAdvice(t client.Tank) string {
 		return "os peixes estao no ponto de abate"
 	}
 
-	return fmt.Sprintf("O2 %d ug/L   racao %d kg   trato por %s", t.OxygenUgL, t.FeedKg, minutes(t.ServedFor))
+	return fmt.Sprintf("O2 %d ug/L   racao %d kg   trato por %s   %s",
+		t.OxygenUgL, t.FeedKg, minutes(t.ServedFor), density(t.DensityMilli))
 }
 
 func (m Model) renderGameBoyKeys() string {

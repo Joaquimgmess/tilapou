@@ -25,8 +25,10 @@ type RationStep struct {
 }
 
 type RationBalance struct {
-	Steps [maxRationSteps]RationStep
-	Len   int32
+	Steps          [maxRationSteps]RationStep
+	Len            int32
+	TargetFCRPPM   PPM
+	MaintenancePPM PPM
 }
 
 func (r RationBalance) For(mass Micrograms) RationStep {
@@ -56,6 +58,8 @@ type WaterBalance struct {
 	BaselineOxygen  MicrogramsPerLiter
 	BiomassDrawPPM  PPM
 	AeratorRecovery MicrogramsPerLiter
+	AeratorOn       MicrogramsPerLiter
+	AeratorOff      MicrogramsPerLiter
 }
 
 type MortalityBalance struct {

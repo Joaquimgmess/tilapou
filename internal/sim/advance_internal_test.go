@@ -46,6 +46,8 @@ func testBalance(t *testing.T) *Balance {
 			BaselineOxygen:  6_000,
 			BiomassDrawPPM:  900,
 			AeratorRecovery: 2_500,
+			AeratorOn:       3_200,
+			AeratorOff:      5_200,
 		},
 		Death: MortalityBalance{
 			HypoxiaTicksToLethal: 240,
@@ -78,6 +80,8 @@ func testBalance(t *testing.T) *Balance {
 		{UpToMass: 1_200 * MicrogramsPerGram, RatePPMDay: 20_000, MealsPerDay: 2},
 	}
 	b.Ration.Len = 5
+	b.Ration.TargetFCRPPM = 1_600_000
+	b.Ration.MaintenancePPM = 3_500
 
 	b.Tanks = [tankKindCount]TankSpec{
 		TankEarthPond:     {MaxDensityPerM3: 5, RenewalPPMPerHour: 0, BaseCost: 150_000, Litres: 1_000_000},

@@ -247,3 +247,47 @@ func TestTankKeepsAcceptingBatchesAfterManyHarvests(t *testing.T) {
 		}
 	}
 }
+
+func TestFeederBuysWhatItCanAfford(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 33)
+	s.Tanks[0].FeedStock = 0
+	s.Tanks[0].grant(AutoFeeder)
+	s.Cash = Coins(50 * int64(b.Economy.FeedPricePerKg))
+
+	out, err := Advance(Input{State: s, Until: 5, Balance: b})
+	if err != nil {
+		t.Fatalf("Advance() error = %v", err)
+	}
+
+	if out.State.Tanks[0].FeedStock <= 0 {
+		t.Error("o comedouro nao comprou nada mesmo com caixa para 50 kg")
+	}
+	if out.State.Cash < 0 {
+		t.Errorf("o comedouro gastou mais do que tinha: caixa = %d", out.State.Cash)
+	}
+}
+
+func TestFeederStopsWhenBroke(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 34)
+	s.Tanks[0].FeedStock = 0
+	s.Tanks[0].grant(AutoFeeder)
+	s.Cash = 1
+
+	out, err := Advance(Input{State: s, Until: 5, Balance: b})
+	if err != nil {
+		t.Fatalf("Advance() error = %v", err)
+	}
+
+	if out.State.Cash < 0 {
+		t.Errorf("caixa ficou negativo: %d", out.State.Cash)
+	}
+	if out.State.Tanks[0].FeedStock != 0 {
+		t.Error("comprou racao sem ter dinheiro")
+	}
+}

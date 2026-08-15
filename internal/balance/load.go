@@ -68,6 +68,8 @@ type aguaSection struct {
 	ODBaseUgl                  int64   `toml:"od_base_ugl"`
 	ODConsumoPorKgM3Ugl        int64   `toml:"od_consumo_por_kg_m3_ugl"`
 	ODRecuperacaoAeradorUgl    int64   `toml:"od_recuperacao_aerador_ugl"`
+	ODLigaAeradorUgl           int64   `toml:"od_liga_aerador_ugl"`
+	ODDesligaAeradorUgl        int64   `toml:"od_desliga_aerador_ugl"`
 	ODIdealMinUgl              int64   `toml:"od_ideal_min_ugl"`
 	ODParaAlimentarMinUgl      int64   `toml:"od_para_alimentar_min_ugl"`
 	ODCriticoUgl               int64   `toml:"od_critico_ugl"`
@@ -88,14 +90,16 @@ type tanqueRow struct {
 	VolumeLitros         int64   `toml:"volume_litros"`
 	DensidadeMaxPeixesM3 int64   `toml:"densidade_max_peixes_m3"`
 	RenovacaoPorHoraPct  float64 `toml:"renovacao_por_hora_pct"`
-	CustoBaseTC          int64   `toml:"custo_base_tc"`
+	CustoBaseCentavos    int64   `toml:"custo_base_centavos"`
 }
 
 type economiaSection struct {
-	PrecoPeixeTCKg            int64 `toml:"preco_peixe_tc_kg"`
-	PrecoRacaoTCKg            int64 `toml:"preco_racao_tc_kg"`
-	CustoAlevinoTC            int64 `toml:"custo_alevino_tc"`
-	CustoEnergiaAeradorTCHora int64 `toml:"custo_energia_aerador_tc_hora"`
+	PrecoPeixeCentavosKg    int64   `toml:"preco_peixe_centavos_kg"`
+	PrecoRacaoCentavosKg    int64   `toml:"preco_racao_centavos_kg"`
+	CustoAlevinoCentavos    int64   `toml:"custo_alevino_centavos"`
+	CustoEnergiaAeradorHora int64   `toml:"custo_energia_aerador_centavos_hora"`
+	CAAReferencia           float64 `toml:"caa_referencia"`
+	ManutencaoPctDia        float64 `toml:"manutencao_pct_biomassa_dia"`
 }
 
 type progressaoSection struct {
@@ -104,15 +108,15 @@ type progressaoSection struct {
 	PrestigioDivisor            int64   `toml:"prestigio_divisor"`
 	PrestigioBonusPorUnidadePct float64 `toml:"prestigio_bonus_por_unidade_pct"`
 	ContratoBonusPct            float64 `toml:"contrato_bonus_pct"`
-	ReinicioCaixaTC             int64   `toml:"reinicio_caixa_tc"`
+	ReinicioCaixaCentavos       int64   `toml:"reinicio_caixa_centavos"`
 	ReinicioPeixes              int32   `toml:"reinicio_peixes"`
 	ReinicioRacaoKg             int64   `toml:"reinicio_racao_kg"`
 }
 
 type automacaoRow struct {
-	Nome    string `toml:"nome"`
-	CustoTC int64  `toml:"custo_tc"`
-	Remove  string `toml:"remove"`
+	Nome          string `toml:"nome"`
+	CustoCentavos int64  `toml:"custo_centavos"`
+	Remove        string `toml:"remove"`
 }
 
 var autoKindByName = map[string]sim.AutoKind{
@@ -187,6 +191,8 @@ func convert(f file) (sim.Balance, error) {
 			BaselineOxygen:  sim.MicrogramsPerLiter(f.Agua.ODBaseUgl),
 			BiomassDrawPPM:  sim.PPM(f.Agua.ODConsumoPorKgM3Ugl),
 			AeratorRecovery: sim.MicrogramsPerLiter(f.Agua.ODRecuperacaoAeradorUgl),
+			AeratorOn:       sim.MicrogramsPerLiter(f.Agua.ODLigaAeradorUgl),
+			AeratorOff:      sim.MicrogramsPerLiter(f.Agua.ODDesligaAeradorUgl),
 		},
 		Death: sim.MortalityBalance{
 			HypoxiaTicksToLethal: int32(round(f.Mortalidade.HorasParaLetalEmHipoxia * minutesPerHour)),
@@ -195,17 +201,17 @@ func convert(f file) (sim.Balance, error) {
 			StarvationRatePPM:    ppmOf(f.Mortalidade.FomePerdaDiariaPct / percentScale / float64(sim.TicksPerDay)),
 		},
 		Economy: sim.EconomyBalance{
-			FishPricePerKg:  sim.Coins(f.Economia.PrecoPeixeTCKg),
-			FeedPricePerKg:  sim.Coins(f.Economia.PrecoRacaoTCKg),
-			FingerlingPrice: sim.Coins(f.Economia.CustoAlevinoTC),
-			AeratorCostTick: sim.Coins(round(float64(f.Economia.CustoEnergiaAeradorTCHora) / minutesPerHour)),
+			FishPricePerKg:  sim.Coins(f.Economia.PrecoPeixeCentavosKg),
+			FeedPricePerKg:  sim.Coins(f.Economia.PrecoRacaoCentavosKg),
+			FingerlingPrice: sim.Coins(f.Economia.CustoAlevinoCentavos),
+			AeratorCostTick: sim.Coins(round(float64(f.Economia.CustoEnergiaAeradorHora) / minutesPerHour)),
 		},
 		Progression: sim.ProgressionBalance{
 			CostFactorPPM:    ppmOf(f.Progressao.FatorCusto),
 			PrestigeDivisor:  f.Progressao.PrestigioDivisor,
 			PrestigeBonusPPM: ppmOf(f.Progressao.PrestigioBonusPorUnidadePct / percentScale),
 			ContractBonusPPM: ppmOf(f.Progressao.ContratoBonusPct / percentScale),
-			RestartCash:      sim.Coins(f.Progressao.ReinicioCaixaTC),
+			RestartCash:      sim.Coins(f.Progressao.ReinicioCaixaCentavos),
 			RestartFish:      sim.FishCount(f.Progressao.ReinicioPeixes),
 			RestartFeed:      sim.Micrograms(f.Progressao.ReinicioRacaoKg) * sim.MicrogramsPerKilogram,
 		},
@@ -223,12 +229,15 @@ func convert(f file) (sim.Balance, error) {
 		b.Ration.Len = int32(i + 1)
 	}
 
+	b.Ration.TargetFCRPPM = ppmOf(f.Economia.CAAReferencia)
+	b.Ration.MaintenancePPM = ppmOf(f.Economia.ManutencaoPctDia / percentScale)
+
 	for _, row := range f.Automacao {
 		kind, ok := autoKindByName[row.Nome]
 		if !ok {
 			return sim.Balance{}, fmt.Errorf("%w: %q", ErrUnknownAutomation, row.Nome)
 		}
-		b.Automation[kind] = sim.AutomationSpec{Cost: sim.Coins(row.CustoTC)}
+		b.Automation[kind] = sim.AutomationSpec{Cost: sim.Coins(row.CustoCentavos)}
 	}
 
 	for _, row := range f.Tanques {
@@ -239,7 +248,7 @@ func convert(f file) (sim.Balance, error) {
 		b.Tanks[kind] = sim.TankSpec{
 			MaxDensityPerM3:   row.DensidadeMaxPeixesM3,
 			RenewalPPMPerHour: ppmOf(row.RenovacaoPorHoraPct / percentScale),
-			BaseCost:          sim.Coins(row.CustoBaseTC),
+			BaseCost:          sim.Coins(row.CustoBaseCentavos),
 			Litres:            sim.Litres(row.VolumeLitros),
 		}
 	}

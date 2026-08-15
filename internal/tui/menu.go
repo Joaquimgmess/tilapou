@@ -7,7 +7,12 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
-const fixedTankItems = 6
+const (
+	fixedTankItems = 7
+	thinPercent    = 30
+	shedTitle      = "GALPAO"
+	fullPercent    = 100
+)
 
 type menuItem struct {
 	label   string
@@ -47,6 +52,7 @@ func tankMenu(s client.Snapshot, t client.Tank) *menu {
 		buyFeedItem(s, t),
 		aeratorItem(t),
 		harvestItem(t),
+		thinItem(s, t),
 		stockItem(s, t),
 	)
 
@@ -143,6 +149,24 @@ func harvestItem(t client.Tank) menuItem {
 	return item
 }
 
+func thinItem(s client.Snapshot, t client.Tank) menuItem {
+	count := int64(t.Fish) * thinPercent / fullPercent
+	revenue := count * t.MeanGrams * s.Prices.FishKgCents / gramsPerKg
+
+	item := menuItem{
+		label:   fmt.Sprintf("Ralear %d%% do lote", thinPercent),
+		enabled: count > 0,
+		status:  "raleando o lote",
+		action:  client.Action{Kind: "harvest", Tank: t.ID, Batch: t.BatchID, Amount: count},
+		hint:    fmt.Sprintf("vende %d peixes por ~%s e o resto continua crescendo", count, coins(revenue)),
+	}
+	if count <= 0 {
+		item.hint = "nao ha peixe suficiente"
+	}
+
+	return item
+}
+
 func stockItem(s client.Snapshot, t client.Tank) menuItem {
 	room := t.Capacity - int64(t.Fish)
 	amount := min(room, fingerlingsPerBuy)
@@ -232,7 +256,7 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 		action:  client.Action{Kind: "buy_tank", TankKind: "viveiro_escavado"},
 	})
 
-	return &menu{title: "GALPAO", items: items}
+	return &menu{title: shedTitle, items: items}
 }
 
 func minutes(ticks int64) string {

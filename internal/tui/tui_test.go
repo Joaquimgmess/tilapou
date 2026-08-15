@@ -46,7 +46,7 @@ func sampleSnapshot() client.Snapshot {
 		Fish:       2_000,
 		Tanks: []client.Tank{{
 			ID: 1, Kind: "viveiro_escavado", Fish: 2_000, MeanGrams: 306,
-			FeedKg: 180, OxygenUgL: 1_900, DensityKg: 1, BatchID: 1,
+			FeedKg: 180, OxygenUgL: 1_900, DensityMilli: 600, BatchID: 1,
 			Capacity: 5_000, ServedFor: 120,
 			Upgrades: []client.Upgrade{
 				{Kind: "comedouro", CostCents: 250_000},

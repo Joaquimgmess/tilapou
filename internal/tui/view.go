@@ -18,10 +18,9 @@ const (
 	oxygenFullUgL  = 9000
 	oxygenLowUgL   = 3000
 	eventsShown    = 8
-	gramsPerKg     = 1000
 	milliPerUnit   = 1000
 	centsPerCoin   = 100
-	panelWidth     = 52
+	panelWidth     = 58
 )
 
 var (
@@ -124,7 +123,7 @@ func renderTank(t client.Tank) string {
 		titleStyle.Render(fmt.Sprintf("tanque %d", t.ID)), dimStyle.Render(t.Kind), ready,
 		labelStyle.Render("peixes"), valueStyle.Render(strconv.Itoa(int(t.Fish))), t.Capacity,
 		labelStyle.Render("peso"), valueStyle.Render(fmt.Sprintf("%d g", t.MeanGrams)),
-		labelStyle.Render("densidade"), valueStyle.Render(fmt.Sprintf("%d kg/m3", t.DensityKg)),
+		labelStyle.Render("dens"), valueStyle.Render(density(t.DensityMilli)),
 		labelStyle.Render("racao"), valueStyle.Render(fmt.Sprintf("%d kg", t.FeedKg)),
 		trato,
 		aerator,
@@ -236,6 +235,12 @@ func (m Model) renderFooter() string {
 	}
 
 	return banner + "\n" + keys + "\n" + labelStyle.Render(m.message)
+}
+
+const densityDecimal = 100
+
+func density(milli int64) string {
+	return fmt.Sprintf("%d,%d kg/m3", milli/milliPerUnit, (milli%milliPerUnit)/densityDecimal)
 }
 
 func coins(cents int64) string {

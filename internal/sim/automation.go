@@ -41,7 +41,7 @@ func (t *Tank) grant(k AutoKind) {
 
 func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
 	if t.Owns(AutoAerator) {
-		t.Aerating = t.Oxygen < b.Water.IdealMin && s.Cash > 0
+		t.Aerating = wantsAeration(t, b) && s.Cash > 0
 	}
 
 	if t.Owns(AutoFeeder) {
@@ -52,6 +52,14 @@ func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
 	if t.Owns(AutoHarvester) {
 		harvestReady(s, b, t, tick, sink)
 	}
+}
+
+func wantsAeration(t *Tank, b *Balance) bool {
+	if t.Aerating {
+		return t.Oxygen < b.Water.AeratorOff
+	}
+
+	return t.Oxygen < b.Water.AeratorOn
 }
 
 func serve(b *Balance, t *Tank, tick Tick) {
@@ -78,11 +86,15 @@ func payEnergy(s *State, b *Balance, t *Tank) {
 }
 
 func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
-	if t.FeedStock > 0 || t.Fish() == 0 {
+	if t.FeedStock > 0 || t.Fish() == 0 || b.Economy.FeedPricePerKg <= 0 {
 		return
 	}
 
-	kilos := int64(autoRestockKg)
+	kilos := min(int64(autoRestockKg), int64(s.Cash)/int64(b.Economy.FeedPricePerKg))
+	if kilos < autoMinRestockKg {
+		return
+	}
+
 	price := Coins(mulDivCeil(int64(b.Economy.FeedPricePerKg), kilos, 1))
 	if s.Cash < price {
 		return
@@ -136,4 +148,7 @@ func sell(s *State, b *Balance, t *Tank, batch *Batch, count FishCount, tick Tic
 	})
 }
 
-const autoRestockKg = 200
+const (
+	autoRestockKg    = 200
+	autoMinRestockKg = 10
+)

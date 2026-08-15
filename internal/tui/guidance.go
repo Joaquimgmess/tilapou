@@ -10,6 +10,8 @@ const (
 	criticalOxygenUgL = 2_000
 	feederIndex       = 0
 	aeratorIndex      = 1
+	minRestockKg      = 10
+	gramsPerKg        = 1000
 )
 
 type advice struct {
@@ -57,9 +59,15 @@ func suffocating(s client.Snapshot) (advice, bool) {
 
 func outOfFeed(s client.Snapshot) (advice, bool) {
 	for _, t := range s.Tanks {
-		if t.Fish > 0 && t.FeedKg == 0 {
-			return advice{fmt.Sprintf("O tanque %d ficou sem racao. Compre com [c]", t.ID), true}, true
+		if t.Fish == 0 || t.FeedKg > 0 {
+			continue
 		}
+		if s.CashCents < s.Prices.FeedKgCents*minRestockKg {
+			return advice{fmt.Sprintf(
+				"Sem racao e sem caixa. Abra [z] no tanque %d e raleie o lote para levantar dinheiro", t.ID), true}, true
+		}
+
+		return advice{fmt.Sprintf("O tanque %d ficou sem racao. Compre com [c]", t.ID), true}, true
 	}
 
 	return advice{}, false

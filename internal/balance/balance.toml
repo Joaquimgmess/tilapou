@@ -19,7 +19,7 @@ compressao = 60
 tgc = 0.0014
 temperatura_referencia_c = 26.0
 peso_maximo_mg = 1100000
-peso_alevino_mg = 1000
+peso_alevino_mg = 30000
 peso_abate_mg = 800000
 
 # Multiplicador global sobre consumo e crescimento.
@@ -84,6 +84,8 @@ od_variacao_diaria_ugl = 6000
 od_base_ugl = 6000
 od_consumo_por_kg_m3_ugl = 900
 od_recuperacao_aerador_ugl = 2500
+od_liga_aerador_ugl = 3200
+od_desliga_aerador_ugl = 5200
 teto_racao_kg_ha_dia_sem_aeracao = 40.0
 teto_racao_kg_ha_dia_com_aeracao = 120.0
 od_ideal_min_ugl = 5000
@@ -115,6 +117,8 @@ fracao_toxica_pct = 19.6
 ph = 9.0
 fracao_toxica_pct = 45.0
 
+# O aerador liga perto do limite de estresse e desliga acima do ideal (histerese),
+# senao fica ligado toda madrugada e o custo de energia come a receita.
 # Sobrevive a 0,4-0,7 mg/L por 3-5 h: a hipoxia mata por tempo acumulado, nao instantaneamente.
 [mortalidade]
 sobrevivencia_engorda_pct = 80.0
@@ -149,34 +153,37 @@ tipo = "viveiro_escavado"
 volume_litros = 1000000
 densidade_max_peixes_m3 = 5
 renovacao_por_hora_pct = 0.0
-custo_base_tc = 1500
+custo_base_centavos = 300000
 [[tanques]]
 tipo = "tanque_rede"
 volume_litros = 6000
 densidade_max_peixes_m3 = 160
 renovacao_por_hora_pct = 100.0
-custo_base_tc = 4000
+custo_base_centavos = 800000
 [[tanques]]
 tipo = "bioflocos"
 volume_litros = 30000
 densidade_max_peixes_m3 = 80
 renovacao_por_hora_pct = 20.0
-custo_base_tc = 18000
+custo_base_centavos = 3500000
 [[tanques]]
 tipo = "recirculacao"
 volume_litros = 20000
 densidade_max_peixes_m3 = 120
 renovacao_por_hora_pct = 300.0
-custo_base_tc = 60000
+custo_base_centavos = 12000000
 
+# Tudo em centavos de TC. Uma despesca de 2000 peixes de 800 g rende ~14.400 TC,
+# entao comedouro (1.200) e aerador (2.500) cabem no primeiro ciclo e o peao (8.000) no segundo.
 # CEPEA fev/2026: R$ 8,69-10,39/kg na fazenda. Racao e 64-80% do custo.
 # Equivalencia peixe-racao = preco / (CAA * preco_racao): <1,25 inviavel, >2,00 excelente.
 [economia]
-preco_peixe_tc_kg = 900
-preco_racao_tc_kg = 320
-custo_alevino_tc = 35
+preco_peixe_centavos_kg = 900
+preco_racao_centavos_kg = 320
+custo_alevino_centavos = 80
 caa_referencia = 1.6
-custo_energia_aerador_tc_hora = 12
+manutencao_pct_biomassa_dia = 0.35
+custo_energia_aerador_centavos_hora = 120
 
 # Escada classica: custo base * 1.15^n. Marcos de x2 acumulativos.
 [progressao]
@@ -185,27 +192,27 @@ marcos_x2 = [10, 25, 50, 100, 200]
 prestigio_divisor = 1000000
 prestigio_bonus_por_unidade_pct = 5.0
 contrato_bonus_pct = 10.0
-reinicio_caixa_tc = 50000
+reinicio_caixa_centavos = 50000
 reinicio_peixes = 2000
 reinicio_racao_kg = 200
 
 [[automacao]]
 nome = "comedouro"
-custo_tc = 2500
+custo_centavos = 120000
 remove = "alimentar"
 [[automacao]]
 nome = "aerador"
-custo_tc = 6000
+custo_centavos = 250000
 remove = "arejar"
 [[automacao]]
 nome = "peao"
-custo_tc = 20000
+custo_centavos = 800000
 remove = "despescar"
 [[automacao]]
 nome = "tecnico"
-custo_tc = 75000
+custo_centavos = 2500000
 remove = "ajustar_racao"
 [[automacao]]
 nome = "contrato"
-custo_tc = 250000
+custo_centavos = 6000000
 remove = "vender"

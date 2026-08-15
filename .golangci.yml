@@ -200,6 +200,9 @@ linters:
         text: "G704:"
         linters:
           - gosec
+      - path: internal/tui/(live|progression)_internal_test\.go
+        linters:
+          - paralleltest
       - path: _test\.go
         linters:
           - errcheck

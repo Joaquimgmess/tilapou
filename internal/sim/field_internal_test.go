@@ -154,3 +154,64 @@ func TestAeratorSavesTheOvercrowdedTank(t *testing.T) {
 		t.Errorf("com aerador sobraram %d peixes, sem aerador %d: o aerador tem que salvar", with, without)
 	}
 }
+
+func TestFeedConversionStaysInTheMeasuredRange(t *testing.T) {
+	t.Parallel()
+
+	b := isothermalBalance(t, 28)
+
+	s := NewState(1, 0, 0)
+	id, _ := s.addTank(TankEarthPond, 1_000_000)
+	tank := s.tank(id)
+	tank.addBatch(1, 1_000, 30*MicrogramsPerGram, 0)
+	tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
+	tank.ServedUntil = Tick(maxInt32)
+
+	out, err := Advance(Input{State: s, Until: 150 * TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("Advance() error = %v", err)
+	}
+
+	batch := out.State.Tanks[0].Batches[0]
+	gain := int64(batch.MassGained)
+	if gain <= 0 {
+		t.Fatal("o lote nao ganhou peso")
+	}
+
+	fcr := float64(batch.FeedEaten) / float64(gain)
+	if fcr < 1.3 || fcr > 2.0 {
+		t.Errorf("conversao alimentar = %.2f, a literatura poe entre 1,45 e 1,80 em boa gestao", fcr)
+	}
+}
+
+func TestFeedConversionWorsensInTheCold(t *testing.T) {
+	t.Parallel()
+
+	fcr := func(celsius int32) float64 {
+		b := isothermalBalance(t, celsius)
+
+		s := NewState(1, 0, 0)
+		id, _ := s.addTank(TankEarthPond, 1_000_000)
+		tank := s.tank(id)
+		tank.addBatch(1, 1_000, 100*MicrogramsPerGram, 0)
+		tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
+		tank.ServedUntil = Tick(maxInt32)
+
+		out, err := Advance(Input{State: s, Until: 60 * TicksPerDay, Balance: b})
+		if err != nil {
+			t.Fatalf("Advance() error = %v", err)
+		}
+
+		batch := out.State.Tanks[0].Batches[0]
+		if batch.MassGained <= 0 {
+			return 999
+		}
+
+		return float64(batch.FeedEaten) / float64(batch.MassGained)
+	}
+
+	warm, cold := fcr(28), fcr(22)
+	if cold <= warm {
+		t.Errorf("no frio a conversao deveria piorar: 28C=%.2f 22C=%.2f", warm, cold)
+	}
+}
