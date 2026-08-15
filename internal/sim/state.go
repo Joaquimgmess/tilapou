@@ -16,7 +16,7 @@ const (
 
 const (
 	maxTanks          = 64
-	maxBatchesPerTank = 4
+	MaxBatchesPerTank = 4
 	StateVersion      = 1
 	RngVersion        = 1
 )
@@ -57,7 +57,7 @@ type Tank struct {
 	ID           TankID
 	Kind         TankKind
 	Litres       Litres
-	Batches      [maxBatchesPerTank]Batch
+	Batches      [MaxBatchesPerTank]Batch
 	BatchCount   int32
 	FeedStock    Micrograms
 	ServedUntil  Tick
@@ -165,7 +165,7 @@ func (t *Tank) compact() {
 }
 
 func (t *Tank) addBatch(id BatchID, fish FishCount, mass Micrograms, at Tick) bool {
-	if t.BatchCount >= maxBatchesPerTank {
+	if t.BatchCount >= MaxBatchesPerTank {
 		return false
 	}
 

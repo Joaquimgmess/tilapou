@@ -197,9 +197,15 @@ func loanHint(t client.Tank) string {
 }
 
 func stockBlocked(t client.Tank) string {
-	if t.Capacity-int64(t.Fish) <= 0 {
-		return "O tanque " + strconv.FormatInt(int64(t.ID), 10) +
-			" ja esta no limite de densidade: " + strconv.FormatInt(t.Capacity, 10) + " peixes"
+	tank := strconv.FormatInt(int64(t.ID), 10)
+
+	switch {
+	case t.Capacity-int64(t.Fish) <= 0:
+		return "O tanque " + tank + " ja esta no limite de densidade: " +
+			strconv.FormatInt(t.Capacity, 10) + " peixes"
+	case t.MaxBatches > 0 && t.Batches >= t.MaxBatches:
+		return "O tanque " + tank + " ja tem os " + strconv.FormatInt(int64(t.MaxBatches), 10) +
+			" lotes que cabem. Despesque um antes de povoar de novo"
 	}
 
 	return "Sem grana para povoar: o caixa nao paga o alevino mais a racao ate a despesca"

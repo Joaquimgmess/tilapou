@@ -101,3 +101,29 @@ func TestForecastAssumesTheFarmKeepsBeingManaged(t *testing.T) {
 		t.Error("a previsao alimentou de graca: a racao precisa entrar no custo")
 	}
 }
+
+func TestStockAdviceRefusesATankWithNoRoomForAnotherBatch(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Cash = 10_000_000
+
+	id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	for range MaxBatchesPerTank {
+		s.StockTank(id, 10, b.Growth.FingerlingMass, 0)
+	}
+
+	tank := s.tank(id)
+	if room := tank.Capacity(b) - int64(tank.Fish()); room <= 0 {
+		t.Fatalf("o cenario precisa de espaco de densidade sobrando, sobrou %d", room)
+	}
+
+	if fish, _ := s.StockAdvice(b, id); fish != 0 {
+		t.Errorf("com %d lotes o tanque nao aceita povoar, mas a sugestao foi de %d alevinos",
+			tank.BatchCount, fish)
+	}
+}

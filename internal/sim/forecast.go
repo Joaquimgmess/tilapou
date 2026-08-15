@@ -157,7 +157,7 @@ func (s *State) StockAdvice(b *Balance, tank TankID) (fish FishCount, perFish Co
 	}
 
 	room := t.Capacity(b) - int64(t.Fish())
-	if room <= 0 {
+	if room <= 0 || t.BatchCount >= MaxBatchesPerTank {
 		return 0, perFish
 	}
 

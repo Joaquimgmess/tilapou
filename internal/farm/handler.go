@@ -37,6 +37,8 @@ type TankView struct {
 	Sick          bool          `json:"sick"`
 	Capacity      int64         `json:"capacity_fish"`
 	StockAdvice   int64         `json:"stock_advice_fish"`
+	Batches       int32         `json:"batch_count"`
+	MaxBatches    int32         `json:"max_batches"`
 	BreakEven     int64         `json:"break_even_fish"`
 	CostPerFish   int64         `json:"stock_cost_per_fish_cents"`
 	LoanAdvice    int64         `json:"loan_advice_cents"`
@@ -338,6 +340,8 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			Aerating:    tank.Aerating,
 			Capacity:    tank.Capacity(b),
 			StockAdvice: advice,
+			Batches:     tank.BatchCount,
+			MaxBatches:  sim.MaxBatchesPerTank,
 			CostPerFish: perFish,
 			BreakEven:   int64(plan.BreakEven),
 			LoanAdvice:  int64(state.LoanAdvice(b, tank.ID, plan.BreakEven)),
