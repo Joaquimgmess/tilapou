@@ -14,14 +14,14 @@
       \|         `--______-´    `-____-´
 ```
 
-Idle game de piscicultura no terminal. Um daemon simula a fazenda em segundo plano e uma TUI com
-cara de Game Boy conecta nele. A física é de tilápia de verdade — crescimento por TGC, oxigênio
-que despenca de madrugada, conversão alimentar emergente — e o jogo é sobre a economia: preço
-oscilando, classe de peso, margem por ciclo, crédito e doença.
+idle game de piscicultura no terminal, com cara de game boy.
 
-## Como rodar
+o daemon simula a fazenda em segundo plano, a tui conecta nele. a física é de tilápia de verdade
+e o jogo é sobre economia: preço oscila, peixe maior vale mais por quilo, ração é 70% do custo.
+
+## como rodar
 
 ```sh
-make up     # infra: postgres + daemon
-make play   # a TUI
+make up     # infra
+make play   # tui
 ```
