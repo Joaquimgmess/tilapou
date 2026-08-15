@@ -1,31 +1,117 @@
 version: "2"
 
 linters:
-  enable:
-    - errcheck
-    - govet
-    - ineffassign
-    - misspell
-    - revive
-    - staticcheck
-    - unused
+  default: all
+  disable:
+    - depguard
+    - dupword
+    - exhaustruct
+    - funlen
+    - gochecknoglobals
+    - godot
+    - godox
+    - ireturn
+    - lll
+    - nlreturn
+    - nonamedreturns
+    - noinlineerr
+    - varnamelen
+    - wsl
+    - wsl_v5
   settings:
+    cyclop:
+      max-complexity: 15
+    errcheck:
+      check-type-assertions: true
+      check-blank: true
+    exhaustive:
+      default-signifies-exhaustive: true
+    gocognit:
+      min-complexity: 25
+    gocritic:
+      enabled-tags:
+        - diagnostic
+        - opinionated
+        - performance
+        - style
+      disabled-checks:
+        - hugeParam
+    gosec:
+      excludes:
+        - G404
+    govet:
+      enable-all: true
+      disable:
+        - fieldalignment
+    interfacebloat:
+      max: 6
+    nakedret:
+      max-func-lines: 0
     revive:
+      enable-all-rules: true
       rules:
         - name: exported
           disabled: true
         - name: package-comments
           disabled: true
+        - name: comment-spacings
+          disabled: true
+        - name: add-constant
+          disabled: true
+        - name: cognitive-complexity
+          arguments: [25]
+        - name: cyclomatic
+          arguments: [15]
+        - name: function-length
+          disabled: true
+        - name: line-length-limit
+          disabled: true
+        - name: max-public-structs
+          disabled: true
+        - name: flag-parameter
+          disabled: true
+        - name: confusing-naming
+          disabled: true
+    staticcheck:
+      checks:
+        - all
+        - -S1016
+        - -ST1000
+        - -ST1020
+        - -ST1021
+        - -ST1022
+    tagliatelle:
+      case:
+        rules:
+          json: snake
+    testpackage:
+      skip-regexp: (export|internal)_test\.go
+    varcheck: {}
+    wrapcheck:
+      ignore-package-globs:
+        - github.com/Joaquimgmess/catalog/*
+      ignore-interface-regexps:
+        - ^Store$
+      ignore-sigs:
+        - .Errorf(
+        - errors.New(
+        - errors.Join(
+        - errors.Unwrap(
+        - .Wrap(
+        - .Wrapf(
+        - .WithMessage(
   exclusions:
     presets:
       - std-error-handling
     rules:
-      - text: "S1016:"
-        linters:
-          - staticcheck
       - path: _test\.go
         linters:
           - errcheck
+          - dupl
+          - err113
+          - forcetypeassert
+          - gochecknoinits
+          - maintidx
 
 formatters:
   enable:

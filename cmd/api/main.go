@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,6 +17,8 @@ import (
 	"github.com/Joaquimgmess/catalog/internal/platform/postgres"
 	"github.com/Joaquimgmess/catalog/internal/product"
 )
+
+const readHeaderTimeout = 5 * time.Second
 
 func main() {
 	if err := run(); err != nil {
@@ -49,7 +52,7 @@ func run() error {
 	server := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           router,
-		ReadHeaderTimeout: 5 * time.Second,
+		ReadHeaderTimeout: readHeaderTimeout,
 		ReadTimeout:       cfg.ReadTimeout,
 		WriteTimeout:      cfg.WriteTimeout,
 	}
@@ -71,5 +74,8 @@ func run() error {
 
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.ShutdownTimeout)
 	defer cancel()
-	return server.Shutdown(shutdownCtx)
+	if err := server.Shutdown(shutdownCtx); err != nil {
+		return fmt.Errorf("shutting down server: %w", err)
+	}
+	return nil
 }

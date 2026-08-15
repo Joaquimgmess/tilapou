@@ -11,13 +11,15 @@ import (
 	"github.com/Joaquimgmess/catalog/internal/platform/logging"
 )
 
+const readyTimeout = 2 * time.Second
+
 func RegisterHealth(router chi.Router, ready func(ctx context.Context) error) {
 	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
 	router.Get("/readyz", func(w http.ResponseWriter, r *http.Request) {
-		ctx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
+		ctx, cancel := context.WithTimeout(r.Context(), readyTimeout)
 		defer cancel()
 
 		if err := ready(ctx); err != nil {

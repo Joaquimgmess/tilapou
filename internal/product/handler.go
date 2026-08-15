@@ -11,17 +11,19 @@ import (
 )
 
 type Response struct {
-	ID         uuid.UUID `json:"id" doc:"Product identifier"`
-	Name       string    `json:"name" doc:"Product name"`
-	PriceCents int64     `json:"price_cents" doc:"Price in cents"`
-	CreatedAt  time.Time `json:"created_at" doc:"Creation timestamp"`
+	ID         uuid.UUID `doc:"Product identifier" json:"id"`
+	Name       string    `doc:"Product name"       json:"name"`
+	PriceCents int64     `doc:"Price in cents"     json:"price_cents"`
+	CreatedAt  time.Time `doc:"Creation timestamp" json:"created_at"`
+}
+
+type CreateBody struct {
+	Name       string `doc:"Product name"   json:"name"        maxLength:"120"`
+	PriceCents int64  `doc:"Price in cents" json:"price_cents" minimum:"1"`
 }
 
 type CreateInput struct {
-	Body struct {
-		Name       string `json:"name" maxLength:"120" doc:"Product name"`
-		PriceCents int64  `json:"price_cents" minimum:"1" doc:"Price in cents"`
-	}
+	Body CreateBody
 }
 
 type CreateOutput struct {
@@ -29,7 +31,7 @@ type CreateOutput struct {
 }
 
 type GetInput struct {
-	ID uuid.UUID `path:"id" doc:"Product identifier"`
+	ID uuid.UUID `doc:"Product identifier" path:"id"`
 }
 
 type GetOutput struct {

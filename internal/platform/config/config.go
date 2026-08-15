@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strconv"
@@ -18,7 +19,19 @@ type Config struct {
 	ShutdownTimeout time.Duration
 }
 
+var errMissingDatabaseURL = errors.New("config: DATABASE_URL is required")
+
+const (
+	defaultMaxConns      = 10
+	defaultDBTimeout     = 3 * time.Second
+	defaultReadTimeout   = 10 * time.Second
+	defaultWriteTimeout  = 15 * time.Second
+	defaultShutdownGrace = 15 * time.Second
+)
+
 func Load() (Config, error) {
+	var err error
+
 	cfg := Config{
 		Addr:        env("ADDR", ":8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
@@ -26,31 +39,29 @@ func Load() (Config, error) {
 	}
 
 	if cfg.DatabaseURL == "" {
-		return Config{}, fmt.Errorf("config: DATABASE_URL is required")
+		return Config{}, errMissingDatabaseURL
 	}
 
-	conns, err := intEnv("DB_MAX_CONNS", 10)
+	cfg.DBMaxConns, err = int32Env("DB_MAX_CONNS", defaultMaxConns)
 	if err != nil {
 		return Config{}, err
 	}
-	cfg.DBMaxConns = int32(conns)
 
 	durations := []struct {
 		key      string
 		fallback time.Duration
 		dst      *time.Duration
 	}{
-		{"DB_TIMEOUT", 3 * time.Second, &cfg.DBTimeout},
-		{"READ_TIMEOUT", 10 * time.Second, &cfg.ReadTimeout},
-		{"WRITE_TIMEOUT", 15 * time.Second, &cfg.WriteTimeout},
-		{"SHUTDOWN_TIMEOUT", 15 * time.Second, &cfg.ShutdownTimeout},
+		{"DB_TIMEOUT", defaultDBTimeout, &cfg.DBTimeout},
+		{"READ_TIMEOUT", defaultReadTimeout, &cfg.ReadTimeout},
+		{"WRITE_TIMEOUT", defaultWriteTimeout, &cfg.WriteTimeout},
+		{"SHUTDOWN_TIMEOUT", defaultShutdownGrace, &cfg.ShutdownTimeout},
 	}
 	for _, d := range durations {
-		v, err := durationEnv(d.key, d.fallback)
+		*d.dst, err = durationEnv(d.key, d.fallback)
 		if err != nil {
 			return Config{}, err
 		}
-		*d.dst = v
 	}
 
 	return cfg, nil
@@ -63,16 +74,16 @@ func env(key, fallback string) string {
 	return fallback
 }
 
-func intEnv(key string, fallback int) (int, error) {
+func int32Env(key string, fallback int32) (int32, error) {
 	raw := os.Getenv(key)
 	if raw == "" {
 		return fallback, nil
 	}
-	v, err := strconv.Atoi(raw)
+	v, err := strconv.ParseInt(raw, 10, 32)
 	if err != nil {
 		return 0, fmt.Errorf("config: invalid %s: %w", key, err)
 	}
-	return v, nil
+	return int32(v), nil
 }
 
 func durationEnv(key string, fallback time.Duration) (time.Duration, error) {
