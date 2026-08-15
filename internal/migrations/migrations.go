@@ -40,27 +40,6 @@ func Apply(ctx context.Context, pool *pgxpool.Pool) error {
 	return nil
 }
 
-func Pending(ctx context.Context, pool *pgxpool.Pool) ([]int64, error) {
-	provider, err := newProvider(ctx, pool)
-	if err != nil {
-		return nil, err
-	}
-
-	statuses, err := provider.Status(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("reading migration status: %w", err)
-	}
-
-	var pending []int64
-	for _, status := range statuses {
-		if status.State == goose.StatePending {
-			pending = append(pending, status.Source.Version)
-		}
-	}
-
-	return pending, nil
-}
-
 func newProvider(ctx context.Context, pool *pgxpool.Pool) (*goose.Provider, error) {
 	sqlFS, err := fs.Sub(files, "sql")
 	if err != nil {

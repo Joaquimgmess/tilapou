@@ -22,29 +22,6 @@ const (
 	actionKindCount
 )
 
-var actionKindNames = [actionKindCount]string{
-	ActionUnknown:    "unknown",
-	ActionBuyTank:    "buy_tank",
-	ActionStock:      "stock",
-	ActionBuyFeed:    "buy_feed",
-	ActionFeed:       "feed",
-	ActionAerate:     "aerate",
-	ActionHarvest:    "harvest",
-	ActionBuyUpgrade: "buy_upgrade",
-	ActionPrestige:   "prestige",
-	ActionBorrow:     "borrow",
-	ActionRepay:      "repay",
-	ActionTreat:      "treat",
-}
-
-func (k ActionKind) String() string {
-	if k >= actionKindCount {
-		return invalidName
-	}
-
-	return actionKindNames[k]
-}
-
 type RejectReason uint8
 
 const (

@@ -27,10 +27,6 @@ func seasonalTemp(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
 	return MilliCelsius(int64(b.Water.BaseTemp) + mulDivFloor(swing, shape, int64(UnitPPM)) - swing/2)
 }
 
-func SeasonalTemp(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
-	return seasonalTemp(b, tick, zone)
-}
-
 func oxygenAt(b *Balance, t *Tank, tick Tick, zone ZoneOffset) MicrogramsPerLiter {
 	phase := tick.At(zone)
 	swing := int64(b.Water.DailySwing)

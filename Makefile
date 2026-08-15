@@ -3,7 +3,7 @@ export
 
 TILAPOU_DAEMON ?= http://localhost:$(or $(API_PORT),8080)
 
-.PHONY: build run play status test lint fmt tidy check up down golden migrate-create vuln
+.PHONY: build run play status test lint fmt tidy check up down golden migrate-create vuln dead
 
 BIN := bin/tilapou
 
@@ -32,7 +32,7 @@ fmt:
 tidy:
 	go mod tidy
 
-check: fmt lint test build vuln
+check: fmt lint test build vuln dead
 
 up:
 	docker compose up -d --build
@@ -49,3 +49,7 @@ migrate-create:
 
 vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+dead:
+	@out=$$(go run golang.org/x/tools/cmd/deadcode@latest -test ./...); \
+	if [ -n "$$out" ]; then echo "$$out"; echo "codigo morto encontrado"; exit 1; fi

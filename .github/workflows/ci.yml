@@ -34,6 +34,11 @@ jobs:
       - name: test
         run: go test ./... -race -cover
 
+      - name: dead code
+        run: |
+          out=$(go run golang.org/x/tools/cmd/deadcode@latest -test ./...)
+          if [ -n "$out" ]; then echo "$out"; echo "codigo morto encontrado"; exit 1; fi
+
   vuln:
     runs-on: ubuntu-latest
     steps:
