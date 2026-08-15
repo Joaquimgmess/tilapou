@@ -73,8 +73,8 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 	var actions []sim.Action
 	if action != nil {
 		scheduled := *action
-		scheduled.At = f.State.Tick + 1
-		now = max(now, scheduled.At)
+		scheduled.At = now + 1
+		now = scheduled.At
 		actions = append(actions, scheduled)
 	}
 
