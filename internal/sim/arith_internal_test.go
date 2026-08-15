@@ -127,7 +127,7 @@ func TestCarryTakePartitionsExactly(t *testing.T) {
 
 	var carry, accumulated int64
 	for range steps {
-		accumulated = addSat(accumulated, carryTake(total, numerator, denominator, &carry))
+		accumulated = addSat(accumulated, carryTake(total, denominator, &carry))
 	}
 
 	want := total * numerator * steps / denominator
@@ -141,7 +141,7 @@ func TestCarryTakeWithoutCarryLosesValue(t *testing.T) {
 
 	var carry, withCarry, without int64
 	for range 300 {
-		withCarry = addSat(withCarry, carryTake(1000, 1, 3, &carry))
+		withCarry = addSat(withCarry, carryTake(1000, 3, &carry))
 		without = addSat(without, mulDivFloor(1000, 1, 3))
 	}
 

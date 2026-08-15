@@ -1,0 +1,111 @@
+package sim
+
+const WindowTicks = Tick(60)
+
+type EventKind uint16
+
+const (
+	EventUnknown EventKind = iota
+	EventGrowth
+	EventHypoxiaDeaths
+	EventStarvationDeaths
+	EventFeedExhausted
+	EventHarvest
+	EventStocked
+	EventTankBought
+	EventFeedBought
+	EventActionRejected
+	EventSaturated
+	eventKindCount
+)
+
+var eventKindNames = [eventKindCount]string{
+	EventUnknown:          "unknown",
+	EventGrowth:           "growth",
+	EventHypoxiaDeaths:    "hypoxia_deaths",
+	EventStarvationDeaths: "starvation_deaths",
+	EventFeedExhausted:    "feed_exhausted",
+	EventHarvest:          "harvest",
+	EventStocked:          "stocked",
+	EventTankBought:       "tank_bought",
+	EventFeedBought:       "feed_bought",
+	EventActionRejected:   "action_rejected",
+	EventSaturated:        "saturated",
+}
+
+func (k EventKind) String() string {
+	if k >= eventKindCount {
+		return invalidName
+	}
+
+	return eventKindNames[k]
+}
+
+type Event struct {
+	Seq         uint64
+	Kind        EventKind
+	From        Tick
+	To          Tick
+	Tank        TankID
+	Batch       BatchID
+	Fish        FishCount
+	Mass        Micrograms
+	Cash        Coins
+	Reason      RejectReason
+	ActionRefID ActionID
+}
+
+type eventSink struct {
+	events  []Event
+	nextSeq uint64
+}
+
+func (s *eventSink) emit(e Event) {
+	e.Seq = s.nextSeq
+	s.nextSeq++
+	s.events = append(s.events, e)
+}
+
+func (a *Accrual) empty() bool {
+	return a.HypoxiaDeaths == 0 && a.StarvationDeaths == 0 && a.FeedEaten == 0 && a.MassGained == 0
+}
+
+func (t *Tank) flushAccrual(sink *eventSink, upTo Tick) {
+	if t.Accrual.empty() {
+		t.Accrual = Accrual{Window: upTo}
+		return
+	}
+
+	from, to := t.Accrual.Window, t.Accrual.Window+WindowTicks
+
+	if t.Accrual.MassGained != 0 || t.Accrual.FeedEaten != 0 {
+		sink.emit(Event{
+			Kind: EventGrowth,
+			From: from,
+			To:   to,
+			Tank: t.ID,
+			Mass: t.Accrual.MassGained,
+			Fish: 0,
+		})
+	}
+	if t.Accrual.HypoxiaDeaths > 0 {
+		sink.emit(Event{
+			Kind: EventHypoxiaDeaths,
+			From: from,
+			To:   to,
+			Tank: t.ID,
+			Fish: t.Accrual.HypoxiaDeaths,
+		})
+	}
+	if t.Accrual.StarvationDeaths > 0 {
+		sink.emit(Event{
+			Kind: EventStarvationDeaths,
+			From: from,
+			To:   to,
+			Tank: t.ID,
+			Fish: t.Accrual.StarvationDeaths,
+		})
+	}
+
+	t.Accrual = Accrual{Window: upTo}
+}

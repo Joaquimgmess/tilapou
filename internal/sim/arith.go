@@ -93,11 +93,11 @@ func absU(v int64) uint64 {
 	return uint64(v)
 }
 
-func carryTake(total, numerator, denominator int64, carry *int64) int64 {
-	scaled, remainder, ok := mulDiv128(total, numerator, denominator)
+func carryTake(total, denominator int64, carry *int64) int64 {
+	scaled, remainder, ok := mulDiv128(total, 1, denominator)
 	if !ok {
 		*carry = 0
-		return saturationOf(total, numerator, denominator)
+		return saturationOf(total, 1, denominator)
 	}
 
 	pending := addSat(*carry, remainder)
