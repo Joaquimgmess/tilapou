@@ -54,6 +54,6 @@ func New(id, playerID uuid.UUID, name string, epoch time.Time, zone sim.ZoneOffs
 const (
 	startingCash = sim.Coins(50_000)
 	startingFish = sim.FishCount(2_000)
-	startingMass = 300 * sim.MicrogramsPerGram
+	startingMass = 450 * sim.MicrogramsPerGram
 	startingFeed = 200 * sim.MicrogramsPerKilogram
 )

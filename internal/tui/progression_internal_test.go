@@ -71,11 +71,13 @@ func TestProgression(t *testing.T) {
 	out.WriteString(d.line("servi e despesquei"))
 
 	d.press("1")
-	d.press("2")
-	out.WriteString(d.line("comprei comedouro+aerador"))
+	out.WriteString(d.line("comprei o comedouro"))
 
 	d.press("s")
-	out.WriteString(d.line("povoei com alevinos"))
+	out.WriteString(d.line("povoei com juvenis"))
+
+	d.press("2")
+	out.WriteString(d.line("comprei o aerador"))
 
 	for _, days := range []int{15, 30, 60, 60} {
 		jumpDays(t, days)

@@ -11,7 +11,7 @@ const (
 	feederIndex       = 0
 	aeratorIndex      = 1
 	minRestockKg      = 10
-	gramsPerKg        = 1000
+	minStock          = 100
 )
 
 type advice struct {
@@ -26,6 +26,8 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 
 	checks := []func(client.Snapshot) (advice, bool){
 		suffocating,
+		sickBatch,
+		crushingDebt,
 		outOfFeed,
 		unfed,
 		readyToHarvest,
@@ -41,14 +43,26 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 
 	tank := s.Tanks[0]
 	if tank.Fish == 0 {
+		if s.CashCents < s.Prices.FingerlingCents*minStock {
+			return "Tanque vazio e sem grana para povoar. Abra [z] no galpao e pegue um emprestimo", true
+		}
+
 		return "O tanque esta vazio. Povoe com [s]", false
+	}
+	if s.Prices.RatioPPM < s.Prices.ViablePPM {
+		return "Racao cara demais para o preco do peixe: segure a despesca e evite povoar agora", false
+	}
+	if tank.NextClassG > tank.MeanGrams {
+		return fmt.Sprintf("Segurar ate %d g sobe o preco por quilo (esta em %d g)",
+			tank.NextClassG, tank.MeanGrams), false
 	}
 
 	return fmt.Sprintf("Engorde ate 800 g (esta em %d g) e sirva o trato antes de acabar", tank.MeanGrams), false
 }
 
 func suffocating(s client.Snapshot) (advice, bool) {
-	for _, t := range s.Tanks {
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
 		if t.OxygenUgL < criticalOxygenUgL && !t.Aerating {
 			return advice{fmt.Sprintf("URGENTE: o tanque %d esta sem oxigenio. Ligue o aerador com [a]", t.ID), true}, true
 		}
@@ -57,8 +71,29 @@ func suffocating(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
+func sickBatch(s client.Snapshot) (advice, bool) {
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
+		if t.Sick {
+			return advice{fmt.Sprintf(
+				"Doenca no tanque %d. Abra [z] e trate, ou aceite as perdas", t.ID), true}, true
+		}
+	}
+
+	return advice{}, false
+}
+
+func crushingDebt(s client.Snapshot) (advice, bool) {
+	if s.Debt > 0 && s.CashCents == 0 {
+		return advice{"Sem caixa e com divida: os juros estao crescendo. Venda peixe", true}, true
+	}
+
+	return advice{}, false
+}
+
 func outOfFeed(s client.Snapshot) (advice, bool) {
-	for _, t := range s.Tanks {
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
 		if t.Fish == 0 || t.FeedKg > 0 {
 			continue
 		}
@@ -74,7 +109,8 @@ func outOfFeed(s client.Snapshot) (advice, bool) {
 }
 
 func unfed(s client.Snapshot) (advice, bool) {
-	for _, t := range s.Tanks {
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
 		if t.Fish > 0 && t.ServedFor <= 0 && !owns(t, feederIndex) {
 			return advice{fmt.Sprintf("Os peixes do tanque %d nao comem sozinhos. Sirva o trato com [f]", t.ID), true}, true
 		}
@@ -84,7 +120,8 @@ func unfed(s client.Snapshot) (advice, bool) {
 }
 
 func readyToHarvest(s client.Snapshot) (advice, bool) {
-	for _, t := range s.Tanks {
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
 		if t.Ready {
 			return advice{fmt.Sprintf("O lote do tanque %d esta no ponto de abate. Despesque com [h]", t.ID), false}, true
 		}
@@ -94,7 +131,8 @@ func readyToHarvest(s client.Snapshot) (advice, bool) {
 }
 
 func affordableAutomation(s client.Snapshot) (advice, bool) {
-	for _, t := range s.Tanks {
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
 		if !owns(t, feederIndex) && affords(s, t, feederIndex) {
 			return advice{"Da para comprar o comedouro com [1]: ele serve o trato sozinho", false}, true
 		}
@@ -114,7 +152,7 @@ func prestigeReady(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func owns(t client.Tank, index int) bool {
+func owns(t *client.Tank, index int) bool {
 	if index < 0 || index >= len(t.Upgrades) {
 		return false
 	}
@@ -122,7 +160,7 @@ func owns(t client.Tank, index int) bool {
 	return t.Upgrades[index].Owned
 }
 
-func affords(s client.Snapshot, t client.Tank, index int) bool {
+func affords(s client.Snapshot, t *client.Tank, index int) bool {
 	if index < 0 || index >= len(t.Upgrades) {
 		return false
 	}

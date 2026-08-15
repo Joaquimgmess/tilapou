@@ -36,6 +36,9 @@ func testBalance(t *testing.T) *Balance {
 			BaseTemp:        27_000,
 			DailyTempSwing:  4_000,
 			TempPeakHour:    15,
+			SeasonSwing:     9_000,
+			SeasonDays:      365,
+			SeasonPeakDay:   30,
 			IdealMin:        5_000,
 			FeedingMin:      3_000,
 			Critical:        2_000,
@@ -65,10 +68,27 @@ func testBalance(t *testing.T) *Balance {
 			RestartFeed:      200 * MicrogramsPerKilogram,
 		},
 		Economy: EconomyBalance{
-			FishPricePerKg:  900,
-			FeedPricePerKg:  320,
-			FingerlingPrice: 35,
-			AeratorCostTick: 1,
+			FingerlingPrice: 80,
+			AeratorCostTick: 2,
+		},
+		Market: MarketBalance{
+			FishBasePerKg:  900,
+			FeedBasePerKg:  320,
+			SwingPPM:       220_000,
+			FeedSwingPPM:   140_000,
+			PeriodTicks:    21 * TicksPerDay,
+			Seed:           20260815,
+			ViableRatioPPM: 1_250_000,
+		},
+		Credit: CreditBalance{
+			MaxPrincipal: 1_500_000,
+			DailyRatePPM: 4_500,
+		},
+		Shock: ShockBalance{
+			CheckEvery:     3 * TicksPerDay,
+			TreatmentCost:  90_000,
+			CarrierTicks:   120 * TicksPerDay,
+			CarrierRiskPPM: 2_600_000,
 		},
 	}
 
@@ -84,11 +104,26 @@ func testBalance(t *testing.T) *Balance {
 	b.Ration.MaintenancePPM = 3_500
 
 	b.Tanks = [tankKindCount]TankSpec{
-		TankEarthPond:     {MaxDensityPerM3: 5, RenewalPPMPerHour: 0, BaseCost: 150_000, Litres: 1_000_000},
-		TankNetCage:       {MaxDensityPerM3: 160, RenewalPPMPerHour: 900_000, BaseCost: 400_000, Litres: 6_000},
-		TankBiofloc:       {MaxDensityPerM3: 80, RenewalPPMPerHour: 200_000, BaseCost: 1_800_000, Litres: 30_000},
-		TankRecirculation: {MaxDensityPerM3: 120, RenewalPPMPerHour: 990_000, BaseCost: 6_000_000, Litres: 20_000},
+		TankEarthPond:     {MaxDensityPerM3: 5, BaseCost: 300_000, UpkeepPerDay: 900, Litres: 1_000_000},
+		TankNetCage:       {MaxDensityPerM3: 160, RenewalPPMPerHour: 900_000, BaseCost: 800_000, UpkeepPerDay: 1_800, Litres: 6_000},
+		TankBiofloc:       {MaxDensityPerM3: 80, RenewalPPMPerHour: 200_000, BaseCost: 3_500_000, UpkeepPerDay: 5_200, Litres: 30_000},
+		TankRecirculation: {MaxDensityPerM3: 120, RenewalPPMPerHour: 990_000, BaseCost: 12_000_000, UpkeepPerDay: 14_000, Litres: 20_000},
 	}
+
+	b.Market.Classes = [maxPriceClasses]PriceClass{
+		{UpToMass: 400 * MicrogramsPerGram, PPM: 720_000},
+		{UpToMass: 600 * MicrogramsPerGram, PPM: 880_000},
+		{UpToMass: 900 * MicrogramsPerGram, PPM: UnitPPM},
+		{UpToMass: 1_100 * MicrogramsPerGram, PPM: 1_120_000},
+		{UpToMass: 2_000 * MicrogramsPerGram, PPM: 940_000},
+	}
+	b.Market.ClassCount = 5
+
+	b.Shock.Diseases = [maxDiseases]DiseaseSpec{
+		{Name: "estreptococose", MinTemp: 28_500, MaxTemp: 40_000, OutbreakPPM: 90_000, DeathPPM: 41, Ticks: 5 * int32(TicksPerDay)},
+		{Name: "francisellose", MinTemp: 0, MaxTemp: 24_000, OutbreakPPM: 70_000, DeathPPM: 27, Ticks: 8 * int32(TicksPerDay)},
+	}
+	b.Shock.DiseaseCount = 2
 
 	b.Automation = [autoKindCount]AutomationSpec{
 		AutoFeeder:     {Cost: 250_000},
@@ -97,6 +132,8 @@ func testBalance(t *testing.T) *Balance {
 		AutoTechnician: {Cost: 7_500_000},
 		AutoContract:   {Cost: 25_000_000},
 	}
+
+	b.Shock.CheckEvery = 0
 
 	if err := b.Validate(); err != nil {
 		t.Fatalf("Validate() error = %v", err)
@@ -226,8 +263,11 @@ func TestRejectedActionIsVisibleAndLeavesCashAlone(t *testing.T) {
 	if out.Outcomes[0].Reason != RejectNotEnoughCash {
 		t.Errorf("reason = %v, want %v", out.Outcomes[0].Reason, RejectNotEnoughCash)
 	}
-	if out.State.Cash != 10 {
-		t.Errorf("caixa = %d, a rejeicao nao pode cobrar", out.State.Cash)
+	if out.State.TankCount != 1 {
+		t.Errorf("a rejeicao criou tanque: %d tanques", out.State.TankCount)
+	}
+	if out.State.Cash > 10 {
+		t.Errorf("caixa = %d, a rejeicao nao pode creditar", out.State.Cash)
 	}
 
 	rejected := slices.ContainsFunc(out.Events, func(e Event) bool {

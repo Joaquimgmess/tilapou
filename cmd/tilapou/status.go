@@ -40,7 +40,8 @@ func runStatus(args []string) error {
 	fmt.Fprintf(&line, "%d,%02d TC | %d kg | %d peixes",
 		snapshot.CashCents/centsPerCoin, snapshot.CashCents%centsPerCoin, snapshot.BiomassG/gramsPerKg, snapshot.Fish)
 
-	for _, t := range snapshot.Tanks {
+	for i := range snapshot.Tanks {
+		t := &snapshot.Tanks[i]
 		switch {
 		case t.OxygenUgL < lowOxygenUgL && !t.Aerating:
 			fmt.Fprintf(&line, " | ALERTA O2 no tanque %d", t.ID)

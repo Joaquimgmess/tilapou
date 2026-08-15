@@ -16,6 +16,7 @@ func massFromRoot(root int64) Micrograms {
 }
 
 func step(s *State, b *Balance, tick Tick, sink *eventSink) {
+	accrueInterest(s, b)
 	temp := temperatureAt(b, tick, s.Zone)
 	tempMult := b.TempMultiplier(temp)
 
@@ -24,9 +25,12 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 		t.Oxygen = oxygenAt(b, t, tick, s.Zone)
 		automate(s, b, t, tick, sink)
 		payEnergy(s, b, t)
+		chargeUpkeep(s, b, t)
 
 		oxygen := oxygenAt(b, t, tick, s.Zone)
 		t.Oxygen = oxygen
+
+		rollDisease(s, b, t, seasonalTemp(b, tick, s.Zone), tick, sink)
 
 		feeding := oxygen >= b.Water.FeedingMin && tempMult > 0 && tick <= t.ServedUntil
 
@@ -38,6 +42,7 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 
 			eaten := feedAndGrow(t, batch, b, tempMult, feeding, s.prestigeBonus(b), t.Owns(AutoTechnician))
 			killByHypoxia(t, batch, b, oxygen, tick, s.Seed)
+			killByDisease(s, b, t, batch, tick)
 			killByStarvation(t, batch, b, eaten, tick, s.Seed)
 		}
 

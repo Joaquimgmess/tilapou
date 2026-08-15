@@ -82,20 +82,22 @@ func payEnergy(s *State, b *Balance, t *Tank) {
 		return
 	}
 
-	s.Cash = Coins(subSat(int64(s.Cash), int64(b.Economy.AeratorCostTick)))
+	charge(s, b.Economy.AeratorCostTick)
+	spread(t, b.Economy.AeratorCostTick)
 }
 
 func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
-	if t.FeedStock > 0 || t.Fish() == 0 || b.Economy.FeedPricePerKg <= 0 {
+	if t.FeedStock > 0 || t.Fish() == 0 || MarketAt(b, tick).FeedKg <= 0 {
 		return
 	}
 
-	kilos := min(int64(autoRestockKg), int64(s.Cash)/int64(b.Economy.FeedPricePerKg))
+	unit := MarketAt(b, tick).FeedKg
+	kilos := min(int64(autoRestockKg), int64(s.Cash)/int64(unit))
 	if kilos < autoMinRestockKg {
 		return
 	}
 
-	price := Coins(mulDivCeil(int64(b.Economy.FeedPricePerKg), kilos, 1))
+	price := Coins(mulDivCeil(int64(unit), kilos, 1))
 	if s.Cash < price {
 		return
 	}
@@ -103,6 +105,7 @@ func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
 	mass := Micrograms(kilos) * MicrogramsPerKilogram
 	t.FeedStock = Micrograms(addSat(int64(t.FeedStock), int64(mass)))
+	spread(t, price)
 
 	sink.emit(Event{Kind: EventFeedBought, From: tick, To: tick, Tank: t.ID, Mass: mass, Cash: price})
 }
@@ -127,10 +130,13 @@ func sell(s *State, b *Balance, t *Tank, batch *Batch, count FishCount, tick Tic
 	}
 
 	mass := Micrograms(mulDivFloor(int64(batch.MeanMass), int64(count), 1))
-	revenue := Coins(mulDivFloor(int64(b.Economy.FishPricePerKg), int64(mass), int64(MicrogramsPerKilogram)))
+	price := b.PriceFor(batch.MeanMass, tick)
+	revenue := Coins(mulDivFloor(int64(price), int64(mass), int64(MicrogramsPerKilogram)))
 	if t.Owns(AutoContract) {
 		revenue = Coins(mulDivFloor(int64(revenue), int64(UnitPPM)+int64(b.Progression.ContractBonusPPM), int64(UnitPPM)))
 	}
+
+	closeCycle(s, batch, count, mass, revenue, tick)
 
 	batch.Fish -= count
 	s.Cash = Coins(addSat(int64(s.Cash), int64(revenue)))

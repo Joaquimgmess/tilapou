@@ -11,6 +11,7 @@ var (
 	ErrBalanceNoTempCurve         = errors.New("sim: balance needs a temperature multiplier curve")
 	ErrBalanceNoMass              = errors.New("sim: balance needs positive harvest and maximum mass")
 	ErrBalanceNoRation            = errors.New("sim: balance needs at least one ration step")
+	ErrBalanceNoMarket            = errors.New("sim: balance needs market base prices and a period")
 	ErrBalanceTankSlotEmpty       = errors.New("sim: every tank kind needs a spec")
 	ErrBalanceAutomationSlotEmpty = errors.New("sim: every automation needs a cost")
 

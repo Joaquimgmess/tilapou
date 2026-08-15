@@ -18,6 +18,12 @@ func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReas
 		return applyBuyUpgrade(s, b, a, at, sink)
 	case ActionPrestige:
 		return prestige(s, b, at, sink), 0
+	case ActionBorrow:
+		return borrow(s, b, Coins(a.Amount), at, sink)
+	case ActionRepay:
+		return repay(s, Coins(a.Amount), at, sink)
+	case ActionTreat:
+		return treat(s, b, a, at, sink)
 	case ActionUnknown, actionKindCount:
 	}
 
@@ -69,6 +75,7 @@ func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) (Rejec
 	if !t.addBatch(id, FishCount(a.Amount), b.Growth.FingerlingMass, at) {
 		return RejectTankFull, 0
 	}
+	t.Batches[t.BatchCount-1].Cost = price
 	s.NextBatchID++
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
 
@@ -96,13 +103,14 @@ func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) (Rej
 	}
 
 	mass := Micrograms(mulDivFloor(a.Amount, int64(MicrogramsPerKilogram), 1))
-	price := Coins(mulDivCeil(int64(b.Economy.FeedPricePerKg), a.Amount, 1))
+	price := Coins(mulDivCeil(int64(MarketAt(b, at).FeedKg), a.Amount, 1))
 	if s.Cash < price {
 		return RejectNotEnoughCash, price
 	}
 
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
 	t.FeedStock = Micrograms(addSat(int64(t.FeedStock), int64(mass)))
+	spread(t, price)
 
 	sink.emit(Event{Kind: EventFeedBought, From: at, To: at, Tank: t.ID, Mass: mass, Cash: price})
 

@@ -16,6 +16,9 @@ const (
 	ActionHarvest
 	ActionBuyUpgrade
 	ActionPrestige
+	ActionBorrow
+	ActionRepay
+	ActionTreat
 	actionKindCount
 )
 
@@ -29,6 +32,9 @@ var actionKindNames = [actionKindCount]string{
 	ActionHarvest:    "harvest",
 	ActionBuyUpgrade: "buy_upgrade",
 	ActionPrestige:   "prestige",
+	ActionBorrow:     "borrow",
+	ActionRepay:      "repay",
+	ActionTreat:      "treat",
 }
 
 func (k ActionKind) String() string {
@@ -54,6 +60,9 @@ const (
 	RejectTooDense
 	RejectAlreadyOwned
 	RejectNotEnoughLifetime
+	RejectCreditLimit
+	RejectNoDebt
+	RejectNothingSick
 	rejectReasonCount
 )
 
@@ -70,6 +79,9 @@ var rejectReasonNames = [rejectReasonCount]string{
 	RejectTooDense:          "too_dense",
 	RejectAlreadyOwned:      "already_owned",
 	RejectNotEnoughLifetime: "not_enough_lifetime",
+	RejectCreditLimit:       "credit_limit",
+	RejectNoDebt:            "no_debt",
+	RejectNothingSick:       "nothing_sick",
 }
 
 func (r RejectReason) String() string {

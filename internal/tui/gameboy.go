@@ -53,8 +53,14 @@ var (
 func (m Model) renderGameBoy() string {
 	snapshot := m.snapshot
 
-	hud := hudStyle.Render(fmt.Sprintf("TILAPOU   %s   %d peixes   dia %d  %02dh",
-		coins(snapshot.CashCents), snapshot.Fish, snapshot.Tick/(hoursPerDay*minutesPerHour), snapshot.Hour))
+	debt := ""
+	if snapshot.Debt > 0 {
+		debt = "   divida " + coins(snapshot.Debt)
+	}
+
+	hud := hudStyle.Render(fmt.Sprintf("TILAPOU   %s%s   peixe %s/kg   equiv %s   dia %d",
+		coins(snapshot.CashCents), debt, coins(snapshot.Prices.FishKgCents),
+		ratio(snapshot.Prices.RatioPPM), snapshot.Tick/(hoursPerDay*minutesPerHour)))
 
 	goal, urgent := objective(snapshot)
 	banner := goalStyle.Render("OBJETIVO: " + goal)
@@ -130,8 +136,13 @@ func tankAdvice(t client.Tank) string {
 		return "os peixes estao no ponto de abate"
 	}
 
-	return fmt.Sprintf("O2 %d ug/L   racao %d kg   trato por %s   %s",
-		t.OxygenUgL, t.FeedKg, minutes(t.ServedFor), density(t.DensityMilli))
+	next := ""
+	if t.NextClassG > 0 && t.NextClassG > t.MeanGrams {
+		next = fmt.Sprintf("   proxima classe em %d g", t.NextClassG)
+	}
+
+	return fmt.Sprintf("%s/kg agora   racao %d kg   trato por %s%s",
+		coins(t.PriceKgCents), t.FeedKg, minutes(t.ServedFor), next)
 }
 
 func (m Model) renderGameBoyKeys() string {

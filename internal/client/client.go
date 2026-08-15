@@ -26,6 +26,9 @@ type Tank struct {
 	DensityMilli int64     `json:"density_milli_kg_m3"`
 	Ready        bool      `json:"ready_to_harvest"`
 	BatchID      uint32    `json:"batch_id"`
+	PriceKgCents int64     `json:"price_kg_cents"`
+	NextClassG   int64     `json:"next_class_grams"`
+	Sick         bool      `json:"sick"`
 	Capacity     int64     `json:"capacity_fish"`
 	ServedFor    int64     `json:"served_for_ticks"`
 	Upgrades     []Upgrade `json:"upgrades"`
@@ -59,6 +62,19 @@ type Prices struct {
 	FeedKgCents     int64 `json:"feed_kg_cents"`
 	FingerlingCents int64 `json:"fingerling_cents"`
 	FishKgCents     int64 `json:"fish_kg_cents"`
+	RatioPPM        int64 `json:"equivalence_ppm"`
+	ViablePPM       int64 `json:"equivalence_viable_ppm"`
+}
+
+type Cycle struct {
+	Fish       int32 `json:"fish"`
+	MassG      int64 `json:"mass_grams"`
+	RevenueTC  int64 `json:"revenue_cents"`
+	CostTC     int64 `json:"cost_cents"`
+	MarginTC   int64 `json:"margin_cents"`
+	CostPerKg  int64 `json:"cost_per_kg_cents"`
+	PricePerKg int64 `json:"price_per_kg_cents"`
+	FCRPPM     int64 `json:"fcr_ppm"`
 }
 
 type Snapshot struct {
@@ -75,6 +91,8 @@ type Snapshot struct {
 	Tanks       []Tank   `json:"tanks"`
 	PrestigeNow uint32   `json:"prestige_available"`
 	Prices      Prices   `json:"prices"`
+	Debt        int64    `json:"debt_cents"`
+	LastCycle   Cycle    `json:"last_cycle"`
 	Events      []Event  `json:"events"`
 	LastApplied bool     `json:"last_action_applied"`
 	LastReason  string   `json:"last_action_reason"`

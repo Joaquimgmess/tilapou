@@ -8,6 +8,7 @@ func isothermalBalance(t *testing.T, celsius int32) *Balance {
 	b := testBalance(t)
 	b.Water.BaseTemp = MilliCelsius(celsius) * 1000
 	b.Water.DailyTempSwing = 0
+	b.Water.SeasonSwing = 0
 	b.Water.BiomassDrawPPM = 0
 	b.Water.DailySwing = 0
 	b.Water.BaselineOxygen = 7_000

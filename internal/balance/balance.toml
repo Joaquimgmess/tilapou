@@ -80,6 +80,9 @@ proteina_pct = 32
 temperatura_base_c = 27.0
 temperatura_variacao_diaria_c = 4.0
 temperatura_pico_hora = 15
+temperatura_variacao_anual_c = 9.0
+estacao_dias = 365
+estacao_pico_dia = 30
 od_variacao_diaria_ugl = 6000
 od_base_ugl = 6000
 od_consumo_por_kg_m3_ugl = 900
@@ -130,22 +133,18 @@ fome_perda_diaria_pct = 2.0
 # Estreptococose acima de 27 C, francisellose abaixo de 25 C: calendarios opostos.
 [[doencas]]
 nome = "estreptococose"
-temperatura_min_c = 27.0
+temperatura_min_c = 28.5
 temperatura_max_c = 40.0
-mortalidade_pct = 70.0
-dias_ate_morte = 3
+surto_pct = 2.5
+mortalidade_dia_pct = 4.0
+duracao_dias = 5
 [[doencas]]
 nome = "francisellose"
 temperatura_min_c = 0.0
-temperatura_max_c = 25.0
-mortalidade_pct = 50.0
-dias_ate_morte = 7
-[[doencas]]
-nome = "columnariose"
-temperatura_min_c = 18.0
-temperatura_max_c = 32.0
-mortalidade_pct = 20.0
-dias_ate_morte = 2
+temperatura_max_c = 24.0
+surto_pct = 2.0
+mortalidade_dia_pct = 3.0
+duracao_dias = 8
 
 # Regra 1:10 do tanque-rede: 1 m2 de gaiola por 10 m2 de espelho d'agua.
 [[tanques]]
@@ -154,32 +153,76 @@ volume_litros = 1000000
 densidade_max_peixes_m3 = 5
 renovacao_por_hora_pct = 0.0
 custo_base_centavos = 300000
+manutencao_centavos_dia = 900
 [[tanques]]
 tipo = "tanque_rede"
 volume_litros = 6000
 densidade_max_peixes_m3 = 160
 renovacao_por_hora_pct = 100.0
 custo_base_centavos = 800000
+manutencao_centavos_dia = 1800
 [[tanques]]
 tipo = "bioflocos"
 volume_litros = 30000
 densidade_max_peixes_m3 = 80
 renovacao_por_hora_pct = 20.0
 custo_base_centavos = 3500000
+manutencao_centavos_dia = 5200
 [[tanques]]
 tipo = "recirculacao"
 volume_litros = 20000
 densidade_max_peixes_m3 = 120
 renovacao_por_hora_pct = 300.0
 custo_base_centavos = 12000000
+manutencao_centavos_dia = 14000
+
+# O mercado oscila sozinho e o preco por quilo depende da classe de peso:
+# peixe maior rende mais por quilo (rendimento de file), ate a classe de excesso.
+# Equivalencia peixe-racao = preco / (CAA x preco_racao): <1,25 inviavel, >2,00 excelente.
+[mercado]
+peixe_base_centavos_kg = 900
+racao_base_centavos_kg = 320
+oscilacao_peixe_pct = 22.0
+oscilacao_racao_pct = 14.0
+periodo_dias = 21
+semente = 20260815
+equivalencia_viavel = 1.25
+
+[[mercado.classes]]
+ate_peso_mg = 400000
+preco_pct = 72.0
+[[mercado.classes]]
+ate_peso_mg = 600000
+preco_pct = 88.0
+[[mercado.classes]]
+ate_peso_mg = 900000
+preco_pct = 100.0
+[[mercado.classes]]
+ate_peso_mg = 1100000
+preco_pct = 112.0
+[[mercado.classes]]
+ate_peso_mg = 2000000
+preco_pct = 94.0
+
+# Emprestimo para financiar automacao: juros correm todo dia sobre o saldo.
+[credito]
+limite_centavos = 1500000
+juros_dia_pct = 0.45
+
+# Estreptococose acima de 27 C, francisellose abaixo de 25 C: calendarios opostos.
+# A lotacao aumenta o risco de surto.
+[choques]
+checagem_dias = 5
+# Tratar salva o lote agora, mas o antibiotico deixa portadores que atingem o lote seguinte.
+tratamento_centavos = 90000
+portador_dias = 120
+portador_risco_pct = 260.0
 
 # Tudo em centavos de TC. Uma despesca de 2000 peixes de 800 g rende ~14.400 TC,
 # entao comedouro (1.200) e aerador (2.500) cabem no primeiro ciclo e o peao (8.000) no segundo.
 # CEPEA fev/2026: R$ 8,69-10,39/kg na fazenda. Racao e 64-80% do custo.
 # Equivalencia peixe-racao = preco / (CAA * preco_racao): <1,25 inviavel, >2,00 excelente.
 [economia]
-preco_peixe_centavos_kg = 900
-preco_racao_centavos_kg = 320
 custo_alevino_centavos = 80
 caa_referencia = 1.6
 manutencao_pct_biomassa_dia = 0.35
@@ -198,11 +241,11 @@ reinicio_racao_kg = 200
 
 [[automacao]]
 nome = "comedouro"
-custo_centavos = 120000
+custo_centavos = 80000
 remove = "alimentar"
 [[automacao]]
 nome = "aerador"
-custo_centavos = 250000
+custo_centavos = 180000
 remove = "arejar"
 [[automacao]]
 nome = "peao"

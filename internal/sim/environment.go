@@ -1,13 +1,34 @@
 package sim
 
-const halfDayHours = 12
+const (
+	halfDayHours = 12
+	hoursPerDay  = 24
+)
 
 func temperatureAt(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
 	phase := tick.At(zone)
 	swing := int64(b.Water.DailyTempSwing)
 	shape := triangular(int64(phase.Hour), int64(b.Water.TempPeakHour))
 
+	return MilliCelsius(int64(seasonalTemp(b, tick, zone)) + mulDivFloor(swing, shape, int64(UnitPPM)) - swing/2)
+}
+
+func seasonalTemp(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
+	if b.Water.SeasonDays <= 0 || b.Water.SeasonSwing == 0 {
+		return b.Water.BaseTemp
+	}
+
+	day := tick.At(zone).Day
+	shape := triangular(floorMod(day, b.Water.SeasonDays)*hoursPerDay/b.Water.SeasonDays,
+		b.Water.SeasonPeakDay*hoursPerDay/b.Water.SeasonDays)
+
+	swing := int64(b.Water.SeasonSwing)
+
 	return MilliCelsius(int64(b.Water.BaseTemp) + mulDivFloor(swing, shape, int64(UnitPPM)) - swing/2)
+}
+
+func SeasonalTemp(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
+	return seasonalTemp(b, tick, zone)
 }
 
 func oxygenAt(b *Balance, t *Tank, tick Tick, zone ZoneOffset) MicrogramsPerLiter {
@@ -43,9 +64,9 @@ func densityMilliKgPerM3(t *Tank) int64 {
 }
 
 func triangular(hour, peak int64) int64 {
-	distance := floorMod(hour-peak, 24)
+	distance := floorMod(hour-peak, hoursPerDay)
 	if distance > halfDayHours {
-		distance = 24 - distance
+		distance = hoursPerDay - distance
 	}
 
 	return int64(UnitPPM) - mulDivFloor(int64(UnitPPM), distance, halfDayHours)

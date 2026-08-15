@@ -31,6 +31,10 @@ type file struct {
 	Tanques      []tanqueRow        `toml:"tanques"`
 	Economia     economiaSection    `toml:"economia"`
 	Progressao   progressaoSection  `toml:"progressao"`
+	Mercado      mercadoSection     `toml:"mercado"`
+	Credito      creditoSection     `toml:"credito"`
+	Choques      choquesSection     `toml:"choques"`
+	Doencas      []doencaRow        `toml:"doencas"`
 	Automacao    []automacaoRow     `toml:"automacao"`
 }
 
@@ -64,6 +68,9 @@ type aguaSection struct {
 	TemperaturaBaseC           float64 `toml:"temperatura_base_c"`
 	TemperaturaVariacaoDiariaC float64 `toml:"temperatura_variacao_diaria_c"`
 	TemperaturaPicoHora        int32   `toml:"temperatura_pico_hora"`
+	TemperaturaVariacaoAnoC    float64 `toml:"temperatura_variacao_annual_c"`
+	EstacaoDias                int64   `toml:"estacao_dias"`
+	EstacaoPicoDia             int64   `toml:"estacao_pico_dia"`
 	ODVariacaoDiariaUgl        int64   `toml:"od_variacao_diaria_ugl"`
 	ODBaseUgl                  int64   `toml:"od_base_ugl"`
 	ODConsumoPorKgM3Ugl        int64   `toml:"od_consumo_por_kg_m3_ugl"`
@@ -86,16 +93,52 @@ type mortalidadeSection struct {
 }
 
 type tanqueRow struct {
-	Tipo                 string  `toml:"tipo"`
-	VolumeLitros         int64   `toml:"volume_litros"`
-	DensidadeMaxPeixesM3 int64   `toml:"densidade_max_peixes_m3"`
-	RenovacaoPorHoraPct  float64 `toml:"renovacao_por_hora_pct"`
-	CustoBaseCentavos    int64   `toml:"custo_base_centavos"`
+	Tipo                  string  `toml:"tipo"`
+	VolumeLitros          int64   `toml:"volume_litros"`
+	DensidadeMaxPeixesM3  int64   `toml:"densidade_max_peixes_m3"`
+	RenovacaoPorHoraPct   float64 `toml:"renovacao_por_hora_pct"`
+	CustoBaseCentavos     int64   `toml:"custo_base_centavos"`
+	ManutencaoCentavosDia int64   `toml:"manutencao_centavos_dia"`
+}
+
+type classeRow struct {
+	AtePesoMg int64   `toml:"ate_peso_mg"`
+	PrecoPct  float64 `toml:"preco_pct"`
+}
+
+type mercadoSection struct {
+	PeixeBaseCentavosKg int64       `toml:"peixe_base_centavos_kg"`
+	RacaoBaseCentavosKg int64       `toml:"racao_base_centavos_kg"`
+	OscilacaoPeixePct   float64     `toml:"oscilacao_peixe_pct"`
+	OscilacaoRacaoPct   float64     `toml:"oscilacao_racao_pct"`
+	PeriodoDias         int64       `toml:"periodo_dias"`
+	Semente             uint64      `toml:"semente"`
+	EquivalenciaViavel  float64     `toml:"equivalencia_viavel"`
+	Classes             []classeRow `toml:"classes"`
+}
+
+type creditoSection struct {
+	LimiteCentavos int64   `toml:"limite_centavos"`
+	JurosDiaPct    float64 `toml:"juros_dia_pct"`
+}
+
+type choquesSection struct {
+	ChecagemDias       int64   `toml:"checagem_dias"`
+	TratamentoCentavos int64   `toml:"tratamento_centavos"`
+	PortadorDias       int64   `toml:"portador_dias"`
+	PortadorRiscoPct   float64 `toml:"portador_risco_pct"`
+}
+
+type doencaRow struct {
+	Nome              string  `toml:"nome"`
+	TemperaturaMinC   float64 `toml:"temperatura_min_c"`
+	TemperaturaMaxC   float64 `toml:"temperatura_max_c"`
+	SurtoPct          float64 `toml:"surto_pct"`
+	MortalidadeDiaPct float64 `toml:"mortalidade_dia_pct"`
+	DuracaoDias       int64   `toml:"duracao_dias"`
 }
 
 type economiaSection struct {
-	PrecoPeixeCentavosKg    int64   `toml:"preco_peixe_centavos_kg"`
-	PrecoRacaoCentavosKg    int64   `toml:"preco_racao_centavos_kg"`
 	CustoAlevinoCentavos    int64   `toml:"custo_alevino_centavos"`
 	CustoEnergiaAeradorHora int64   `toml:"custo_energia_aerador_centavos_hora"`
 	CAAReferencia           float64 `toml:"caa_referencia"`
@@ -181,6 +224,9 @@ func convert(f file) (sim.Balance, error) {
 			BaseTemp:        milliCelsius(f.Agua.TemperaturaBaseC),
 			DailyTempSwing:  milliCelsius(f.Agua.TemperaturaVariacaoDiariaC),
 			TempPeakHour:    f.Agua.TemperaturaPicoHora,
+			SeasonSwing:     milliCelsius(f.Agua.TemperaturaVariacaoAnoC),
+			SeasonDays:      f.Agua.EstacaoDias,
+			SeasonPeakDay:   f.Agua.EstacaoPicoDia,
 			IdealMin:        sim.MicrogramsPerLiter(f.Agua.ODIdealMinUgl),
 			FeedingMin:      sim.MicrogramsPerLiter(f.Agua.ODParaAlimentarMinUgl),
 			Critical:        sim.MicrogramsPerLiter(f.Agua.ODCriticoUgl),
@@ -201,10 +247,27 @@ func convert(f file) (sim.Balance, error) {
 			StarvationRatePPM:    ppmOf(f.Mortalidade.FomePerdaDiariaPct / percentScale / float64(sim.TicksPerDay)),
 		},
 		Economy: sim.EconomyBalance{
-			FishPricePerKg:  sim.Coins(f.Economia.PrecoPeixeCentavosKg),
-			FeedPricePerKg:  sim.Coins(f.Economia.PrecoRacaoCentavosKg),
 			FingerlingPrice: sim.Coins(f.Economia.CustoAlevinoCentavos),
 			AeratorCostTick: sim.Coins(round(float64(f.Economia.CustoEnergiaAeradorHora) / minutesPerHour)),
+		},
+		Market: sim.MarketBalance{
+			FishBasePerKg:  sim.Coins(f.Mercado.PeixeBaseCentavosKg),
+			FeedBasePerKg:  sim.Coins(f.Mercado.RacaoBaseCentavosKg),
+			SwingPPM:       ppmOf(f.Mercado.OscilacaoPeixePct / percentScale),
+			FeedSwingPPM:   ppmOf(f.Mercado.OscilacaoRacaoPct / percentScale),
+			PeriodTicks:    sim.Tick(f.Mercado.PeriodoDias) * sim.TicksPerDay,
+			Seed:           sim.Seed(f.Mercado.Semente),
+			ViableRatioPPM: ppmOf(f.Mercado.EquivalenciaViavel),
+		},
+		Credit: sim.CreditBalance{
+			MaxPrincipal: sim.Coins(f.Credito.LimiteCentavos),
+			DailyRatePPM: ppmOf(f.Credito.JurosDiaPct / percentScale),
+		},
+		Shock: sim.ShockBalance{
+			CheckEvery:     sim.Tick(f.Choques.ChecagemDias) * sim.TicksPerDay,
+			TreatmentCost:  sim.Coins(f.Choques.TratamentoCentavos),
+			CarrierTicks:   sim.Tick(f.Choques.PortadorDias) * sim.TicksPerDay,
+			CarrierRiskPPM: ppmOf(f.Choques.PortadorRiscoPct / percentScale),
 		},
 		Progression: sim.ProgressionBalance{
 			CostFactorPPM:    ppmOf(f.Progressao.FatorCusto),
@@ -232,6 +295,32 @@ func convert(f file) (sim.Balance, error) {
 	b.Ration.TargetFCRPPM = ppmOf(f.Economia.CAAReferencia)
 	b.Ration.MaintenancePPM = ppmOf(f.Economia.ManutencaoPctDia / percentScale)
 
+	for i, row := range f.Mercado.Classes {
+		if i >= len(b.Market.Classes) {
+			break
+		}
+		b.Market.Classes[i] = sim.PriceClass{
+			UpToMass: micrograms(row.AtePesoMg),
+			PPM:      ppmOf(row.PrecoPct / percentScale),
+		}
+		b.Market.ClassCount = int32(i + 1)
+	}
+
+	for i, row := range f.Doencas {
+		if i >= len(b.Shock.Diseases) {
+			break
+		}
+		b.Shock.Diseases[i] = sim.DiseaseSpec{
+			Name:        row.Nome,
+			MinTemp:     milliCelsius(row.TemperaturaMinC),
+			MaxTemp:     milliCelsius(row.TemperaturaMaxC),
+			OutbreakPPM: ppmOf(row.SurtoPct / percentScale),
+			DeathPPM:    ppmOf(row.MortalidadeDiaPct / percentScale / float64(sim.TicksPerDay)),
+			Ticks:       int32(row.DuracaoDias * int64(sim.TicksPerDay)),
+		}
+		b.Shock.DiseaseCount = int32(i + 1)
+	}
+
 	for _, row := range f.Automacao {
 		kind, ok := autoKindByName[row.Nome]
 		if !ok {
@@ -249,6 +338,7 @@ func convert(f file) (sim.Balance, error) {
 			MaxDensityPerM3:   row.DensidadeMaxPeixesM3,
 			RenewalPPMPerHour: ppmOf(row.RenovacaoPorHoraPct / percentScale),
 			BaseCost:          sim.Coins(row.CustoBaseCentavos),
+			UpkeepPerDay:      sim.Coins(row.ManutencaoCentavosDia),
 			Litres:            sim.Litres(row.VolumeLitros),
 		}
 	}

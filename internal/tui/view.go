@@ -12,15 +12,18 @@ import (
 )
 
 const (
-	minutesPerHour = 60
-	hoursPerDay    = 24
-	oxygenBarWidth = 24
-	oxygenFullUgL  = 9000
-	oxygenLowUgL   = 3000
-	eventsShown    = 8
-	milliPerUnit   = 1000
-	centsPerCoin   = 100
-	panelWidth     = 58
+	minutesPerHour   = 60
+	hoursPerDay      = 24
+	oxygenBarWidth   = 24
+	oxygenFullUgL    = 9000
+	oxygenLowUgL     = 3000
+	eventsShown      = 8
+	milliPerUnit     = 1000
+	centsPerCoin     = 100
+	panelWidth       = 58
+	gramsPerKg       = 1000
+	UnitPPMValue     = 1_000_000
+	ppmPerCentesimal = 10_000
 )
 
 var (
@@ -64,6 +67,7 @@ func (m Model) render() string {
 
 	sections := []string{
 		m.renderHeader(),
+		m.renderMarket(),
 		m.renderTanks(),
 		m.renderUpgrades(),
 		m.renderEvents(),
@@ -90,20 +94,51 @@ func (m Model) renderHeader() string {
 	return line + "\n" + dimStyle.Render(clock)
 }
 
+func ratio(ppm int64) string {
+	return fmt.Sprintf("%d,%02d", ppm/UnitPPMValue, (ppm%UnitPPMValue)/ppmPerCentesimal)
+}
+
+func (m Model) renderMarket() string {
+	p := m.snapshot.Prices
+
+	verdict := okStyle.Render("da lucro")
+	if p.RatioPPM < p.ViablePPM {
+		verdict = dangerStyle.Render("inviavel: nao vale a pena produzir")
+	}
+
+	line := fmt.Sprintf("%s peixe %s/kg   racao %s/kg   equivalencia %s  %s",
+		labelStyle.Render("mercado"), coins(p.FishKgCents), coins(p.FeedKgCents),
+		valueStyle.Render(ratio(p.RatioPPM)), verdict)
+
+	cycle := m.snapshot.LastCycle
+	if cycle.Fish == 0 {
+		return line
+	}
+
+	margin := okStyle.Render("+" + coins(cycle.MarginTC))
+	if cycle.MarginTC < 0 {
+		margin = dangerStyle.Render(coins(cycle.MarginTC))
+	}
+
+	return line + "\n" + fmt.Sprintf("%s %d peixes, %d kg   custo %s/kg   venda %s/kg   margem %s   CAA %s",
+		labelStyle.Render("ultimo ciclo"), cycle.Fish, cycle.MassG/gramsPerKg,
+		coins(cycle.CostPerKg), coins(cycle.PricePerKg), margin, ratio(cycle.FCRPPM))
+}
+
 func (m Model) renderTanks() string {
 	if len(m.snapshot.Tanks) == 0 {
 		return dimStyle.Render("nenhum tanque")
 	}
 
 	panels := make([]string, 0, len(m.snapshot.Tanks))
-	for _, t := range m.snapshot.Tanks {
-		panels = append(panels, panelStyle.Render(renderTank(t)))
+	for i := range m.snapshot.Tanks {
+		panels = append(panels, panelStyle.Render(renderTank(&m.snapshot.Tanks[i])))
 	}
 
 	return lipgloss.JoinVertical(lipgloss.Left, panels...)
 }
 
-func renderTank(t client.Tank) string {
+func renderTank(t *client.Tank) string {
 	trato := dangerStyle.Render("sem trato servido")
 	if t.ServedFor > 0 {
 		trato = okStyle.Render("trato por " + minutes(t.ServedFor))

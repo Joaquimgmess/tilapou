@@ -25,6 +25,7 @@ type Accrual struct {
 	Window           Tick
 	HypoxiaDeaths    FishCount
 	StarvationDeaths FishCount
+	DiseaseDeaths    FishCount
 	FeedEaten        Micrograms
 	MassGained       Micrograms
 }
@@ -39,6 +40,8 @@ type Batch struct {
 	FeedEaten       Micrograms
 	MassGained      Micrograms
 	Accrued         Micrograms
+	Cost            Coins
+	Sick            int32
 	HypoxiaTicks    int32
 	StarvationTicks int32
 }
@@ -52,18 +55,20 @@ func (b *Batch) Empty() bool {
 }
 
 type Tank struct {
-	ID          TankID
-	Kind        TankKind
-	Litres      Litres
-	Batches     [maxBatchesPerTank]Batch
-	BatchCount  int32
-	FeedStock   Micrograms
-	ServedUntil Tick
-	Upgrades    uint32
-	Oxygen      MicrogramsPerLiter
-	Aerating    bool
-	FeedCarry   int64
-	Accrual     Accrual
+	ID           TankID
+	Kind         TankKind
+	Litres       Litres
+	Batches      [maxBatchesPerTank]Batch
+	BatchCount   int32
+	FeedStock    Micrograms
+	ServedUntil  Tick
+	Upgrades     uint32
+	Oxygen       MicrogramsPerLiter
+	Aerating     bool
+	FeedCarry    int64
+	UpkeepCarry  int64
+	CarrierUntil Tick
+	Accrual      Accrual
 }
 
 func (t *Tank) Biomass() Micrograms {
@@ -103,6 +108,9 @@ type State struct {
 	NextTankID     TankID
 	NextBatchID    BatchID
 	EventSeq       uint64
+	Debt           Coins
+	DebtCarry      int64
+	LastCycle      Cycle
 	Saturated      bool
 }
 

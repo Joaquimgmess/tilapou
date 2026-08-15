@@ -172,7 +172,8 @@ func spriteFor(kind tileKind) gb.Sprite {
 }
 
 func drawPondContents(canvas *gb.Canvas, snapshot client.Snapshot, frame int) {
-	for i, tank := range snapshot.Tanks {
+	for i := range snapshot.Tanks {
+		tank := &snapshot.Tanks[i]
 		if i >= maxPonds {
 			break
 		}
@@ -197,8 +198,8 @@ func mapLegend(snapshot client.Snapshot) string {
 	}
 
 	parts := make([]string, 0, len(snapshot.Tanks))
-	for _, t := range snapshot.Tanks {
-		parts = append(parts, tankHeadline(t))
+	for i := range snapshot.Tanks {
+		parts = append(parts, tankHeadline(snapshot.Tanks[i]))
 	}
 
 	return strings.Join(parts, "   ")

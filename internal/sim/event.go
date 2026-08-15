@@ -18,6 +18,12 @@ const (
 	EventSaturated
 	EventUpgradeBought
 	EventPrestiged
+	EventBorrowed
+	EventRepaid
+	EventDisease
+	EventDiseaseDeaths
+	EventShock
+	EventTreated
 	eventKindCount
 )
 
@@ -35,6 +41,12 @@ var eventKindNames = [eventKindCount]string{
 	EventSaturated:        "saturated",
 	EventUpgradeBought:    "upgrade_bought",
 	EventPrestiged:        "prestiged",
+	EventBorrowed:         "borrowed",
+	EventRepaid:           "repaid",
+	EventDisease:          "disease",
+	EventDiseaseDeaths:    "disease_deaths",
+	EventShock:            "shock",
+	EventTreated:          "treated",
 }
 
 func (k EventKind) String() string {
@@ -71,7 +83,8 @@ func (s *eventSink) emit(e Event) {
 }
 
 func (a *Accrual) empty() bool {
-	return a.HypoxiaDeaths == 0 && a.StarvationDeaths == 0 && a.FeedEaten == 0 && a.MassGained == 0
+	return a.HypoxiaDeaths == 0 && a.StarvationDeaths == 0 && a.DiseaseDeaths == 0 &&
+		a.FeedEaten == 0 && a.MassGained == 0
 }
 
 func (t *Tank) flushAccrual(sink *eventSink, upTo Tick) {
@@ -108,6 +121,15 @@ func (t *Tank) flushAccrual(sink *eventSink, upTo Tick) {
 			To:   to,
 			Tank: t.ID,
 			Fish: t.Accrual.StarvationDeaths,
+		})
+	}
+	if t.Accrual.DiseaseDeaths > 0 {
+		sink.emit(Event{
+			Kind: EventDiseaseDeaths,
+			From: from,
+			To:   to,
+			Tank: t.ID,
+			Fish: t.Accrual.DiseaseDeaths,
 		})
 	}
 

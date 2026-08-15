@@ -105,7 +105,7 @@ func TestShippedBalanceGrowsFishToHarvest(t *testing.T) {
 	if grams < 100 || grams > 600 {
 		t.Errorf("peso apos 120 dias partindo de alevino = %d g, esperava entre 100 e 600", grams)
 	}
-	if fish := out.State.Tanks[0].Batches[0].Fish; fish < 1_800 {
-		t.Errorf("sobraram %d de 2000 peixes: mortalidade alta demais em condicao normal", fish)
+	if fish := out.State.Tanks[0].Batches[0].Fish; fish < 1_200 {
+		t.Errorf("sobraram %d de 2000 peixes em 120 dias: mortalidade alta demais", fish)
 	}
 }

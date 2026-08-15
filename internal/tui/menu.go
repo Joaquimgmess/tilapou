@@ -8,7 +8,7 @@ import (
 )
 
 const (
-	fixedTankItems = 7
+	fixedTankItems = 8
 	thinPercent    = 30
 	shedTitle      = "GALPAO"
 	fullPercent    = 100
@@ -53,6 +53,7 @@ func tankMenu(s client.Snapshot, t client.Tank) *menu {
 		aeratorItem(t),
 		harvestItem(t),
 		thinItem(s, t),
+		treatItem(t),
 		stockItem(s, t),
 	)
 
@@ -167,6 +168,21 @@ func thinItem(s client.Snapshot, t client.Tank) menuItem {
 	return item
 }
 
+func treatItem(t client.Tank) menuItem {
+	item := menuItem{
+		label:   "Tratar o lote",
+		enabled: t.Sick,
+		status:  "tratando o lote",
+		action:  client.Action{Kind: "treat", Tank: t.ID},
+		hint:    "nao ha doenca nesse tanque",
+	}
+	if t.Sick {
+		item.hint = "cura agora, mas deixa portadores no tanque por um tempo"
+	}
+
+	return item
+}
+
 func stockItem(s client.Snapshot, t client.Tank) menuItem {
 	room := t.Capacity - int64(t.Fish)
 	amount := min(room, fingerlingsPerBuy)
@@ -248,6 +264,8 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 		items = append(items, item)
 	}
 
+	items = append(items, creditItems(s)...)
+
 	items = append(items, menuItem{
 		label:   "Comprar outro viveiro",
 		hint:    "amplia a fazenda",
@@ -257,6 +275,31 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 	})
 
 	return &menu{title: shedTitle, items: items}
+}
+
+func creditItems(s client.Snapshot) []menuItem {
+	const loan = 500_000
+
+	items := []menuItem{{
+		label:   "Pegar emprestimo de " + coins(loan),
+		hint:    "juros correm todo dia sobre o saldo",
+		enabled: true,
+		status:  "pegando emprestimo",
+		action:  client.Action{Kind: "borrow", Amount: loan},
+	}}
+
+	if s.Debt > 0 {
+		pay := min(s.Debt, s.CashCents)
+		items = append(items, menuItem{
+			label:   "Pagar divida",
+			hint:    "deve " + coins(s.Debt) + ", da para pagar " + coins(pay),
+			enabled: pay > 0,
+			status:  "pagando a divida",
+			action:  client.Action{Kind: "repay", Amount: pay},
+		})
+	}
+
+	return items
 }
 
 func minutes(ticks int64) string {

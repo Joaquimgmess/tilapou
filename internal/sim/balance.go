@@ -6,6 +6,7 @@ type TankSpec struct {
 	MaxDensityPerM3   int64
 	RenewalPPMPerHour PPM
 	BaseCost          Coins
+	UpkeepPerDay      Coins
 	Litres            Litres
 }
 
@@ -48,6 +49,9 @@ type WaterBalance struct {
 	BaseTemp        MilliCelsius
 	DailyTempSwing  MilliCelsius
 	TempPeakHour    int32
+	SeasonSwing     MilliCelsius
+	SeasonDays      int64
+	SeasonPeakDay   int64
 	IdealMin        MicrogramsPerLiter
 	FeedingMin      MicrogramsPerLiter
 	Critical        MicrogramsPerLiter
@@ -70,10 +74,13 @@ type MortalityBalance struct {
 }
 
 type EconomyBalance struct {
-	FishPricePerKg  Coins
-	FeedPricePerKg  Coins
 	FingerlingPrice Coins
 	AeratorCostTick Coins
+}
+
+type CreditBalance struct {
+	MaxPrincipal Coins
+	DailyRatePPM PPM
 }
 
 type AutomationSpec struct {
@@ -97,12 +104,15 @@ type Balance struct {
 	Water       WaterBalance
 	Death       MortalityBalance
 	Economy     EconomyBalance
+	Market      MarketBalance
+	Credit      CreditBalance
+	Shock       ShockBalance
 	Progression ProgressionBalance
 	Tanks       [tankKindCount]TankSpec
 	Automation  [autoKindCount]AutomationSpec
 }
 
-func (b Balance) Validate() error {
+func (b *Balance) Validate() error {
 	if b.Version == 0 {
 		return ErrBalanceUnversioned
 	}
@@ -114,6 +124,9 @@ func (b Balance) Validate() error {
 	}
 	if b.Ration.Len == 0 {
 		return ErrBalanceNoRation
+	}
+	if b.Market.FishBasePerKg <= 0 || b.Market.FeedBasePerKg <= 0 || b.Market.PeriodTicks <= 0 {
+		return ErrBalanceNoMarket
 	}
 	for kind := range tankKindCount {
 		if b.Tanks[kind].Litres <= 0 || b.Tanks[kind].MaxDensityPerM3 <= 0 {
@@ -129,6 +142,6 @@ func (b Balance) Validate() error {
 	return nil
 }
 
-func (b Balance) TempMultiplier(temp MilliCelsius) PPM {
+func (b *Balance) TempMultiplier(temp MilliCelsius) PPM {
 	return PPM(b.Growth.TempMultiplier.At(int64(temp)))
 }

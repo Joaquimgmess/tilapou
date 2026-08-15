@@ -25,9 +25,12 @@ type TankView struct {
 	Ready        bool   `json:"ready_to_harvest"`
 	BatchID      uint32 `json:"batch_id"`
 
-	Capacity  int64         `json:"capacity_fish"`
-	ServedFor int64         `json:"served_for_ticks"`
-	Upgrades  []UpgradeView `json:"upgrades"`
+	PriceKgCents int64         `json:"price_kg_cents"`
+	NextClassG   int64         `json:"next_class_grams"`
+	Sick         bool          `json:"sick"`
+	Capacity     int64         `json:"capacity_fish"`
+	ServedFor    int64         `json:"served_for_ticks"`
+	Upgrades     []UpgradeView `json:"upgrades"`
 }
 
 type EventView struct {
@@ -58,6 +61,19 @@ type PriceView struct {
 	FeedKgCents     int64 `json:"feed_kg_cents"`
 	FingerlingCents int64 `json:"fingerling_cents"`
 	FishKgCents     int64 `json:"fish_kg_cents"`
+	RatioPPM        int64 `json:"equivalence_ppm"`
+	ViablePPM       int64 `json:"equivalence_viable_ppm"`
+}
+
+type CycleView struct {
+	Fish       int32 `json:"fish"`
+	MassG      int64 `json:"mass_grams"`
+	RevenueTC  int64 `json:"revenue_cents"`
+	CostTC     int64 `json:"cost_cents"`
+	MarginTC   int64 `json:"margin_cents"`
+	CostPerKg  int64 `json:"cost_per_kg_cents"`
+	PricePerKg int64 `json:"price_per_kg_cents"`
+	FCRPPM     int64 `json:"fcr_ppm"`
 }
 
 type SnapshotView struct {
@@ -74,6 +90,8 @@ type SnapshotView struct {
 	Tanks       []TankView   `json:"tanks"`
 	PrestigeNow uint32       `json:"prestige_available"`
 	Prices      PriceView    `json:"prices"`
+	Debt        int64        `json:"debt_cents"`
+	LastCycle   CycleView    `json:"last_cycle"`
 	Events      []EventView  `json:"events"`
 	LastApplied bool         `json:"last_action_applied"`
 	LastReason  string       `json:"last_action_reason"`
@@ -86,11 +104,11 @@ type snapshotOutput struct {
 
 type actionBody struct {
 	Key      uint64 `doc:"Chave de idempotencia da acao"   json:"key"`
-	Kind     string `doc:"Acao a executar"                 enum:"feed,buy_feed,aerate,harvest,stock,buy_tank,buy_upgrade,prestige" json:"kind"`
+	Kind     string `doc:"Acao a executar"                 enum:"feed,buy_feed,aerate,harvest,stock,buy_tank,buy_upgrade,treat,prestige,borrow,repay" json:"kind"`
 	Tank     uint32 `doc:"Tanque alvo"                     json:"tank_id,omitempty"`
 	Batch    uint32 `doc:"Lote alvo"                       json:"batch_id,omitempty"`
-	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"              json:"tank_kind,omitempty"`
-	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                          json:"auto,omitempty"`
+	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"                                 json:"tank_kind,omitempty"`
+	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                                             json:"auto,omitempty"`
 	Amount   int64  `doc:"Quantidade, quando a acao pedir" json:"amount,omitempty"`
 }
 
@@ -107,6 +125,9 @@ var actionKindByName = map[string]sim.ActionKind{
 	"harvest":     sim.ActionHarvest,
 	"buy_upgrade": sim.ActionBuyUpgrade,
 	"prestige":    sim.ActionPrestige,
+	"borrow":      sim.ActionBorrow,
+	"repay":       sim.ActionRepay,
+	"treat":       sim.ActionTreat,
 }
 
 var autoKindByName = map[string]sim.AutoKind{
@@ -209,9 +230,9 @@ func actionOf(body actionBody) (sim.Action, error) {
 func needsTank(kind sim.ActionKind) bool {
 	switch kind {
 	case sim.ActionFeed, sim.ActionBuyFeed, sim.ActionAerate, sim.ActionHarvest,
-		sim.ActionStock, sim.ActionBuyUpgrade:
+		sim.ActionStock, sim.ActionBuyUpgrade, sim.ActionTreat:
 		return true
-	case sim.ActionBuyTank, sim.ActionPrestige, sim.ActionUnknown:
+	case sim.ActionBuyTank, sim.ActionPrestige, sim.ActionBorrow, sim.ActionRepay, sim.ActionUnknown:
 		return false
 	}
 
@@ -220,6 +241,7 @@ func needsTank(kind sim.ActionKind) bool {
 
 func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 	state := &snap.Farm.State
+	market := sim.MarketAt(b, state.Tick)
 
 	view := SnapshotView{
 		FarmID:      snap.Farm.ID.String(),
@@ -235,9 +257,22 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 		Tanks:       make([]TankView, 0, state.TankCount),
 		PrestigeNow: sim.PrestigePointsFor(state.LifetimeEarned, b.Progression.PrestigeDivisor),
 		Prices: PriceView{
-			FeedKgCents:     int64(b.Economy.FeedPricePerKg),
+			FeedKgCents:     int64(market.FeedKg),
 			FingerlingCents: int64(b.Economy.FingerlingPrice),
-			FishKgCents:     int64(b.Economy.FishPricePerKg),
+			FishKgCents:     int64(market.FishKg),
+			RatioPPM:        int64(market.RatioPPM),
+			ViablePPM:       int64(b.Market.ViableRatioPPM),
+		},
+		Debt: int64(state.Debt),
+		LastCycle: CycleView{
+			Fish:       int32(state.LastCycle.Fish),
+			MassG:      state.LastCycle.Mass.Grams(),
+			RevenueTC:  int64(state.LastCycle.Revenue),
+			CostTC:     int64(state.LastCycle.Cost),
+			MarginTC:   int64(state.LastCycle.Margin()),
+			CostPerKg:  int64(state.LastCycle.CostPerKg),
+			PricePerKg: int64(state.LastCycle.PricePerKg),
+			FCRPPM:     int64(state.LastCycle.FCRPPM),
 		},
 		Events: make([]EventView, 0, len(snap.Events)),
 	}
@@ -273,6 +308,9 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 			tv.MeanGrams = batch.MeanMass.Grams()
 			tv.BatchID = uint32(batch.ID)
 			tv.Ready = batch.MeanMass >= b.Growth.HarvestMass
+			tv.PriceKgCents = int64(b.PriceFor(batch.MeanMass, state.Tick))
+			tv.NextClassG = nextClassGrams(b, batch.MeanMass)
+			tv.Sick = batch.Sick > 0
 		}
 		view.Tanks = append(view.Tanks, tv)
 	}
@@ -292,6 +330,17 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 	}
 
 	return view
+}
+
+func nextClassGrams(b *sim.Balance, mass sim.Micrograms) int64 {
+	for i := range b.Market.ClassCount {
+		class := b.Market.Classes[i]
+		if mass <= class.UpToMass {
+			return class.UpToMass.Grams()
+		}
+	}
+
+	return 0
 }
 
 var upgradeOrder = []sim.AutoKind{
