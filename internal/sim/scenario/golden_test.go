@@ -6,9 +6,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/Joaquimgmess/catalog/internal/balance"
-	"github.com/Joaquimgmess/catalog/internal/sim"
-	"github.com/Joaquimgmess/catalog/internal/sim/scenario"
+	"github.com/Joaquimgmess/tilapou/internal/balance"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/sim/scenario"
 )
 
 var update = flag.Bool("update", false, "reescreve os arquivos golden")

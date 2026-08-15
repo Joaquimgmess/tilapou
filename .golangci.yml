@@ -47,24 +47,24 @@ linters:
               desc: sim e puro
             - pkg: math/rand
               desc: use math/rand/v2 com PCG derivado de semente e tick
-            - pkg: github.com/Joaquimgmess/catalog/internal/platform
+            - pkg: github.com/Joaquimgmess/tilapou/internal/platform
               desc: sim nao depende de nada do projeto
-            - pkg: github.com/Joaquimgmess/catalog/internal/farm
+            - pkg: github.com/Joaquimgmess/tilapou/internal/farm
               desc: sim nao depende de nada do projeto
-            - pkg: github.com/Joaquimgmess/catalog/internal/player
+            - pkg: github.com/Joaquimgmess/tilapou/internal/player
               desc: sim nao depende de nada do projeto
-            - pkg: github.com/Joaquimgmess/catalog/internal/balance
+            - pkg: github.com/Joaquimgmess/tilapou/internal/balance
               desc: balance e passado como argumento, nao importado
         tui-sem-regra-de-jogo:
           files:
             - "**/internal/tui/**"
             - "!**/*_test.go"
           deny:
-            - pkg: github.com/Joaquimgmess/catalog/internal/sim
+            - pkg: github.com/Joaquimgmess/tilapou/internal/sim
               desc: a TUI nao calcula nada; ela desenha o snapshot do servidor
-            - pkg: github.com/Joaquimgmess/catalog/internal/farm
+            - pkg: github.com/Joaquimgmess/tilapou/internal/farm
               desc: a TUI fala com o daemon pelo client, nao com o slice
-            - pkg: github.com/Joaquimgmess/catalog/internal/platform/postgres
+            - pkg: github.com/Joaquimgmess/tilapou/internal/platform/postgres
               desc: a TUI nao toca no banco
             - pkg: database/sql
               desc: a TUI nao toca no banco
@@ -74,17 +74,17 @@ linters:
           files:
             - "**/internal/farm/**"
           deny:
-            - pkg: github.com/Joaquimgmess/catalog/internal/tui
+            - pkg: github.com/Joaquimgmess/tilapou/internal/tui
               desc: slice nao conhece cliente
-            - pkg: github.com/Joaquimgmess/catalog/internal/client
+            - pkg: github.com/Joaquimgmess/tilapou/internal/client
               desc: slice nao conhece cliente
         client-so-transporte:
           files:
             - "**/internal/client/**"
           deny:
-            - pkg: github.com/Joaquimgmess/catalog/internal/sim
+            - pkg: github.com/Joaquimgmess/tilapou/internal/sim
               desc: o client transporta DTO, nao roda simulacao
-            - pkg: github.com/Joaquimgmess/catalog/internal/farm
+            - pkg: github.com/Joaquimgmess/tilapou/internal/farm
               desc: o client fala HTTP, nao chama o slice direto
     gocognit:
       min-complexity: 25
@@ -163,10 +163,9 @@ linters:
           json: snake
     testpackage:
       skip-regexp: (export|internal)_test\.go
-    varcheck: {}
     wrapcheck:
       ignore-package-globs:
-        - github.com/Joaquimgmess/catalog/*
+        - github.com/Joaquimgmess/tilapou/*
       ignore-interface-regexps:
         - ^Store$
       ignore-sigs:
@@ -218,4 +217,4 @@ formatters:
   settings:
     goimports:
       local-prefixes:
-        - github.com/Joaquimgmess/catalog
+        - github.com/Joaquimgmess/tilapou

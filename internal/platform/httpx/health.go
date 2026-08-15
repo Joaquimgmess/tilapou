@@ -8,7 +8,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Joaquimgmess/catalog/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
 )
 
 const readyTimeout = 2 * time.Second

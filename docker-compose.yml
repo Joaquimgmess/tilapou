@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-catalog}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-catalog}
-      POSTGRES_DB: ${POSTGRES_DB:-catalog}
+      POSTGRES_USER: ${POSTGRES_USER:-tilapou}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-tilapou}
+      POSTGRES_DB: ${POSTGRES_DB:-tilapou}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-catalog} -d ${POSTGRES_DB:-catalog}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-tilapou} -d ${POSTGRES_DB:-tilapou}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -19,7 +19,7 @@ services:
     build: .
     environment:
       ADDR: ${ADDR:-:8080}
-      DATABASE_URL: ${DATABASE_URL:-postgres://catalog:catalog@postgres:5432/catalog?sslmode=disable}
+      DATABASE_URL: ${DATABASE_URL:-postgres://tilapou:tilapou@postgres:5432/tilapou?sslmode=disable}
       LOG_LEVEL: ${LOG_LEVEL:-info}
     ports:
       - "${API_PORT:-8080}:8080"

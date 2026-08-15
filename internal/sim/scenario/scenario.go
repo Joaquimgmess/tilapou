@@ -5,7 +5,7 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/Joaquimgmess/catalog/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
 type Scenario struct {

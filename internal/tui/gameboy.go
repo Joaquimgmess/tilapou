@@ -7,8 +7,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/Joaquimgmess/catalog/internal/client"
-	"github.com/Joaquimgmess/catalog/internal/tui/gb"
+	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/tui/gb"
 )
 
 const boxPadding = 2

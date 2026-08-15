@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Joaquimgmess/catalog/internal/balance"
-	"github.com/Joaquimgmess/catalog/internal/sim/scenario"
+	"github.com/Joaquimgmess/tilapou/internal/balance"
+	"github.com/Joaquimgmess/tilapou/internal/sim/scenario"
 )
 
 var errNoScenario = errors.New("cenario nao encontrado")

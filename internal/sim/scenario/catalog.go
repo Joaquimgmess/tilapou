@@ -1,6 +1,6 @@
 package scenario
 
-import "github.com/Joaquimgmess/catalog/internal/sim"
+import "github.com/Joaquimgmess/tilapou/internal/sim"
 
 func All() []Scenario {
 	return []Scenario{

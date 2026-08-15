@@ -16,7 +16,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: stable
           cache: true
 
       - name: verify formatting
@@ -41,7 +41,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: stable
           cache: true
 
       - name: govulncheck
@@ -53,7 +53,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: build image
-        run: docker build -t catalog:ci .
+        run: docker build -t tilapou:ci .
 
   lint:
     runs-on: ubuntu-latest
@@ -62,7 +62,7 @@ jobs:
 
       - uses: actions/setup-go@v5
         with:
-          go-version-file: go.mod
+          go-version: stable
           cache: true
 
       - uses: golangci/golangci-lint-action@v8

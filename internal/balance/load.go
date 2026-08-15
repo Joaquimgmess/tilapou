@@ -7,7 +7,7 @@ import (
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/Joaquimgmess/catalog/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
 //go:embed balance.toml

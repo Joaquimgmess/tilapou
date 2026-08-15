@@ -7,7 +7,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/Joaquimgmess/catalog/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
 const (

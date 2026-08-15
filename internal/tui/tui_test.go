@@ -11,8 +11,8 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/exp/teatest/v2"
 
-	"github.com/Joaquimgmess/catalog/internal/client"
-	"github.com/Joaquimgmess/catalog/internal/tui"
+	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/tui"
 )
 
 func fakeDaemon(t *testing.T, snapshot client.Snapshot) *httptest.Server {

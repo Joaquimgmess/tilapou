@@ -3,8 +3,8 @@ package save_test
 import (
 	"testing"
 
-	"github.com/Joaquimgmess/catalog/internal/sim"
-	"github.com/Joaquimgmess/catalog/internal/sim/save"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/sim/save"
 )
 
 func sample() sim.State {

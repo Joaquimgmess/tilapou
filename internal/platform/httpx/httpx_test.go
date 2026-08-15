@@ -12,7 +12,7 @@ import (
 
 	"github.com/danielgtaylor/huma/v2"
 
-	"github.com/Joaquimgmess/catalog/internal/platform/httpx"
+	"github.com/Joaquimgmess/tilapou/internal/platform/httpx"
 )
 
 type echoBody struct {

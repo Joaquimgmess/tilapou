@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-const module = "github.com/Joaquimgmess/catalog"
+const module = "github.com/Joaquimgmess/tilapou"
 
 func deps(t *testing.T, pkg string) []string {
 	t.Helper()

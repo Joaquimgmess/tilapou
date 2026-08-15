@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/Joaquimgmess/catalog/internal/platform/config"
+	"github.com/Joaquimgmess/tilapou/internal/platform/config"
 )
 
 const validURL = "postgres://user:pass@localhost:5432/db"

@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Joaquimgmess/catalog/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
 const (

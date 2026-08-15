@@ -8,8 +8,8 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Joaquimgmess/catalog/internal/platform/logging"
-	"github.com/Joaquimgmess/catalog/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
 type Clock func() time.Time

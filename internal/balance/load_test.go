@@ -3,8 +3,8 @@ package balance_test
 import (
 	"testing"
 
-	"github.com/Joaquimgmess/catalog/internal/balance"
-	"github.com/Joaquimgmess/catalog/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/balance"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
 func TestLoadQuantizesTheShippedFile(t *testing.T) {

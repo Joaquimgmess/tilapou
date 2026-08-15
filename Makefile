@@ -12,6 +12,7 @@ test:
 	go test ./... -race -cover
 
 lint:
+	golangci-lint config verify
 	golangci-lint run ./...
 
 fmt:

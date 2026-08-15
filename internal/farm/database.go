@@ -11,9 +11,9 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	"github.com/Joaquimgmess/catalog/internal/platform/logging"
-	"github.com/Joaquimgmess/catalog/internal/sim"
-	"github.com/Joaquimgmess/catalog/internal/sim/save"
+	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/sim/save"
 )
 
 type Store interface {

@@ -8,7 +8,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 
-	"github.com/Joaquimgmess/catalog/internal/sim"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
 const litresPerCubicMetre = 1_000

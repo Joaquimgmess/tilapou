@@ -12,7 +12,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/go-chi/chi/v5/middleware"
 
-	"github.com/Joaquimgmess/catalog/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
 )
 
 const problemContentType = "application/problem+json"

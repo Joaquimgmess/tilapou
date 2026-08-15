@@ -14,7 +14,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"github.com/Joaquimgmess/catalog/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
 )
 
 var durationBuckets = []float64{0.005, 0.025, 0.1, 0.5, 1, 2.5, 5, 10}

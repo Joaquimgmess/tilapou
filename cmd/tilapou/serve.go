@@ -14,18 +14,18 @@ import (
 
 	"github.com/google/uuid"
 
-	"github.com/Joaquimgmess/catalog/internal/balance"
-	"github.com/Joaquimgmess/catalog/internal/farm"
-	"github.com/Joaquimgmess/catalog/internal/migrations"
-	"github.com/Joaquimgmess/catalog/internal/platform/config"
-	"github.com/Joaquimgmess/catalog/internal/platform/httpx"
-	"github.com/Joaquimgmess/catalog/internal/platform/logging"
-	"github.com/Joaquimgmess/catalog/internal/platform/postgres"
+	"github.com/Joaquimgmess/tilapou/internal/balance"
+	"github.com/Joaquimgmess/tilapou/internal/farm"
+	"github.com/Joaquimgmess/tilapou/internal/migrations"
+	"github.com/Joaquimgmess/tilapou/internal/platform/config"
+	"github.com/Joaquimgmess/tilapou/internal/platform/httpx"
+	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/postgres"
 )
 
 const (
 	readHeaderTimeout = 5 * time.Second
-	errorDocsPrefix   = "https://github.com/Joaquimgmess/catalog/blob/main/docs/errors.md#"
+	errorDocsPrefix   = "https://github.com/Joaquimgmess/tilapou/blob/main/docs/errors.md#"
 	localPlayer       = "00000000-0000-0000-0000-000000000001"
 )
 
