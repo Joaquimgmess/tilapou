@@ -96,3 +96,16 @@ func TestTheTankMenuIsVisibleInTheDashboard(t *testing.T) {
 		t.Errorf("o menu do tanque nao apareceu no painel:\n%s", frame)
 	}
 }
+
+func TestEachSessionStartsFromADifferentIdempotencyKey(t *testing.T) {
+	t.Parallel()
+
+	seen := map[uint64]bool{}
+	for range 100 {
+		key := New(nil).nextKey
+		if seen[key] {
+			t.Fatalf("duas sessoes nasceram com a chave %d: a segunda vai ter as acoes engolidas", key)
+		}
+		seen[key] = true
+	}
+}

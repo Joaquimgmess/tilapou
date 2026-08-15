@@ -2,6 +2,8 @@ package tui
 
 import (
 	"context"
+	"crypto/rand"
+	"encoding/binary"
 	"fmt"
 	"strconv"
 	"strings"
@@ -55,7 +57,15 @@ type Model struct {
 }
 
 func New(c *client.Client) Model {
-	return Model{client: c, nextKey: 1, farm: newFarmMap(1), you: newAvatar()}
+	var seed [8]byte
+	_, _ = rand.Read(seed[:])
+
+	return Model{
+		client:  c,
+		nextKey: binary.BigEndian.Uint64(seed[:]),
+		farm:    newFarmMap(1),
+		you:     newAvatar(),
+	}
 }
 
 func (m Model) Init() tea.Cmd {
