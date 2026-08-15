@@ -15,14 +15,12 @@ const (
 	EventTankBought
 	EventFeedBought
 	EventActionRejected
-	EventSaturated
 	EventUpgradeBought
 	EventPrestiged
 	EventBorrowed
 	EventRepaid
 	EventDisease
 	EventDiseaseDeaths
-	EventShock
 	EventTreated
 	eventKindCount
 )
@@ -38,14 +36,12 @@ var eventKindNames = [eventKindCount]string{
 	EventTankBought:       "tank_bought",
 	EventFeedBought:       "feed_bought",
 	EventActionRejected:   "action_rejected",
-	EventSaturated:        "saturated",
 	EventUpgradeBought:    "upgrade_bought",
 	EventPrestiged:        "prestiged",
 	EventBorrowed:         "borrowed",
 	EventRepaid:           "repaid",
 	EventDisease:          "disease",
 	EventDiseaseDeaths:    "disease_deaths",
-	EventShock:            "shock",
 	EventTreated:          "treated",
 }
 
@@ -58,17 +54,16 @@ func (k EventKind) String() string {
 }
 
 type Event struct {
-	Seq         uint64
-	Kind        EventKind
-	From        Tick
-	To          Tick
-	Tank        TankID
-	Batch       BatchID
-	Fish        FishCount
-	Mass        Micrograms
-	Cash        Coins
-	Reason      RejectReason
-	ActionRefID ActionID
+	Seq    uint64
+	Kind   EventKind
+	From   Tick
+	To     Tick
+	Tank   TankID
+	Batch  BatchID
+	Fish   FishCount
+	Mass   Micrograms
+	Cash   Coins
+	Reason RejectReason
 }
 
 type eventSink struct {

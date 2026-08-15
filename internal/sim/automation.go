@@ -136,7 +136,7 @@ func sell(s *State, b *Balance, t *Tank, batch *Batch, count FishCount, tick Tic
 		revenue = Coins(mulDivFloor(int64(revenue), int64(UnitPPM)+int64(b.Progression.ContractBonusPPM), int64(UnitPPM)))
 	}
 
-	closeCycle(s, batch, count, mass, revenue, tick)
+	closeCycle(s, batch, count, mass, revenue)
 
 	batch.Fish -= count
 	s.Cash = Coins(addSat(int64(s.Cash), int64(revenue)))

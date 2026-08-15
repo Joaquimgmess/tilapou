@@ -52,12 +52,10 @@ type WaterBalance struct {
 	SeasonSwing     MilliCelsius
 	SeasonDays      int64
 	SeasonPeakDay   int64
-	IdealMin        MicrogramsPerLiter
 	FeedingMin      MicrogramsPerLiter
 	Critical        MicrogramsPerLiter
 	Lethal          MicrogramsPerLiter
 	PeakHour        int32
-	TroughHour      int32
 	DailySwing      MicrogramsPerLiter
 	BaselineOxygen  MicrogramsPerLiter
 	BiomassDrawPPM  PPM

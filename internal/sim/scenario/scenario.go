@@ -25,7 +25,6 @@ type Sample struct {
 	FeedKg  int64
 	Cash    sim.Coins
 	Oxygen  sim.MicrogramsPerLiter
-	TempC   int32
 	Density int64
 }
 

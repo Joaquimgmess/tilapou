@@ -22,7 +22,7 @@ func fakeDaemon(t *testing.T, snapshot client.Snapshot) *httptest.Server {
 		if r.Method == http.MethodPost {
 			var action client.Action
 			_ = json.NewDecoder(r.Body).Decode(&action)
-			snapshot.LastApplied = true
+			snapshot.LastOutcome = &client.Outcome{Applied: true}
 			snapshot.Tanks[0].Aerating = action.Kind == "aerate" && action.Amount != 0
 		}
 

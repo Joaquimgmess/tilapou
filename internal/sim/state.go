@@ -39,7 +39,6 @@ type Batch struct {
 	StockedAt       Tick
 	FeedEaten       Micrograms
 	MassGained      Micrograms
-	Accrued         Micrograms
 	Cost            Coins
 	Sick            int32
 	HypoxiaTicks    int32
@@ -111,7 +110,6 @@ type State struct {
 	Debt           Coins
 	DebtCarry      int64
 	LastCycle      Cycle
-	Saturated      bool
 }
 
 const (

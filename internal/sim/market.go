@@ -31,7 +31,6 @@ func MarketAt(b *Balance, tick Tick) Market {
 	feed := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FeedBasePerKg, b.Market.FeedSwingPPM, PurposeEvent)
 
 	return Market{
-		Tick:     tick,
 		FishKg:   fish,
 		FeedKg:   feed,
 		RatioPPM: equivalence(fish, feed, b.Ration.TargetFCRPPM),

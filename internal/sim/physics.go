@@ -67,7 +67,7 @@ func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult PPM, feeding bool, 
 	gain := gainFor(batch, delta)
 
 	wanted := addSat(maintenance, mulDivCeil(int64(gain), int64(b.Ration.TargetFCRPPM), int64(UnitPPM)))
-	wanted = min(wanted, rationCap(t, batch, b, tempMult))
+	wanted = min(wanted, rationCap(batch, b, tempMult))
 	if wanted <= 0 {
 		return 0
 	}
@@ -97,7 +97,7 @@ func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult PPM, feeding bool, 
 	return Micrograms(eaten)
 }
 
-func rationCap(t *Tank, batch *Batch, b *Balance, tempMult PPM) int64 {
+func rationCap(batch *Batch, b *Balance, tempMult PPM) int64 {
 	step := b.Ration.For(batch.MeanMass)
 	if step.RatePPMDay <= 0 {
 		return 0
@@ -105,8 +105,6 @@ func rationCap(t *Tank, batch *Batch, b *Balance, tempMult PPM) int64 {
 
 	daily := mulDivFloor(int64(batch.Biomass()), int64(step.RatePPMDay), int64(UnitPPM))
 	daily = mulDivFloor(daily, int64(tempMult), int64(UnitPPM))
-
-	_ = t
 
 	return daily / int64(TicksPerDay)
 }
@@ -166,7 +164,6 @@ func applyGrowth(batch *Batch, delta int64) {
 	batch.MeanMass = after
 	gained := Micrograms(mulDivFloor(int64(after-before), int64(batch.Fish), 1))
 	batch.MassGained = Micrograms(addSat(int64(batch.MassGained), int64(gained)))
-	batch.Accrued = Micrograms(addSat(int64(batch.Accrued), int64(gained)))
 }
 
 func killByHypoxia(t *Tank, batch *Batch, b *Balance, oxygen MicrogramsPerLiter, tick Tick, seed Seed) {

@@ -23,8 +23,6 @@ linters:
     errcheck:
       check-type-assertions: true
       check-blank: true
-    exhaustive:
-      default-signifies-exhaustive: false
     depguard:
       rules:
         sim-puro:
@@ -50,8 +48,6 @@ linters:
             - pkg: github.com/Joaquimgmess/tilapou/internal/platform
               desc: sim nao depende de nada do projeto
             - pkg: github.com/Joaquimgmess/tilapou/internal/farm
-              desc: sim nao depende de nada do projeto
-            - pkg: github.com/Joaquimgmess/tilapou/internal/player
               desc: sim nao depende de nada do projeto
             - pkg: github.com/Joaquimgmess/tilapou/internal/balance
               desc: balance e passado como argumento, nao importado
@@ -96,9 +92,6 @@ linters:
         - style
       disabled-checks:
         - hugeParam
-    gosec:
-      excludes:
-        - G404
     govet:
       enable-all: true
       disable:
@@ -110,6 +103,7 @@ linters:
         - comando
         - cenario
         - racao
+        - anual
         - automatico
         - automatica
     nakedret:
@@ -152,17 +146,11 @@ linters:
     staticcheck:
       checks:
         - all
-        - -S1016
         - -ST1000
-        - -ST1020
-        - -ST1021
-        - -ST1022
     tagliatelle:
       case:
         rules:
           json: snake
-    testpackage:
-      skip-regexp: (export|internal)_test\.go
     wrapcheck:
       ignore-package-globs:
         - github.com/Joaquimgmess/tilapou/*
@@ -196,10 +184,6 @@ linters:
         text: "G704:"
         linters:
           - gosec
-      - path: cmd/api/main\.go
-        text: "G704:"
-        linters:
-          - gosec
       - path: internal/tui/(live|progression)_internal_test\.go
         linters:
           - paralleltest
@@ -207,11 +191,7 @@ linters:
         linters:
           - errcheck
           - gosec
-          - dupl
-          - err113
           - forcetypeassert
-          - gochecknoinits
-          - maintidx
 
 formatters:
   enable:

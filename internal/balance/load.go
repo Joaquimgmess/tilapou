@@ -23,7 +23,6 @@ const (
 
 type file struct {
 	Version      uint16             `toml:"version"`
-	Tempo        tempoSection       `toml:"tempo"`
 	Crescimento  crescimentoSection `toml:"crescimento"`
 	Arracoamento []arracoamentoRow  `toml:"arracoamento"`
 	Agua         aguaSection        `toml:"agua"`
@@ -36,11 +35,6 @@ type file struct {
 	Choques      choquesSection     `toml:"choques"`
 	Doencas      []doencaRow        `toml:"doencas"`
 	Automacao    []automacaoRow     `toml:"automacao"`
-}
-
-type tempoSection struct {
-	TickSegundosDeJogo int64 `toml:"tick_segundos_de_jogo"`
-	Compressao         int64 `toml:"compressao"`
 }
 
 type temperaturaRow struct {
@@ -68,7 +62,7 @@ type aguaSection struct {
 	TemperaturaBaseC           float64 `toml:"temperatura_base_c"`
 	TemperaturaVariacaoDiariaC float64 `toml:"temperatura_variacao_diaria_c"`
 	TemperaturaPicoHora        int32   `toml:"temperatura_pico_hora"`
-	TemperaturaVariacaoAnoC    float64 `toml:"temperatura_variacao_annual_c"`
+	TemperaturaVariacaoAnoC    float64 `toml:"temperatura_variacao_anual_c"`
 	EstacaoDias                int64   `toml:"estacao_dias"`
 	EstacaoPicoDia             int64   `toml:"estacao_pico_dia"`
 	ODVariacaoDiariaUgl        int64   `toml:"od_variacao_diaria_ugl"`
@@ -77,12 +71,10 @@ type aguaSection struct {
 	ODRecuperacaoAeradorUgl    int64   `toml:"od_recuperacao_aerador_ugl"`
 	ODLigaAeradorUgl           int64   `toml:"od_liga_aerador_ugl"`
 	ODDesligaAeradorUgl        int64   `toml:"od_desliga_aerador_ugl"`
-	ODIdealMinUgl              int64   `toml:"od_ideal_min_ugl"`
 	ODParaAlimentarMinUgl      int64   `toml:"od_para_alimentar_min_ugl"`
 	ODCriticoUgl               int64   `toml:"od_critico_ugl"`
 	ODLetalUgl                 int64   `toml:"od_letal_ugl"`
 	ODPicoHora                 int32   `toml:"od_pico_hora"`
-	ODMinimoHora               int32   `toml:"od_minimo_hora"`
 }
 
 type mortalidadeSection struct {
@@ -147,7 +139,6 @@ type economiaSection struct {
 
 type progressaoSection struct {
 	FatorCusto                  float64 `toml:"fator_custo"`
-	MarcosX2                    []int64 `toml:"marcos_x2"`
 	PrestigioDivisor            int64   `toml:"prestigio_divisor"`
 	PrestigioBonusPorUnidadePct float64 `toml:"prestigio_bonus_por_unidade_pct"`
 	ContratoBonusPct            float64 `toml:"contrato_bonus_pct"`
@@ -159,7 +150,6 @@ type progressaoSection struct {
 type automacaoRow struct {
 	Nome          string `toml:"nome"`
 	CustoCentavos int64  `toml:"custo_centavos"`
-	Remove        string `toml:"remove"`
 }
 
 var autoKindByName = map[string]sim.AutoKind{
@@ -184,8 +174,13 @@ func Load() (sim.Balance, error) {
 	}
 
 	var f file
-	if err = toml.Unmarshal(raw, &f); err != nil {
+
+	meta, err := toml.Decode(string(raw), &f)
+	if err != nil {
 		return sim.Balance{}, fmt.Errorf("parsing balance: %w", err)
+	}
+	if undecoded := meta.Undecoded(); len(undecoded) > 0 {
+		return sim.Balance{}, fmt.Errorf("%w: %v", ErrUnusedKeys, undecoded)
 	}
 
 	b, err := convert(f)
@@ -227,12 +222,10 @@ func convert(f file) (sim.Balance, error) {
 			SeasonSwing:     milliCelsius(f.Agua.TemperaturaVariacaoAnoC),
 			SeasonDays:      f.Agua.EstacaoDias,
 			SeasonPeakDay:   f.Agua.EstacaoPicoDia,
-			IdealMin:        sim.MicrogramsPerLiter(f.Agua.ODIdealMinUgl),
 			FeedingMin:      sim.MicrogramsPerLiter(f.Agua.ODParaAlimentarMinUgl),
 			Critical:        sim.MicrogramsPerLiter(f.Agua.ODCriticoUgl),
 			Lethal:          sim.MicrogramsPerLiter(f.Agua.ODLetalUgl),
 			PeakHour:        f.Agua.ODPicoHora,
-			TroughHour:      f.Agua.ODMinimoHora,
 			DailySwing:      sim.MicrogramsPerLiter(f.Agua.ODVariacaoDiariaUgl),
 			BaselineOxygen:  sim.MicrogramsPerLiter(f.Agua.ODBaseUgl),
 			BiomassDrawPPM:  sim.PPM(f.Agua.ODConsumoPorKgM3Ugl),
@@ -311,7 +304,6 @@ func convert(f file) (sim.Balance, error) {
 			break
 		}
 		b.Shock.Diseases[i] = sim.DiseaseSpec{
-			Name:        row.Nome,
 			MinTemp:     milliCelsius(row.TemperaturaMinC),
 			MaxTemp:     milliCelsius(row.TemperaturaMaxC),
 			OutbreakPPM: ppmOf(row.SurtoPct / percentScale),

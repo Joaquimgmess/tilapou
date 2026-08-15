@@ -19,10 +19,6 @@ func (t Tick) At(zone ZoneOffset) DayPhase {
 	}
 }
 
-func (t Tick) Add(delta Tick) Tick {
-	return Tick(addSat(int64(t), int64(delta)))
-}
-
 func (t Tick) WindowStart(window Tick) Tick {
 	if window <= 0 {
 		return t

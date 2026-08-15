@@ -39,12 +39,10 @@ func testBalance(t *testing.T) *Balance {
 			SeasonSwing:     9_000,
 			SeasonDays:      365,
 			SeasonPeakDay:   30,
-			IdealMin:        5_000,
 			FeedingMin:      3_000,
 			Critical:        2_000,
 			Lethal:          1_000,
 			PeakHour:        17,
-			TroughHour:      6,
 			DailySwing:      6_000,
 			BaselineOxygen:  6_000,
 			BiomassDrawPPM:  900,
@@ -120,8 +118,8 @@ func testBalance(t *testing.T) *Balance {
 	b.Market.ClassCount = 5
 
 	b.Shock.Diseases = [maxDiseases]DiseaseSpec{
-		{Name: "estreptococose", MinTemp: 28_500, MaxTemp: 40_000, OutbreakPPM: 90_000, DeathPPM: 41, Ticks: 5 * int32(TicksPerDay)},
-		{Name: "francisellose", MinTemp: 0, MaxTemp: 24_000, OutbreakPPM: 70_000, DeathPPM: 27, Ticks: 8 * int32(TicksPerDay)},
+		{MinTemp: 28_500, MaxTemp: 40_000, OutbreakPPM: 90_000, DeathPPM: 41, Ticks: 5 * int32(TicksPerDay)},
+		{MinTemp: 0, MaxTemp: 24_000, OutbreakPPM: 70_000, DeathPPM: 27, Ticks: 8 * int32(TicksPerDay)},
 	}
 	b.Shock.DiseaseCount = 2
 
@@ -271,7 +269,7 @@ func TestRejectedActionIsVisibleAndLeavesCashAlone(t *testing.T) {
 	}
 
 	rejected := slices.ContainsFunc(out.Events, func(e Event) bool {
-		return e.Kind == EventActionRejected && e.ActionRefID == 42
+		return e.Kind == EventActionRejected
 	})
 	if !rejected {
 		t.Error("rejeicao nao apareceu no feed de eventos")

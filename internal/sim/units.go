@@ -26,20 +26,10 @@ const (
 const (
 	MicrogramsPerGram     Micrograms = 1_000_000
 	MicrogramsPerKilogram Micrograms = 1_000 * MicrogramsPerGram
-	CoinsPerTC            Coins      = 100
-	MilliPerUnit                     = 1000
 )
 
 func (m Micrograms) Grams() int64 {
 	return int64(m / MicrogramsPerGram)
-}
-
-func (m Micrograms) Kilograms() int64 {
-	return int64(m / MicrogramsPerKilogram)
-}
-
-func (c MilliCelsius) Celsius() int32 {
-	return int32(c / MilliPerUnit)
 }
 
 func (p PPM) Apply(v int64) int64 {

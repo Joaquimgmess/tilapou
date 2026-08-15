@@ -94,8 +94,6 @@ type Snapshot struct {
 	Debt        int64    `json:"debt_cents"`
 	LastCycle   Cycle    `json:"last_cycle"`
 	Events      []Event  `json:"events"`
-	LastApplied bool     `json:"last_action_applied"`
-	LastReason  string   `json:"last_action_reason"`
 	LastOutcome *Outcome `json:"last_outcome,omitempty"`
 }
 
@@ -168,7 +166,6 @@ func (c *Client) do(ctx context.Context, method, path string, body []byte) (Snap
 type problem struct {
 	Title  string `json:"title"`
 	Detail string `json:"detail"`
-	Status int    `json:"status"`
 }
 
 func problemOf(resp *http.Response) error {

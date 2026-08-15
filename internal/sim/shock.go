@@ -3,7 +3,6 @@ package sim
 const maxDiseases = 4
 
 type DiseaseSpec struct {
-	Name        string
 	MinTemp     MilliCelsius
 	MaxTemp     MilliCelsius
 	OutbreakPPM PPM

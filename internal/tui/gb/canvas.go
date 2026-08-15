@@ -89,42 +89,12 @@ func NewCanvas(width, height int) *Canvas {
 	return &Canvas{width: width, height: height, pixels: make([]Shade, width*height)}
 }
 
-func (c *Canvas) Width() int {
-	return c.width
-}
-
-func (c *Canvas) Height() int {
-	return c.height
-}
-
-func (c *Canvas) Fill(s Shade) {
-	for i := range c.pixels {
-		c.pixels[i] = s
-	}
-}
-
 func (c *Canvas) Set(x, y int, s Shade) {
 	if x < 0 || y < 0 || x >= c.width || y >= c.height || s >= shadeCount {
 		return
 	}
 
 	c.pixels[y*c.width+x] = s
-}
-
-func (c *Canvas) At(x, y int) Shade {
-	if x < 0 || y < 0 || x >= c.width || y >= c.height {
-		return Lightest
-	}
-
-	return c.pixels[y*c.width+x]
-}
-
-func (c *Canvas) Rect(x, y, w, h int, s Shade) {
-	for dy := range h {
-		for dx := range w {
-			c.Set(x+dx, y+dy, s)
-		}
-	}
 }
 
 func (c *Canvas) Render() string {

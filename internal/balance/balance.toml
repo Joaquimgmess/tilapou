@@ -1,13 +1,5 @@
 version = 1
 
-# 1 segundo real = 60 segundos de jogo. Consequencias:
-#   ciclo dia/noite = 24 min reais (a madrugada critica volta nessa cadencia)
-#   engorda de 140 dias = ~2,3 dias reais
-#   8h offline = 20 dias de jogo
-[tempo]
-tick_segundos_de_jogo = 60
-compressao = 60
-
 # Oreochromis niloticus.
 # ganho_dia = [(raiz3(W) + tgc*t_ref)^3 - W] * mult(temperatura) * (1 - W/peso_maximo)
 # Calibrado contra dados de campo (validado em teste):
@@ -73,9 +65,6 @@ taxa_biomassa_pct = 2.0
 tratos_dia = 2
 proteina_pct = 32
 
-# O teto ambiental de racao e o coracao do trade-off densidade x oxigenio.
-# Medido: 34 kg/ha/dia -> OD 4,5 e CAA 1,3 e sobrevivencia 99%
-#         78 kg/ha/dia -> OD 2,1 e CAA 2,5 e sobrevivencia 83%
 [agua]
 temperatura_base_c = 27.0
 temperatura_variacao_diaria_c = 4.0
@@ -89,42 +78,15 @@ od_consumo_por_kg_m3_ugl = 900
 od_recuperacao_aerador_ugl = 2500
 od_liga_aerador_ugl = 3200
 od_desliga_aerador_ugl = 5200
-teto_racao_kg_ha_dia_sem_aeracao = 40.0
-teto_racao_kg_ha_dia_com_aeracao = 120.0
-od_ideal_min_ugl = 5000
-od_ideal_max_ugl = 8000
 od_para_alimentar_min_ugl = 3000
 od_critico_ugl = 2000
 od_letal_ugl = 1000
 od_pico_hora = 17
-od_minimo_hora = 6
-secchi_ideal_min_cm = 30
-secchi_ideal_max_cm = 50
-secchi_letal_cm = 12
-
-# Fracao de amonia nao-ionizada (a toxica) por pH, a 28 C.
-# 2 ppm de amonia total a pH 7 e inocuo; a pH 9 e letal.
-[[agua.amonia_por_ph]]
-ph = 7.0
-fracao_toxica_pct = 0.73
-[[agua.amonia_por_ph]]
-ph = 7.5
-fracao_toxica_pct = 2.2
-[[agua.amonia_por_ph]]
-ph = 8.0
-fracao_toxica_pct = 6.9
-[[agua.amonia_por_ph]]
-ph = 8.5
-fracao_toxica_pct = 19.6
-[[agua.amonia_por_ph]]
-ph = 9.0
-fracao_toxica_pct = 45.0
 
 # O aerador liga perto do limite de estresse e desliga acima do ideal (histerese),
 # senao fica ligado toda madrugada e o custo de energia come a receita.
 # Sobrevive a 0,4-0,7 mg/L por 3-5 h: a hipoxia mata por tempo acumulado, nao instantaneamente.
 [mortalidade]
-sobrevivencia_engorda_pct = 80.0
 horas_para_letal_em_hipoxia = 4.0
 hipoxia_perda_por_tick_pct = 0.3
 fome_dias_ate_perda = 3.0
@@ -231,7 +193,6 @@ custo_energia_aerador_centavos_hora = 120
 # Escada classica: custo base * 1.15^n. Marcos de x2 acumulativos.
 [progressao]
 fator_custo = 1.15
-marcos_x2 = [10, 25, 50, 100, 200]
 prestigio_divisor = 1000000
 prestigio_bonus_por_unidade_pct = 5.0
 contrato_bonus_pct = 10.0
@@ -242,20 +203,15 @@ reinicio_racao_kg = 200
 [[automacao]]
 nome = "comedouro"
 custo_centavos = 80000
-remove = "alimentar"
 [[automacao]]
 nome = "aerador"
 custo_centavos = 180000
-remove = "arejar"
 [[automacao]]
 nome = "peao"
 custo_centavos = 800000
-remove = "despescar"
 [[automacao]]
 nome = "tecnico"
 custo_centavos = 2500000
-remove = "ajustar_racao"
 [[automacao]]
 nome = "contrato"
 custo_centavos = 6000000
-remove = "vender"

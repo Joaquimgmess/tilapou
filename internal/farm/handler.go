@@ -93,8 +93,6 @@ type SnapshotView struct {
 	Debt        int64        `json:"debt_cents"`
 	LastCycle   CycleView    `json:"last_cycle"`
 	Events      []EventView  `json:"events"`
-	LastApplied bool         `json:"last_action_applied"`
-	LastReason  string       `json:"last_action_reason"`
 	LastOutcome *OutcomeView `json:"last_outcome,omitempty"`
 }
 
@@ -278,8 +276,6 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 	}
 
 	if snap.Outcome != nil {
-		view.LastApplied = snap.Outcome.Applied
-		view.LastReason = snap.Outcome.Reason.String()
 		view.LastOutcome = &OutcomeView{
 			Applied:    snap.Outcome.Applied,
 			Reason:     snap.Outcome.Reason.String(),

@@ -1,7 +1,6 @@
 package sim
 
 type Cycle struct {
-	Closed     Tick
 	Fish       FishCount
 	Mass       Micrograms
 	Revenue    Coins
@@ -121,7 +120,7 @@ func repay(s *State, amount Coins, at Tick, sink *eventSink) (RejectReason, Coin
 	return RejectNone, 0
 }
 
-func closeCycle(s *State, batch *Batch, count FishCount, mass Micrograms, revenue Coins, at Tick) {
+func closeCycle(s *State, batch *Batch, count FishCount, mass Micrograms, revenue Coins) {
 	if count <= 0 {
 		return
 	}
@@ -131,7 +130,6 @@ func closeCycle(s *State, batch *Batch, count FishCount, mass Micrograms, revenu
 
 	kilos := int64(mass) / int64(MicrogramsPerKilogram)
 	cycle := Cycle{
-		Closed:  at,
 		Fish:    count,
 		Mass:    mass,
 		Revenue: revenue,

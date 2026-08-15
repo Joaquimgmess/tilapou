@@ -30,7 +30,6 @@ type document struct {
 	EventSeq       uint64         `json:"event_seq"`
 	Debt           int64          `json:"debt"`
 	DebtCarry      int64          `json:"debt_carry"`
-	Saturated      bool           `json:"saturated"`
 	Tanks          []tankDocument `json:"tanks"`
 }
 
@@ -89,7 +88,6 @@ func Encode(s sim.State) ([]byte, error) {
 		EventSeq:       s.EventSeq,
 		Debt:           int64(s.Debt),
 		DebtCarry:      s.DebtCarry,
-		Saturated:      s.Saturated,
 		Tanks:          make([]tankDocument, 0, s.TankCount),
 	}
 
@@ -166,7 +164,6 @@ func Decode(raw []byte) (sim.State, error) {
 	state.EventSeq = doc.EventSeq
 	state.Debt = sim.Coins(doc.Debt)
 	state.DebtCarry = doc.DebtCarry
-	state.Saturated = doc.Saturated
 
 	if len(doc.Tanks) > len(state.Tanks) {
 		return sim.State{}, ErrTooManyTanks

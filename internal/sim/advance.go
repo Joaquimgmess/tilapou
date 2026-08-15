@@ -64,13 +64,12 @@ func Advance(in Input) (Output, error) {
 			reason, needed := apply(&state, in.Balance, a, tick, sink)
 			if reason != RejectNone {
 				sink.emit(Event{
-					Kind:        EventActionRejected,
-					From:        tick,
-					To:          tick,
-					Tank:        a.Tank,
-					Batch:       a.Batch,
-					Reason:      reason,
-					ActionRefID: a.ID,
+					Kind:   EventActionRejected,
+					From:   tick,
+					To:     tick,
+					Tank:   a.Tank,
+					Batch:  a.Batch,
+					Reason: reason,
 				})
 			}
 			outcomes = append(outcomes, Outcome{ID: a.ID, At: tick, Applied: reason == RejectNone, Reason: reason, Needed: needed})

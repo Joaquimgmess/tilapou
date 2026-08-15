@@ -50,7 +50,7 @@ func TestAeratorAutomationTurnsOnWhenOxygenDrops(t *testing.T) {
 		t.Fatalf("Advance() error = %v", err)
 	}
 
-	if !out.State.Tanks[0].Aerating && out.State.Tanks[0].Oxygen < b.Water.IdealMin {
+	if !out.State.Tanks[0].Aerating && out.State.Tanks[0].Oxygen < b.Water.AeratorOff {
 		t.Error("o aerador automatico ficou desligado com oxigenio abaixo do ideal")
 	}
 }
