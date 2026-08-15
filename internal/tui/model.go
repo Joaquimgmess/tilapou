@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"strconv"
 	"strings"
 	"time"
 
@@ -32,24 +33,26 @@ const (
 )
 
 type Model struct {
-	mode     Mode
-	farm     farmMap
-	you      avatar
-	frame    int
-	message  string
-	client   *client.Client
-	snapshot client.Snapshot
-	err      error
-	status   string
-	nextKey  uint64
-	width    int
-	height   int
-	quitting bool
-	view     string
+	mode       Mode
+	farm       farmMap
+	you        avatar
+	frame      int
+	message    string
+	selected   int
+	confirming bool
+	menu       *menu
+	client     *client.Client
+	snapshot   client.Snapshot
+	err        error
+	nextKey    uint64
+	width      int
+	height     int
+	quitting   bool
+	view       string
 }
 
 func New(c *client.Client) Model {
-	return Model{client: c, nextKey: uint64(1), farm: newFarmMap(1), you: newAvatar()}
+	return Model{client: c, nextKey: 1, farm: newFarmMap(1), you: newAvatar()}
 }
 
 func (m Model) Init() tea.Cmd {
@@ -71,14 +74,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(m.fetch(), tick())
 
 	case snapshotMsg:
-		m.snapshot, m.err = msg.snapshot, msg.err
-		m.farm = newFarmMap(len(msg.snapshot.Tanks))
-		if msg.err == nil && msg.snapshot.LastReason != "" && msg.snapshot.LastReason != "none" {
-			m.status = "recusado: " + msg.snapshot.LastReason
-		}
-		m.view = ""
-
-		return m, nil
+		return m.onSnapshot(msg), nil
 
 	case tea.KeyPressMsg:
 		return m.onKey(msg)
@@ -87,14 +83,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m Model) onSnapshot(msg snapshotMsg) Model {
+	m.snapshot, m.err = msg.snapshot, msg.err
+	m.farm = newFarmMap(len(msg.snapshot.Tanks))
+	m.selected = min(m.selected, max(len(msg.snapshot.Tanks)-1, 0))
+
+	if msg.err == nil {
+		if failure := explain(msg.snapshot.LastOutcome, msg.snapshot.CashCents); failure != "" {
+			m.message = failure
+		}
+	}
+	m.view = ""
+
+	return m
+}
+
 var movements = map[string]struct {
 	dx, dy int
 	facing byte
 }{
 	"up":    {0, -1, 'u'},
-	"w":     {0, -1, 'u'},
 	"down":  {0, 1, 'd'},
-	"s":     {0, 1, 'd'},
 	"left":  {-1, 0, 'l'},
 	"right": {1, 0, 'r'},
 }
@@ -102,14 +111,28 @@ var movements = map[string]struct {
 func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	if move, ok := movements[key]; ok && m.mode == ModeGameBoy {
+	if move, ok := movements[key]; ok {
 		return m.move(move.dx, move.dy, move.facing), nil
 	}
 
-	if index := strings.IndexByte("12345", key[0]); len(key) == 1 && index >= 0 {
-		return m.buyUpgrade(index)
+	if m.confirming {
+		return m.onConfirm(key)
 	}
 
+	if m.menu != nil {
+		return m.onMenuKey(key)
+	}
+
+	if len(key) == 1 {
+		if index := strings.IndexByte("12345", key[0]); index >= 0 {
+			return m.buyUpgrade(index)
+		}
+	}
+
+	return m.onCommand(key)
+}
+
+func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "q", "ctrl+c":
 		m.quitting = true
@@ -124,82 +147,178 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 		return m, nil
 
+	case "tab":
+		if len(m.snapshot.Tanks) > 0 {
+			m.selected = (m.selected + 1) % len(m.snapshot.Tanks)
+		}
+		m.view = ""
+
+		return m, nil
+
 	case "z", "enter":
 		return m.onInteract()
 
 	case "f":
-		return m.act(client.Action{Kind: "buy_feed", Tank: m.firstTank(), Amount: feedPurchaseKg}, "comprando racao")
+		return m.act(client.Action{Kind: "feed", Tank: m.tankID()}, "servindo o trato")
+
+	case "c":
+		return m.act(client.Action{Kind: "buy_feed", Tank: m.tankID(), Amount: feedPurchaseKg},
+			"comprando 100 kg de racao")
 
 	case "a":
-		return m.act(client.Action{Kind: "aerate", Tank: m.firstTank(), Amount: m.aeratorToggle()}, "alternando aerador")
+		return m.act(client.Action{Kind: "aerate", Tank: m.tankID(), Amount: m.aeratorToggle()},
+			"alternando o aerador")
 
 	case "h":
-		return m.act(client.Action{Kind: "harvest", Tank: m.firstTank(), Batch: m.firstBatch()}, "despescando o lote")
+		return m.act(client.Action{Kind: "harvest", Tank: m.tankID(), Batch: m.batchID()}, "despescando o lote")
 
-	case "S":
-		return m.act(client.Action{Kind: "stock", Tank: m.firstTank(), Amount: fingerlingsPerBuy}, "povoando com alevinos")
+	case "s":
+		return m.stock()
 
 	case "t":
-		return m.act(client.Action{Kind: "buy_tank", TankKind: "viveiro_escavado"}, "comprando viveiro")
+		return m.act(client.Action{Kind: "buy_tank", TankKind: "viveiro_escavado"}, "comprando um viveiro")
 
 	case "p":
-		return m.act(client.Action{Kind: "prestige"}, "tilapando: vendendo tudo e recomecando")
+		return m.askPrestige()
 	}
 
 	return m, nil
 }
 
-func (m Model) otherMode() Mode {
-	if m.mode == ModeGameBoy {
-		return ModeDashboard
-	}
+func (m Model) onConfirm(key string) (tea.Model, tea.Cmd) {
+	m.confirming = false
+	m.view = ""
 
-	return ModeGameBoy
-}
+	if key != "y" && key != "s" {
+		m.message = "tilapada cancelada"
 
-func (m Model) aeratorToggle() int64 {
-	if m.firstTankIsAerating() {
-		return 0
-	}
-
-	return 1
-}
-
-func (m Model) onInteract() (tea.Model, tea.Cmd) {
-	updated, target := m.interact()
-	switch {
-	case target == "feed":
-		return updated.act(client.Action{Kind: "buy_feed", Tank: updated.firstTank(), Amount: feedPurchaseKg}, "comprando 100 kg de racao")
-	case strings.HasPrefix(target, "tank:"):
-		updated.message = ""
-		updated.view = ""
-
-		return updated, nil
-	}
-
-	return updated, nil
-}
-
-func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
-	if index < 0 || index >= len(m.snapshot.Upgrades) {
 		return m, nil
 	}
 
-	upgrade := m.snapshot.Upgrades[index]
-	if upgrade.Owned {
-		m.status = upgrade.Kind + " ja esta na fazenda"
+	return m.act(client.Action{Kind: "prestige"}, "tilapando: vendendo tudo e recomecando")
+}
+
+func (m Model) askPrestige() (tea.Model, tea.Cmd) {
+	if m.snapshot.PrestigeNow <= m.snapshot.Prestige {
+		m.message = "Ainda nao da para tilapar: fature mais antes"
 		m.view = ""
 
 		return m, nil
 	}
 
-	return m.act(client.Action{Kind: "buy_upgrade", Auto: upgrade.Kind}, "comprando "+upgrade.Kind)
+	m.confirming = true
+	m.message = "Tilapar zera tanques, caixa e automacoes. Confirma? [s/n]"
+	m.view = ""
+
+	return m, nil
+}
+
+func (m Model) stock() (tea.Model, tea.Cmd) {
+	tank, ok := m.tank()
+	if !ok {
+		return m, nil
+	}
+
+	room := tank.Capacity - int64(tank.Fish)
+	if room <= 0 {
+		m.message = "Esse tanque ja esta no limite de densidade"
+		m.view = ""
+
+		return m, nil
+	}
+
+	return m.act(client.Action{Kind: "stock", Tank: tank.ID, Amount: min(room, fingerlingsPerBuy)},
+		"povoando com alevinos")
+}
+
+func (m Model) onInteract() (tea.Model, tea.Cmd) {
+	updated, target := m.interact()
+	tank, ok := updated.tank()
+	if !ok {
+		return updated, nil
+	}
+
+	switch {
+	case target == "shed":
+		updated.menu = shedMenu(updated.snapshot, tank)
+	case strings.HasPrefix(target, "tank:"):
+		index, err := strconv.Atoi(strings.TrimPrefix(target, "tank:"))
+		if err == nil && index < len(updated.snapshot.Tanks) {
+			updated.selected = index
+			tank = updated.snapshot.Tanks[index]
+		}
+		updated.menu = tankMenu(updated.snapshot, tank)
+	default:
+		return updated, nil
+	}
+
+	updated.message = ""
+	updated.view = ""
+
+	return updated, nil
+}
+
+func (m Model) onMenuKey(key string) (tea.Model, tea.Cmd) {
+	switch key {
+	case "x", "esc", "q":
+		m.menu = nil
+		m.view = ""
+
+		return m, nil
+
+	case "z", "enter":
+		item, ok := m.menu.current()
+		m.menu = nil
+		m.view = ""
+
+		if !ok {
+			return m, nil
+		}
+		if item.panel {
+			m.mode = ModeDashboard
+
+			return m, nil
+		}
+		if !item.enabled {
+			m.message = "Nao da agora: " + item.hint
+
+			return m, nil
+		}
+
+		return m.act(item.action, item.status)
+	}
+
+	return m, nil
+}
+
+func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
+	tank, ok := m.tank()
+	if !ok || index >= len(tank.Upgrades) {
+		return m, nil
+	}
+
+	upgrade := tank.Upgrades[index]
+	if upgrade.Owned {
+		m.message = "o tanque " + strconv.FormatUint(uint64(tank.ID), 10) + " ja tem " + upgrade.Kind
+		m.view = ""
+
+		return m, nil
+	}
+	if m.snapshot.CashCents < upgrade.CostCents {
+		m.message = "Sem grana: " + upgrade.Kind + " custa " + coins(upgrade.CostCents) +
+			" e faltam " + coins(upgrade.CostCents-m.snapshot.CashCents)
+		m.view = ""
+
+		return m, nil
+	}
+
+	return m.act(client.Action{Kind: "buy_upgrade", Tank: tank.ID, Auto: upgrade.Kind},
+		"comprando "+upgrade.Kind+" para o tanque "+strconv.FormatUint(uint64(tank.ID), 10))
 }
 
 func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {
 	action.Key = m.nextKey
 	m.nextKey++
-	m.status = status
 	m.message = status
 	m.view = ""
 
@@ -234,26 +353,45 @@ func tick() tea.Cmd {
 	})
 }
 
-func (m Model) firstTank() uint32 {
-	if len(m.snapshot.Tanks) == 0 {
+func (m Model) otherMode() Mode {
+	if m.mode == ModeGameBoy {
+		return ModeDashboard
+	}
+
+	return ModeGameBoy
+}
+
+func (m Model) tank() (client.Tank, bool) {
+	if m.selected < 0 || m.selected >= len(m.snapshot.Tanks) {
+		return client.Tank{}, false
+	}
+
+	return m.snapshot.Tanks[m.selected], true
+}
+
+func (m Model) tankID() uint32 {
+	tank, ok := m.tank()
+	if !ok {
 		return 0
 	}
 
-	return m.snapshot.Tanks[0].ID
+	return tank.ID
 }
 
-func (m Model) firstBatch() uint32 {
-	if len(m.snapshot.Tanks) == 0 {
+func (m Model) batchID() uint32 {
+	tank, ok := m.tank()
+	if !ok {
 		return 0
 	}
 
-	return m.snapshot.Tanks[0].BatchID
+	return tank.BatchID
 }
 
-func (m Model) firstTankIsAerating() bool {
-	if len(m.snapshot.Tanks) == 0 {
-		return false
+func (m Model) aeratorToggle() int64 {
+	tank, ok := m.tank()
+	if ok && tank.Aerating {
+		return 0
 	}
 
-	return m.snapshot.Tanks[0].Aerating
+	return 1
 }

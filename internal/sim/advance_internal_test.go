@@ -118,6 +118,7 @@ func stockedFarm(t *testing.T, seed Seed) State {
 	}
 	s.NextBatchID++
 	tank.FeedStock = 400 * MicrogramsPerKilogram
+	tank.ServedUntil = Tick(maxInt32)
 
 	return s
 }

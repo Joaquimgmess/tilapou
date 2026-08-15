@@ -24,7 +24,7 @@ type document struct {
 	Cash           int64          `json:"cash"`
 	LifetimeEarned int64          `json:"lifetime_earned"`
 	Prestige       uint32         `json:"prestige"`
-	Upgrades       uint32         `json:"upgrades"`
+	Upgrades       uint32         `json:"upgrades,omitempty"`
 	NextTankID     uint32         `json:"next_tank_id"`
 	NextBatchID    uint32         `json:"next_batch_id"`
 	EventSeq       uint64         `json:"event_seq"`
@@ -33,15 +33,17 @@ type document struct {
 }
 
 type tankDocument struct {
-	ID        uint32          `json:"id"`
-	Kind      uint8           `json:"kind"`
-	Litres    int64           `json:"litres"`
-	FeedStock int64           `json:"feed_stock"`
-	Oxygen    int32           `json:"oxygen"`
-	Aerating  bool            `json:"aerating"`
-	FeedCarry int64           `json:"feed_carry"`
-	Accrual   accrualDocument `json:"accrual"`
-	Batches   []batchDocument `json:"batches"`
+	ID          uint32          `json:"id"`
+	Kind        uint8           `json:"kind"`
+	Litres      int64           `json:"litres"`
+	FeedStock   int64           `json:"feed_stock"`
+	ServedUntil int64           `json:"served_until"`
+	Upgrades    uint32          `json:"upgrades"`
+	Oxygen      int32           `json:"oxygen"`
+	Aerating    bool            `json:"aerating"`
+	FeedCarry   int64           `json:"feed_carry"`
+	Accrual     accrualDocument `json:"accrual"`
+	Batches     []batchDocument `json:"batches"`
 }
 
 type accrualDocument struct {
@@ -75,7 +77,6 @@ func Encode(s sim.State) ([]byte, error) {
 		Cash:           int64(s.Cash),
 		LifetimeEarned: int64(s.LifetimeEarned),
 		Prestige:       s.Prestige,
-		Upgrades:       s.Upgrades,
 		NextTankID:     uint32(s.NextTankID),
 		NextBatchID:    uint32(s.NextBatchID),
 		EventSeq:       s.EventSeq,
@@ -86,13 +87,15 @@ func Encode(s sim.State) ([]byte, error) {
 	for i := range s.TankCount {
 		t := s.Tanks[i]
 		tank := tankDocument{
-			ID:        uint32(t.ID),
-			Kind:      uint8(t.Kind),
-			Litres:    int64(t.Litres),
-			FeedStock: int64(t.FeedStock),
-			Oxygen:    int32(t.Oxygen),
-			Aerating:  t.Aerating,
-			FeedCarry: t.FeedCarry,
+			ID:          uint32(t.ID),
+			Kind:        uint8(t.Kind),
+			Litres:      int64(t.Litres),
+			FeedStock:   int64(t.FeedStock),
+			ServedUntil: int64(t.ServedUntil),
+			Upgrades:    t.Upgrades,
+			Oxygen:      int32(t.Oxygen),
+			Aerating:    t.Aerating,
+			FeedCarry:   t.FeedCarry,
 			Accrual: accrualDocument{
 				Window:           int64(t.Accrual.Window),
 				HypoxiaDeaths:    int32(t.Accrual.HypoxiaDeaths),
@@ -144,7 +147,6 @@ func Decode(raw []byte) (sim.State, error) {
 	state.Cash = sim.Coins(doc.Cash)
 	state.LifetimeEarned = sim.Coins(doc.LifetimeEarned)
 	state.Prestige = doc.Prestige
-	state.Upgrades = doc.Upgrades
 	state.NextTankID = sim.TankID(doc.NextTankID)
 	state.NextBatchID = sim.BatchID(doc.NextBatchID)
 	state.EventSeq = doc.EventSeq
@@ -160,13 +162,15 @@ func Decode(raw []byte) (sim.State, error) {
 		}
 
 		state.Tanks[i] = sim.Tank{
-			ID:        sim.TankID(tank.ID),
-			Kind:      sim.TankKind(tank.Kind),
-			Litres:    sim.Litres(tank.Litres),
-			FeedStock: sim.Micrograms(tank.FeedStock),
-			Oxygen:    sim.MicrogramsPerLiter(tank.Oxygen),
-			Aerating:  tank.Aerating,
-			FeedCarry: tank.FeedCarry,
+			ID:          sim.TankID(tank.ID),
+			Kind:        sim.TankKind(tank.Kind),
+			Litres:      sim.Litres(tank.Litres),
+			FeedStock:   sim.Micrograms(tank.FeedStock),
+			ServedUntil: sim.Tick(tank.ServedUntil),
+			Upgrades:    tank.Upgrades | doc.Upgrades,
+			Oxygen:      sim.MicrogramsPerLiter(tank.Oxygen),
+			Aerating:    tank.Aerating,
+			FeedCarry:   tank.FeedCarry,
 			Accrual: sim.Accrual{
 				Window:           sim.Tick(tank.Accrual.Window),
 				HypoxiaDeaths:    sim.FishCount(tank.Accrual.HypoxiaDeaths),

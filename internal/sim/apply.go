@@ -1,6 +1,6 @@
 package sim
 
-func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
+func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
 	switch a.Kind {
 	case ActionBuyTank:
 		return applyBuyTank(s, b, a, at, sink)
@@ -9,67 +9,65 @@ func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReaso
 	case ActionBuyFeed:
 		return applyBuyFeed(s, b, a, at, sink)
 	case ActionFeed:
-		return applyFeed(s, a)
+		return applyFeed(s, b, a, at)
 	case ActionAerate:
 		return applyAerate(s, a)
 	case ActionHarvest:
-		return applyHarvest(s, b, a, at, sink)
+		return applyHarvest(s, b, a, at, sink), 0
 	case ActionBuyUpgrade:
 		return applyBuyUpgrade(s, b, a, at, sink)
 	case ActionPrestige:
-		return prestige(s, b, at, sink)
+		return prestige(s, b, at, sink), 0
 	case ActionUnknown, actionKindCount:
 	}
 
-	return RejectUnknownKind
+	return RejectUnknownKind, 0
 }
 
-func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
+func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
 	if a.TankKind >= tankKindCount {
-		return RejectUnknownKind
+		return RejectUnknownKind, 0
 	}
 
 	spec := b.Tanks[a.TankKind]
 	price := ladderCost(spec.BaseCost, int64(s.TankCount), b.Progression.CostFactorPPM)
 	if s.Cash < price {
-		return RejectNotEnoughCash
+		return RejectNotEnoughCash, price
 	}
 
 	id, ok := s.addTank(a.TankKind, spec.Litres)
 	if !ok {
-		return RejectFarmFull
+		return RejectFarmFull, 0
 	}
 
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
 	sink.emit(Event{Kind: EventTankBought, From: at, To: at, Tank: id, Cash: price})
 
-	return RejectNone
+	return RejectNone, 0
 }
 
-func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
+func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
 	if a.Amount <= 0 || a.Amount > maxInt32 {
-		return RejectBadAmount
+		return RejectBadAmount, 0
 	}
 
 	t := s.tank(a.Tank)
 	if t == nil {
-		return RejectNoSuchTank
+		return RejectNoSuchTank, 0
 	}
 
-	spec := b.Tanks[t.Kind]
-	capacity := spec.MaxDensityPerM3 * int64(t.Litres) / 1000
-	if int64(t.Fish())+a.Amount > capacity {
-		return RejectTooDense
+	if int64(t.Fish())+a.Amount > t.Capacity(b) {
+		return RejectTooDense, 0
 	}
 
 	price := Coins(mulDivCeil(int64(b.Economy.FingerlingPrice), a.Amount, 1))
 	if s.Cash < price {
-		return RejectNotEnoughCash
+		return RejectNotEnoughCash, price
 	}
 
 	id := s.NextBatchID
 	if !t.addBatch(id, FishCount(a.Amount), b.Growth.FingerlingMass, at) {
-		return RejectTankFull
+		return RejectTankFull, 0
 	}
 	s.NextBatchID++
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
@@ -84,23 +82,23 @@ func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reject
 		Cash:  price,
 	})
 
-	return RejectNone
+	return RejectNone, 0
 }
 
-func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
+func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
 	if a.Amount <= 0 {
-		return RejectBadAmount
+		return RejectBadAmount, 0
 	}
 
 	t := s.tank(a.Tank)
 	if t == nil {
-		return RejectNoSuchTank
+		return RejectNoSuchTank, 0
 	}
 
 	mass := Micrograms(mulDivFloor(a.Amount, int64(MicrogramsPerKilogram), 1))
 	price := Coins(mulDivCeil(int64(b.Economy.FeedPricePerKg), a.Amount, 1))
 	if s.Cash < price {
-		return RejectNotEnoughCash
+		return RejectNotEnoughCash, price
 	}
 
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
@@ -108,30 +106,35 @@ func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reje
 
 	sink.emit(Event{Kind: EventFeedBought, From: at, To: at, Tank: t.ID, Mass: mass, Cash: price})
 
-	return RejectNone
+	return RejectNone, 0
 }
 
-func applyFeed(s *State, a Action) RejectReason {
+func applyFeed(s *State, b *Balance, a Action, at Tick) (RejectReason, Coins) {
 	t := s.tank(a.Tank)
 	if t == nil {
-		return RejectNoSuchTank
+		return RejectNoSuchTank, 0
 	}
 	if t.FeedStock <= 0 {
-		return RejectNotEnoughFeed
+		return RejectNotEnoughFeed, 0
+	}
+	if t.BatchCount == 0 {
+		return RejectNoSuchBatch, 0
 	}
 
-	return RejectNone
+	serve(b, t, at)
+
+	return RejectNone, 0
 }
 
-func applyAerate(s *State, a Action) RejectReason {
+func applyAerate(s *State, a Action) (RejectReason, Coins) {
 	t := s.tank(a.Tank)
 	if t == nil {
-		return RejectNoSuchTank
+		return RejectNoSuchTank, 0
 	}
 
 	t.Aerating = a.Amount != 0
 
-	return RejectNone
+	return RejectNone, 0
 }
 
 func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
@@ -161,25 +164,30 @@ func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reje
 	return RejectNoSuchBatch
 }
 
-func applyBuyUpgrade(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
+func applyBuyUpgrade(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
 	if a.Auto >= autoKindCount {
-		return RejectUnknownKind
+		return RejectUnknownKind, 0
 	}
-	if s.Owns(a.Auto) {
-		return RejectAlreadyOwned
+
+	t := s.tank(a.Tank)
+	if t == nil {
+		return RejectNoSuchTank, 0
+	}
+	if t.Owns(a.Auto) {
+		return RejectAlreadyOwned, 0
 	}
 
 	price := b.Automation[a.Auto].Cost
 	if s.Cash < price {
-		return RejectNotEnoughCash
+		return RejectNotEnoughCash, price
 	}
 
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
-	s.grant(a.Auto)
+	t.grant(a.Auto)
 
-	sink.emit(Event{Kind: EventUpgradeBought, From: at, To: at, Cash: price, Fish: FishCount(a.Auto)})
+	sink.emit(Event{Kind: EventUpgradeBought, From: at, To: at, Tank: t.ID, Cash: price, Fish: FishCount(a.Auto)})
 
-	return RejectNone
+	return RejectNone, 0
 }
 
 func ladderCost(base Coins, owned int64, factor PPM) Coins {

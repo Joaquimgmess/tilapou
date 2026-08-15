@@ -81,12 +81,13 @@ func TestShippedBalanceGrowsFishToHarvest(t *testing.T) {
 	}
 
 	state := sim.NewState(1, -180, 0)
-	state.Cash = 1_000_000
+	state.Cash = 5_000_000
 
 	actions := []sim.Action{
 		{ID: 1, Kind: sim.ActionBuyTank, At: 1, TankKind: sim.TankEarthPond},
 		{ID: 2, Kind: sim.ActionStock, At: 2, Tank: 1, Amount: 2_000},
 		{ID: 3, Kind: sim.ActionBuyFeed, At: 3, Tank: 1, Amount: 2_000},
+		{ID: 4, Kind: sim.ActionBuyUpgrade, At: 4, Tank: 1, Auto: sim.AutoFeeder},
 	}
 
 	out, err := sim.Advance(sim.Input{State: state, Until: 120 * sim.TicksPerDay, Balance: &b, Actions: actions})

@@ -24,6 +24,10 @@ type TankView struct {
 	DensityKg int64  `json:"density_kg_m3"`
 	Ready     bool   `json:"ready_to_harvest"`
 	BatchID   uint32 `json:"batch_id"`
+
+	Capacity  int64         `json:"capacity_fish"`
+	ServedFor int64         `json:"served_for_ticks"`
+	Upgrades  []UpgradeView `json:"upgrades"`
 }
 
 type EventView struct {
@@ -44,23 +48,36 @@ type UpgradeView struct {
 	CostCents int64  `json:"cost_cents"`
 }
 
+type OutcomeView struct {
+	Applied    bool   `json:"applied"`
+	Reason     string `json:"reason"`
+	NeededCash int64  `json:"needed_cents"`
+}
+
+type PriceView struct {
+	FeedKgCents     int64 `json:"feed_kg_cents"`
+	FingerlingCents int64 `json:"fingerling_cents"`
+	FishKgCents     int64 `json:"fish_kg_cents"`
+}
+
 type SnapshotView struct {
-	FarmID      string        `json:"farm_id"`
-	Name        string        `json:"name"`
-	Tick        int64         `json:"tick"`
-	Hour        int32         `json:"hour"`
-	TempMilliC  int32         `json:"temp_milli_c"`
-	CashCents   int64         `json:"cash_cents"`
-	LifetimeTC  int64         `json:"lifetime_cents"`
-	BiomassG    int64         `json:"biomass_grams"`
-	Fish        int32         `json:"fish"`
-	Prestige    uint32        `json:"prestige"`
-	Tanks       []TankView    `json:"tanks"`
-	Upgrades    []UpgradeView `json:"upgrades"`
-	PrestigeNow uint32        `json:"prestige_available"`
-	Events      []EventView   `json:"events"`
-	LastApplied bool          `json:"last_action_applied"`
-	LastReason  string        `json:"last_action_reason"`
+	FarmID      string       `json:"farm_id"`
+	Name        string       `json:"name"`
+	Tick        int64        `json:"tick"`
+	Hour        int32        `json:"hour"`
+	TempMilliC  int32        `json:"temp_milli_c"`
+	CashCents   int64        `json:"cash_cents"`
+	LifetimeTC  int64        `json:"lifetime_cents"`
+	BiomassG    int64        `json:"biomass_grams"`
+	Fish        int32        `json:"fish"`
+	Prestige    uint32       `json:"prestige"`
+	Tanks       []TankView   `json:"tanks"`
+	PrestigeNow uint32       `json:"prestige_available"`
+	Prices      PriceView    `json:"prices"`
+	Events      []EventView  `json:"events"`
+	LastApplied bool         `json:"last_action_applied"`
+	LastReason  string       `json:"last_action_reason"`
+	LastOutcome *OutcomeView `json:"last_outcome,omitempty"`
 }
 
 type snapshotOutput struct {
@@ -69,11 +86,11 @@ type snapshotOutput struct {
 
 type actionBody struct {
 	Key      uint64 `doc:"Chave de idempotencia da acao"   json:"key"`
-	Kind     string `doc:"Acao a executar"                 enum:"buy_tank,stock,buy_feed,aerate,harvest,buy_upgrade,prestige" json:"kind"`
+	Kind     string `doc:"Acao a executar"                 enum:"feed,buy_feed,aerate,harvest,stock,buy_tank,buy_upgrade,prestige" json:"kind"`
 	Tank     uint32 `doc:"Tanque alvo"                     json:"tank_id,omitempty"`
 	Batch    uint32 `doc:"Lote alvo"                       json:"batch_id,omitempty"`
-	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"         json:"tank_kind,omitempty"`
-	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                     json:"auto,omitempty"`
+	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"              json:"tank_kind,omitempty"`
+	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                          json:"auto,omitempty"`
 	Amount   int64  `doc:"Quantidade, quando a acao pedir" json:"amount,omitempty"`
 }
 
@@ -82,6 +99,7 @@ type actionInput struct {
 }
 
 var actionKindByName = map[string]sim.ActionKind{
+	"feed":        sim.ActionFeed,
 	"buy_tank":    sim.ActionBuyTank,
 	"stock":       sim.ActionStock,
 	"buy_feed":    sim.ActionBuyFeed,
@@ -168,7 +186,7 @@ func actionOf(body actionBody) (sim.Action, error) {
 	if kind == sim.ActionBuyUpgrade {
 		auto, ok := autoKindByName[body.Auto]
 		if !ok {
-			return sim.Action{}, ErrUnknownAction
+			return sim.Action{}, ErrMissingAuto
 		}
 		action.Auto = auto
 	}
@@ -176,12 +194,28 @@ func actionOf(body actionBody) (sim.Action, error) {
 	if kind == sim.ActionBuyTank {
 		tankKind, ok := tankKindByName[body.TankKind]
 		if !ok {
-			return sim.Action{}, ErrUnknownAction
+			return sim.Action{}, ErrMissingTankKind
 		}
 		action.TankKind = tankKind
 	}
 
+	if body.Tank == 0 && needsTank(kind) {
+		return sim.Action{}, ErrMissingTank
+	}
+
 	return action, nil
+}
+
+func needsTank(kind sim.ActionKind) bool {
+	switch kind {
+	case sim.ActionFeed, sim.ActionBuyFeed, sim.ActionAerate, sim.ActionHarvest,
+		sim.ActionStock, sim.ActionBuyUpgrade:
+		return true
+	case sim.ActionBuyTank, sim.ActionPrestige, sim.ActionUnknown:
+		return false
+	}
+
+	return false
 }
 
 func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
@@ -199,14 +233,23 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 		Fish:        int32(snap.Projection.Fish),
 		Prestige:    snap.Projection.Prestige,
 		Tanks:       make([]TankView, 0, state.TankCount),
-		Upgrades:    upgradesOf(state, b),
 		PrestigeNow: sim.PrestigePointsFor(state.LifetimeEarned, b.Progression.PrestigeDivisor),
-		Events:      make([]EventView, 0, len(snap.Events)),
+		Prices: PriceView{
+			FeedKgCents:     int64(b.Economy.FeedPricePerKg),
+			FingerlingCents: int64(b.Economy.FingerlingPrice),
+			FishKgCents:     int64(b.Economy.FishPricePerKg),
+		},
+		Events: make([]EventView, 0, len(snap.Events)),
 	}
 
 	if snap.Outcome != nil {
 		view.LastApplied = snap.Outcome.Applied
 		view.LastReason = snap.Outcome.Reason.String()
+		view.LastOutcome = &OutcomeView{
+			Applied:    snap.Outcome.Applied,
+			Reason:     snap.Outcome.Reason.String(),
+			NeededCash: int64(snap.Outcome.Needed),
+		}
 	}
 
 	for i := range state.TankCount {
@@ -218,6 +261,9 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 			FeedKg:    int64(tank.FeedStock / sim.MicrogramsPerKilogram),
 			OxygenUgL: int32(tank.Oxygen),
 			Aerating:  tank.Aerating,
+			Capacity:  tank.Capacity(b),
+			ServedFor: int64(tank.ServedUntil - state.Tick),
+			Upgrades:  upgradesOf(tank, b),
 		}
 		if tank.Litres > 0 {
 			tv.DensityKg = int64(tank.Biomass()) / (litresPerCubicMetre * int64(tank.Litres))
@@ -256,12 +302,12 @@ var upgradeOrder = []sim.AutoKind{
 	sim.AutoContract,
 }
 
-func upgradesOf(state *sim.State, b *sim.Balance) []UpgradeView {
+func upgradesOf(tank *sim.Tank, b *sim.Balance) []UpgradeView {
 	views := make([]UpgradeView, 0, len(upgradeOrder))
 	for _, kind := range upgradeOrder {
 		views = append(views, UpgradeView{
 			Kind:      kind.String(),
-			Owned:     state.Owns(kind),
+			Owned:     tank.Owns(kind),
 			CostCents: int64(b.Automation[kind].Cost),
 		})
 	}
@@ -273,7 +319,8 @@ func toHTTPError(err error) error {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return huma.Error404NotFound("fazenda nao encontrada")
-	case errors.Is(err, ErrUnknownAction), errors.Is(err, ErrBadAmount):
+	case errors.Is(err, ErrUnknownAction), errors.Is(err, ErrBadAmount),
+		errors.Is(err, ErrMissingAuto), errors.Is(err, ErrMissingTankKind), errors.Is(err, ErrMissingTank):
 		return huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, ErrStaleRevision):
 		return huma.Error409Conflict("a fazenda mudou durante a escrita, tente de novo")

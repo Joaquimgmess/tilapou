@@ -16,16 +16,19 @@ var (
 )
 
 type Tank struct {
-	ID        uint32 `json:"id"`
-	Kind      string `json:"kind"`
-	Fish      int32  `json:"fish"`
-	MeanGrams int64  `json:"mean_grams"`
-	FeedKg    int64  `json:"feed_kg"`
-	OxygenUgL int32  `json:"oxygen_ugl"`
-	Aerating  bool   `json:"aerating"`
-	DensityKg int64  `json:"density_kg_m3"`
-	Ready     bool   `json:"ready_to_harvest"`
-	BatchID   uint32 `json:"batch_id"`
+	ID        uint32    `json:"id"`
+	Kind      string    `json:"kind"`
+	Fish      int32     `json:"fish"`
+	MeanGrams int64     `json:"mean_grams"`
+	FeedKg    int64     `json:"feed_kg"`
+	OxygenUgL int32     `json:"oxygen_ugl"`
+	Aerating  bool      `json:"aerating"`
+	DensityKg int64     `json:"density_kg_m3"`
+	Ready     bool      `json:"ready_to_harvest"`
+	BatchID   uint32    `json:"batch_id"`
+	Capacity  int64     `json:"capacity_fish"`
+	ServedFor int64     `json:"served_for_ticks"`
+	Upgrades  []Upgrade `json:"upgrades"`
 }
 
 type Event struct {
@@ -46,23 +49,36 @@ type Upgrade struct {
 	CostCents int64  `json:"cost_cents"`
 }
 
+type Outcome struct {
+	Applied    bool   `json:"applied"`
+	Reason     string `json:"reason"`
+	NeededCash int64  `json:"needed_cents"`
+}
+
+type Prices struct {
+	FeedKgCents     int64 `json:"feed_kg_cents"`
+	FingerlingCents int64 `json:"fingerling_cents"`
+	FishKgCents     int64 `json:"fish_kg_cents"`
+}
+
 type Snapshot struct {
-	FarmID      string    `json:"farm_id"`
-	Name        string    `json:"name"`
-	Tick        int64     `json:"tick"`
-	Hour        int32     `json:"hour"`
-	TempMilliC  int32     `json:"temp_milli_c"`
-	CashCents   int64     `json:"cash_cents"`
-	LifetimeTC  int64     `json:"lifetime_cents"`
-	BiomassG    int64     `json:"biomass_grams"`
-	Fish        int32     `json:"fish"`
-	Prestige    uint32    `json:"prestige"`
-	Tanks       []Tank    `json:"tanks"`
-	Upgrades    []Upgrade `json:"upgrades"`
-	PrestigeNow uint32    `json:"prestige_available"`
-	Events      []Event   `json:"events"`
-	LastApplied bool      `json:"last_action_applied"`
-	LastReason  string    `json:"last_action_reason"`
+	FarmID      string   `json:"farm_id"`
+	Name        string   `json:"name"`
+	Tick        int64    `json:"tick"`
+	Hour        int32    `json:"hour"`
+	TempMilliC  int32    `json:"temp_milli_c"`
+	CashCents   int64    `json:"cash_cents"`
+	LifetimeTC  int64    `json:"lifetime_cents"`
+	BiomassG    int64    `json:"biomass_grams"`
+	Fish        int32    `json:"fish"`
+	Prestige    uint32   `json:"prestige"`
+	Tanks       []Tank   `json:"tanks"`
+	PrestigeNow uint32   `json:"prestige_available"`
+	Prices      Prices   `json:"prices"`
+	Events      []Event  `json:"events"`
+	LastApplied bool     `json:"last_action_applied"`
+	LastReason  string   `json:"last_action_reason"`
+	LastOutcome *Outcome `json:"last_outcome,omitempty"`
 }
 
 type Action struct {

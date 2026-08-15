@@ -51,16 +51,18 @@ func (b *Batch) Empty() bool {
 }
 
 type Tank struct {
-	ID         TankID
-	Kind       TankKind
-	Litres     Litres
-	Batches    [maxBatchesPerTank]Batch
-	BatchCount int32
-	FeedStock  Micrograms
-	Oxygen     MicrogramsPerLiter
-	Aerating   bool
-	FeedCarry  int64
-	Accrual    Accrual
+	ID          TankID
+	Kind        TankKind
+	Litres      Litres
+	Batches     [maxBatchesPerTank]Batch
+	BatchCount  int32
+	FeedStock   Micrograms
+	ServedUntil Tick
+	Upgrades    uint32
+	Oxygen      MicrogramsPerLiter
+	Aerating    bool
+	FeedCarry   int64
+	Accrual     Accrual
 }
 
 func (t *Tank) Biomass() Micrograms {
@@ -70,6 +72,10 @@ func (t *Tank) Biomass() Micrograms {
 	}
 
 	return total
+}
+
+func (t *Tank) Capacity(b *Balance) int64 {
+	return b.Tanks[t.Kind].MaxDensityPerM3 * int64(t.Litres) / litresPerCubicMetre
 }
 
 func (t *Tank) Fish() FishCount {
@@ -91,7 +97,6 @@ type State struct {
 	Cash           Coins
 	LifetimeEarned Coins
 	Prestige       uint32
-	Upgrades       uint32
 	Tanks          [maxTanks]Tank
 	TankCount      int32
 	NextTankID     TankID
@@ -100,7 +105,10 @@ type State struct {
 	Saturated      bool
 }
 
-const maxInt32 = int64(1)<<31 - 1
+const (
+	maxInt32            = int64(1)<<31 - 1
+	litresPerCubicMetre = 1_000
+)
 
 func NewState(seed Seed, zone ZoneOffset, at Tick) State {
 	return State{
@@ -131,6 +139,22 @@ func (s *State) Fish() FishCount {
 	}
 
 	return FishCount(min(total, maxInt32))
+}
+
+func (t *Tank) compact() {
+	kept := int32(0)
+	for i := range t.BatchCount {
+		if t.Batches[i].Empty() {
+			continue
+		}
+		t.Batches[kept] = t.Batches[i]
+		kept++
+	}
+
+	for i := kept; i < t.BatchCount; i++ {
+		t.Batches[i] = Batch{}
+	}
+	t.BatchCount = kept
 }
 
 func (t *Tank) addBatch(id BatchID, fish FishCount, mass Micrograms, at Tick) bool {

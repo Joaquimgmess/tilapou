@@ -12,7 +12,7 @@ func TestFeederKeepsTheTankStocked(t *testing.T) {
 		s.Tanks[0].FeedStock = 5 * MicrogramsPerKilogram
 		s.Cash = 5_000_000
 		if withFeeder {
-			s.grant(AutoFeeder)
+			s.Tanks[0].grant(AutoFeeder)
 		}
 
 		out, err := Advance(Input{State: s, Until: 20 * TicksPerDay, Balance: b})
@@ -43,7 +43,7 @@ func TestAeratorAutomationTurnsOnWhenOxygenDrops(t *testing.T) {
 	s.Tanks[0].Batches[0].MeanMass = 600 * MicrogramsPerGram
 	s.Tanks[0].Batches[0].MassRoot = massRootOf(600 * MicrogramsPerGram)
 	s.Tanks[0].FeedStock = 50_000 * MicrogramsPerKilogram
-	s.grant(AutoAerator)
+	s.Tanks[0].grant(AutoAerator)
 
 	out, err := Advance(Input{State: s, Until: TicksPerDay, Balance: b})
 	if err != nil {
@@ -62,7 +62,7 @@ func TestHarvesterSellsWhenTheBatchIsReady(t *testing.T) {
 	s := stockedFarm(t, 23)
 	s.Tanks[0].Batches[0].MeanMass = b.Growth.HarvestMass
 	s.Tanks[0].Batches[0].MassRoot = massRootOf(b.Growth.HarvestMass)
-	s.grant(AutoHarvester)
+	s.Tanks[0].grant(AutoHarvester)
 
 	before := s.Cash
 
@@ -87,9 +87,10 @@ func TestContractPaysMoreForTheSameFish(t *testing.T) {
 	run := func(withContract bool) Coins {
 		s := stockedFarm(t, 24)
 		s.Tanks[0].Batches[0].MeanMass = b.Growth.HarvestMass
+		s.Tanks[0].ServedUntil = Tick(maxInt32)
 		s.Cash = 0
 		if withContract {
-			s.grant(AutoContract)
+			s.Tanks[0].grant(AutoContract)
 		}
 
 		actions := []Action{{ID: 1, Kind: ActionHarvest, At: 1, Tank: 1, Batch: 1}}
@@ -114,7 +115,7 @@ func TestPrestigeResetsTheFarmAndKeepsLifetime(t *testing.T) {
 	s := stockedFarm(t, 25)
 	s.LifetimeEarned = 100_000_000
 	s.Cash = 999
-	s.grant(AutoFeeder)
+	s.Tanks[0].grant(AutoFeeder)
 
 	out, err := Advance(Input{
 		State:   s,
@@ -138,7 +139,7 @@ func TestPrestigeResetsTheFarmAndKeepsLifetime(t *testing.T) {
 	if got.Cash != b.Progression.RestartCash {
 		t.Errorf("caixa = %d, want %d", got.Cash, b.Progression.RestartCash)
 	}
-	if got.Upgrades != 0 {
+	if got.Tanks[0].Upgrades != 0 {
 		t.Error("prestigio manteve as automacoes compradas")
 	}
 	if got.TankCount != 1 || got.Tanks[0].Batches[0].Fish != b.Progression.RestartFish {
@@ -176,6 +177,7 @@ func TestPrestigeBonusSpeedsGrowth(t *testing.T) {
 		s := stockedFarm(t, 27)
 		s.Prestige = points
 		s.Tanks[0].FeedStock = 100_000 * MicrogramsPerKilogram
+		s.Tanks[0].ServedUntil = Tick(maxInt32)
 
 		out, err := Advance(Input{State: s, Until: 10 * TicksPerDay, Balance: b})
 		if err != nil {
@@ -187,5 +189,61 @@ func TestPrestigeBonusSpeedsGrowth(t *testing.T) {
 
 	if boosted, plain := run(20), run(0); boosted <= plain {
 		t.Errorf("com prestigio o peixe pesou %d e sem prestigio %d", boosted, plain)
+	}
+}
+
+func TestHarvestedBatchLeavesTheTank(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 31)
+	s.Cash = 10_000_000
+
+	actions := []Action{
+		{ID: 1, Kind: ActionHarvest, At: 1, Tank: 1, Batch: 1},
+		{ID: 2, Kind: ActionStock, At: 3, Tank: 1, Amount: 500},
+	}
+
+	out, err := Advance(Input{State: s, Until: 10, Balance: b, Actions: actions})
+	if err != nil {
+		t.Fatalf("Advance() error = %v", err)
+	}
+
+	tank := out.State.Tanks[0]
+	if tank.BatchCount != 1 {
+		t.Fatalf("tanque ficou com %d lotes, queria 1: o lote despescado nao saiu", tank.BatchCount)
+	}
+	if tank.Batches[0].Fish != 500 || tank.Batches[0].MeanMass > 2*b.Growth.FingerlingMass {
+		t.Errorf("o lote que sobrou nao e o novo: %d peixes de %d g",
+			tank.Batches[0].Fish, tank.Batches[0].MeanMass.Grams())
+	}
+}
+
+func TestTankKeepsAcceptingBatchesAfterManyHarvests(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 32)
+	s.Cash = 10_000_000
+
+	var id ActionID
+
+	actions := make([]Action, 0, 12)
+	for cycle := range 6 {
+		id++
+		actions = append(actions, Action{ID: id, Kind: ActionHarvest, At: Tick(cycle*10 + 1), Tank: 1, Batch: BatchID(cycle + 1)})
+		id++
+		actions = append(actions, Action{ID: id, Kind: ActionStock, At: Tick(cycle*10 + 3), Tank: 1, Amount: 100})
+	}
+
+	out, err := Advance(Input{State: s, Until: 100, Balance: b, Actions: actions})
+	if err != nil {
+		t.Fatalf("Advance() error = %v", err)
+	}
+
+	for _, outcome := range out.Outcomes {
+		if !outcome.Applied && outcome.Reason == RejectTankFull {
+			t.Fatal("o tanque encheu de lotes vazios apos varias despescas")
+		}
 	}
 }

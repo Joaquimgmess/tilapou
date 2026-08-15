@@ -47,6 +47,14 @@ func sampleSnapshot() client.Snapshot {
 		Tanks: []client.Tank{{
 			ID: 1, Kind: "viveiro_escavado", Fish: 2_000, MeanGrams: 306,
 			FeedKg: 180, OxygenUgL: 1_900, DensityKg: 1, BatchID: 1,
+			Capacity: 5_000, ServedFor: 120,
+			Upgrades: []client.Upgrade{
+				{Kind: "comedouro", CostCents: 250_000},
+				{Kind: "aerador", CostCents: 600_000},
+				{Kind: "peao", CostCents: 2_000_000},
+				{Kind: "tecnico", CostCents: 7_500_000},
+				{Kind: "contrato", CostCents: 25_000_000},
+			},
 		}},
 		Events: []client.Event{
 			{Seq: 2, Kind: "hypoxia_deaths", Tank: 1, Fish: 47},
@@ -68,6 +76,7 @@ func waitForAll(t *testing.T, tm *teatest.TestModel, wants ...string) {
 		return true
 	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
 
+	tm.Send(tea.KeyPressMsg{Code: 'x', Text: "x"})
 	tm.Send(tea.KeyPressMsg{Code: 'q', Text: "q"})
 	tm.WaitFinished(t, teatest.WithFinalTimeout(3*time.Second))
 }
@@ -79,7 +88,26 @@ func TestGameBoyScreenShowsTheFarm(t *testing.T) {
 	tm := teatest.NewTestModel(t, tui.New(client.New(server.URL, time.Second)),
 		teatest.WithInitialTermSize(120, 60))
 
-	waitForAll(t, tm, "TILAPOU", "TANQUE 1", "306 g", "setas mover")
+	waitForAll(t, tm, "TILAPOU", "URGENTE", "TANQUE 1", "306 g")
+}
+
+func TestInteractOpensTheTankMenu(t *testing.T) {
+	t.Parallel()
+
+	server := fakeDaemon(t, sampleSnapshot())
+	tm := teatest.NewTestModel(t, tui.New(client.New(server.URL, time.Second)),
+		teatest.WithInitialTermSize(120, 60))
+
+	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
+		return bytes.Contains(b, []byte("TILAPOU"))
+	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
+
+	for range 3 {
+		tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
+	}
+	tm.Send(tea.KeyPressMsg{Code: 'z', Text: "z"})
+
+	waitForAll(t, tm, "Servir o trato", "Instalar comedouro", "faltam")
 }
 
 func TestDashboardShowsTheNumbers(t *testing.T) {
@@ -95,7 +123,7 @@ func TestDashboardShowsTheNumbers(t *testing.T) {
 
 	tm.Send(tea.KeyPressMsg{Code: 'm', Text: "m"})
 
-	waitForAll(t, tm, "biomassa", "612 kg", "306 g", "eventos")
+	waitForAll(t, tm, "biomassa", "612 kg", "306 g", "automacao do tanque")
 }
 
 func TestGameBoyWarnsAboutSuffocation(t *testing.T) {
@@ -109,8 +137,9 @@ func TestGameBoyWarnsAboutSuffocation(t *testing.T) {
 		return bytes.Contains(b, []byte("TILAPOU"))
 	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
 
-	tm.Send(tea.KeyPressMsg{Code: 'w', Text: "w"})
-	tm.Send(tea.KeyPressMsg{Code: 'w', Text: "w"})
+	tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
+	tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
+	tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
 
 	waitForAll(t, tm, "sufocando")
 }

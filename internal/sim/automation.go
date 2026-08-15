@@ -27,30 +27,54 @@ func (k AutoKind) String() string {
 	return autoKindNames[k]
 }
 
-func (s *State) Owns(k AutoKind) bool {
+func (t *Tank) Owns(k AutoKind) bool {
 	if k >= autoKindCount {
 		return false
 	}
 
-	return s.Upgrades&(1<<k) != 0
+	return t.Upgrades&(1<<k) != 0
 }
 
-func (s *State) grant(k AutoKind) {
-	s.Upgrades |= 1 << k
+func (t *Tank) grant(k AutoKind) {
+	t.Upgrades |= 1 << k
 }
 
 func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
-	if s.Owns(AutoAerator) {
-		t.Aerating = t.Oxygen < b.Water.IdealMin
+	if t.Owns(AutoAerator) {
+		t.Aerating = t.Oxygen < b.Water.IdealMin && s.Cash > 0
 	}
 
-	if s.Owns(AutoFeeder) {
+	if t.Owns(AutoFeeder) {
 		restockFeed(s, b, t, tick, sink)
+		serve(b, t, tick)
 	}
 
-	if s.Owns(AutoHarvester) {
+	if t.Owns(AutoHarvester) {
 		harvestReady(s, b, t, tick, sink)
 	}
+}
+
+func serve(b *Balance, t *Tank, tick Tick) {
+	if t.BatchCount == 0 {
+		return
+	}
+
+	meals := max(b.Ration.For(t.Batches[0].MeanMass).MealsPerDay, 1)
+	t.ServedUntil = tick + TicksPerDay/Tick(meals)
+}
+
+func payEnergy(s *State, b *Balance, t *Tank) {
+	if !t.Aerating {
+		return
+	}
+
+	if s.Cash < b.Economy.AeratorCostTick {
+		t.Aerating = false
+
+		return
+	}
+
+	s.Cash = Coins(subSat(int64(s.Cash), int64(b.Economy.AeratorCostTick)))
 }
 
 func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
@@ -92,7 +116,7 @@ func sell(s *State, b *Balance, t *Tank, batch *Batch, count FishCount, tick Tic
 
 	mass := Micrograms(mulDivFloor(int64(batch.MeanMass), int64(count), 1))
 	revenue := Coins(mulDivFloor(int64(b.Economy.FishPricePerKg), int64(mass), int64(MicrogramsPerKilogram)))
-	if s.Owns(AutoContract) {
+	if t.Owns(AutoContract) {
 		revenue = Coins(mulDivFloor(int64(revenue), int64(UnitPPM)+int64(b.Progression.ContractBonusPPM), int64(UnitPPM)))
 	}
 

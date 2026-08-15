@@ -9,6 +9,7 @@ type Purpose uint16
 const (
 	PurposeUnknown Purpose = iota
 	PurposeMortality
+	PurposeStarvation
 	PurposeDisease
 	PurposeWeather
 	PurposeMarket

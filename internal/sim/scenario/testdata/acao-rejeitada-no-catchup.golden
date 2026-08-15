@@ -2,10 +2,9 @@ cenario: acao-rejeitada-no-catchup
 semente: 4  fuso: -180  dias: 3
 
  dia   peixes   peso_g racao_kg     caixa_tc   o2_ugl kg_por_m3
-   1      500      203       96            1     6910       101
-   2      500      206       93            1     6908       103
-   3      500      210       89            1     6906       105
+   1      500      200      100            1     6910       100
+   2      500      200      100            1     6910       100
+   3      500      200      100            1     6910       100
 
 eventos
 action_rejected           1
-growth                   72

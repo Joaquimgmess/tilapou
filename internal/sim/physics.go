@@ -23,10 +23,12 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 		t := &s.Tanks[i]
 		t.Oxygen = oxygenAt(b, t, tick, s.Zone)
 		automate(s, b, t, tick, sink)
+		payEnergy(s, b, t)
+
 		oxygen := oxygenAt(b, t, tick, s.Zone)
 		t.Oxygen = oxygen
 
-		feeding := oxygen >= b.Water.FeedingMin && tempMult > 0
+		feeding := oxygen >= b.Water.FeedingMin && tempMult > 0 && tick <= t.ServedUntil
 
 		for j := range t.BatchCount {
 			batch := &t.Batches[j]
@@ -35,14 +37,16 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 			}
 
 			eaten, wanted := feedBatch(t, batch, b, tempMult, feeding)
-			growBatch(batch, b, tempMult, eaten, wanted, s.prestigeBonus(b), s.Owns(AutoTechnician))
+			growBatch(batch, b, tempMult, eaten, wanted, s.prestigeBonus(b), t.Owns(AutoTechnician))
 			killByHypoxia(t, batch, b, oxygen, tick, s.Seed)
-			killByStarvation(t, batch, b, eaten)
+			killByStarvation(t, batch, b, eaten, tick, s.Seed)
 		}
 
 		if t.FeedStock <= 0 && feeding && t.Fish() > 0 && tick%WindowTicks == 0 {
 			sink.emit(Event{Kind: EventFeedExhausted, From: tick, To: tick, Tank: t.ID})
 		}
+
+		t.compact()
 	}
 }
 
@@ -142,7 +146,7 @@ func killByHypoxia(t *Tank, batch *Batch, b *Balance, oxygen MicrogramsPerLiter,
 	t.Accrual.HypoxiaDeaths = FishCount(addSat(int64(t.Accrual.HypoxiaDeaths), int64(deaths)))
 }
 
-func killByStarvation(t *Tank, batch *Batch, b *Balance, eaten Micrograms) {
+func killByStarvation(t *Tank, batch *Batch, b *Balance, eaten Micrograms, tick Tick, seed Seed) {
 	if eaten > 0 {
 		batch.StarvationTicks = 0
 		return
@@ -153,7 +157,8 @@ func killByStarvation(t *Tank, batch *Batch, b *Balance, eaten Micrograms) {
 		return
 	}
 
-	deaths := killFish(batch, int64(b.Death.StarvationRatePPM), 0, RollKey{})
+	deaths := killFish(batch, int64(b.Death.StarvationRatePPM), seed,
+		RollKey{Tick: tick, Tank: t.ID, Batch: batch.ID, Purpose: PurposeStarvation})
 	t.Accrual.StarvationDeaths = FishCount(addSat(int64(t.Accrual.StarvationDeaths), int64(deaths)))
 }
 

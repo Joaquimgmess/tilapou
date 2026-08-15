@@ -105,6 +105,11 @@ func (m Model) renderTanks() string {
 }
 
 func renderTank(t client.Tank) string {
+	trato := dangerStyle.Render("sem trato servido")
+	if t.ServedFor > 0 {
+		trato = okStyle.Render("trato por " + minutes(t.ServedFor))
+	}
+
 	aerator := dimStyle.Render("aerador off")
 	if t.Aerating {
 		aerator = okStyle.Render("aerador ON")
@@ -115,12 +120,13 @@ func renderTank(t client.Tank) string {
 		ready = okStyle.Render("  PRONTO PARA DESPESCA")
 	}
 
-	return fmt.Sprintf("%s %s%s\n%s %s   %s %s   %s %s\n%s %s   %s\n%s",
+	return fmt.Sprintf("%s %s%s\n%s %s/%d   %s %s   %s %s\n%s %s   %s   %s\n%s",
 		titleStyle.Render(fmt.Sprintf("tanque %d", t.ID)), dimStyle.Render(t.Kind), ready,
-		labelStyle.Render("peixes"), valueStyle.Render(strconv.Itoa(int(t.Fish))),
+		labelStyle.Render("peixes"), valueStyle.Render(strconv.Itoa(int(t.Fish))), t.Capacity,
 		labelStyle.Render("peso"), valueStyle.Render(fmt.Sprintf("%d g", t.MeanGrams)),
 		labelStyle.Render("densidade"), valueStyle.Render(fmt.Sprintf("%d kg/m3", t.DensityKg)),
 		labelStyle.Render("racao"), valueStyle.Render(fmt.Sprintf("%d kg", t.FeedKg)),
+		trato,
 		aerator,
 		oxygenBar(t.OxygenUgL),
 	)
@@ -141,25 +147,27 @@ func oxygenBar(level int32) string {
 }
 
 func (m Model) renderUpgrades() string {
-	if len(m.snapshot.Upgrades) == 0 {
+	tank, ok := m.tank()
+	if !ok || len(tank.Upgrades) == 0 {
 		return ""
 	}
 
-	parts := make([]string, 0, len(m.snapshot.Upgrades))
-	for i, u := range m.snapshot.Upgrades {
-		label := fmt.Sprintf("[%d] %s %s", i+1, u.Kind, coins(u.CostCents))
-		if u.Owned {
-			parts = append(parts, okStyle.Render("["+strconv.Itoa(i+1)+"] "+u.Kind+" ok"))
-			continue
+	parts := make([]string, 0, len(tank.Upgrades))
+	for i, u := range tank.Upgrades {
+		key := "[" + strconv.Itoa(i+1) + "] "
+		switch {
+		case u.Owned:
+			parts = append(parts, okStyle.Render(key+u.Kind+" ok"))
+		case m.snapshot.CashCents >= u.CostCents:
+			parts = append(parts, valueStyle.Render(key+u.Kind+" "+coins(u.CostCents)))
+		default:
+			parts = append(parts, dimStyle.Render(key+u.Kind+" "+coins(u.CostCents)))
 		}
-		if m.snapshot.CashCents >= u.CostCents {
-			parts = append(parts, valueStyle.Render(label))
-			continue
-		}
-		parts = append(parts, dimStyle.Render(label))
 	}
 
-	line := labelStyle.Render("automacao  ") + strings.Join(parts, dimStyle.Render("  "))
+	line := labelStyle.Render(fmt.Sprintf("automacao do tanque %d  ", tank.ID)) +
+		strings.Join(parts, dimStyle.Render("  "))
+
 	if m.snapshot.PrestigeNow > m.snapshot.Prestige {
 		line += "\n" + okStyle.Render(fmt.Sprintf("[p] tilapar agora rende %d matrizes (voce tem %d)",
 			m.snapshot.PrestigeNow, m.snapshot.Prestige))
@@ -214,12 +222,20 @@ func describe(e client.Event) string {
 }
 
 func (m Model) renderFooter() string {
-	keys := dimStyle.Render("[f] racao  [a] aerador  [h] despescar  [s] povoar  [t] tanque  [1-5] automacao  [p] tilapar  [q] sair")
-	if m.status == "" {
-		return keys
+	goal, urgent := objective(m.snapshot)
+	banner := okStyle.Render("objetivo: " + goal)
+	if urgent {
+		banner = dangerStyle.Render("! " + goal)
 	}
 
-	return keys + "\n" + labelStyle.Render(m.status)
+	keys := dimStyle.Render(
+		"[f] trato  [c] racao  [a] aerador  [h] despescar  [s] povoar  [t] tanque  [1-5] automacao  [tab] trocar  [m] mapa  [q] sair")
+
+	if m.message == "" {
+		return banner + "\n" + keys
+	}
+
+	return banner + "\n" + keys + "\n" + labelStyle.Render(m.message)
 }
 
 func coins(cents int64) string {

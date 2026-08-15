@@ -61,7 +61,7 @@ func Advance(in Input) (Output, error) {
 		var due []Action
 		due, pending = actionsDue(pending, tick)
 		for _, a := range due {
-			reason := apply(&state, in.Balance, a, tick, sink)
+			reason, needed := apply(&state, in.Balance, a, tick, sink)
 			if reason != RejectNone {
 				sink.emit(Event{
 					Kind:        EventActionRejected,
@@ -73,7 +73,7 @@ func Advance(in Input) (Output, error) {
 					ActionRefID: a.ID,
 				})
 			}
-			outcomes = append(outcomes, Outcome{ID: a.ID, At: tick, Applied: reason == RejectNone, Reason: reason})
+			outcomes = append(outcomes, Outcome{ID: a.ID, At: tick, Applied: reason == RejectNone, Reason: reason, Needed: needed})
 		}
 
 		step(&state, in.Balance, tick, sink)

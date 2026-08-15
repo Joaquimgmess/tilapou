@@ -96,4 +96,5 @@ type Outcome struct {
 	At      Tick
 	Applied bool
 	Reason  RejectReason
+	Needed  Coins
 }

@@ -23,6 +23,7 @@ func raise(t *testing.T, b *Balance, from Micrograms, days int64, fish FishCount
 	tank := s.tank(id)
 	tank.addBatch(1, fish, from, 0)
 	tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
+	tank.ServedUntil = Tick(maxInt32)
 
 	out, err := Advance(Input{State: s, Until: Tick(days) * TicksPerDay, Balance: b})
 	if err != nil {
@@ -110,6 +111,7 @@ func TestHypoxiaOnlyKillsWhenDensityIsHigh(t *testing.T) {
 			s.Tanks[0].Batches[0].MeanMass = 600 * MicrogramsPerGram
 			s.Tanks[0].Batches[0].MassRoot = massRootOf(600 * MicrogramsPerGram)
 			s.Tanks[0].FeedStock = 100_000 * MicrogramsPerKilogram
+			s.Tanks[0].ServedUntil = Tick(maxInt32)
 
 			out, err := Advance(Input{State: s, Until: TicksPerDay, Balance: b})
 			if err != nil {
@@ -136,6 +138,7 @@ func TestAeratorSavesTheOvercrowdedTank(t *testing.T) {
 		s.Tanks[0].Batches[0].MeanMass = 600 * MicrogramsPerGram
 		s.Tanks[0].Batches[0].MassRoot = massRootOf(600 * MicrogramsPerGram)
 		s.Tanks[0].FeedStock = 100_000 * MicrogramsPerKilogram
+		s.Tanks[0].ServedUntil = Tick(maxInt32)
 		s.Tanks[0].Aerating = aerating
 
 		out, err := Advance(Input{State: s, Until: TicksPerDay, Balance: b})

@@ -9,6 +9,7 @@ func All() []Scenario {
 		densidadeContraOxigenio(),
 		aeradorSalva(),
 		tanqueRede(),
+		semTrato(),
 		comedouroAutomatico(),
 		acaoRejeitadaNoCatchUp(),
 	}
@@ -34,6 +35,20 @@ func stock(state *sim.State, kind sim.TankKind, litres sim.Litres, fish sim.Fish
 	state.LoadFeed(id, sim.Micrograms(feedKg)*sim.MicrogramsPerKilogram)
 }
 
+func feedEvery(hours, days int64) []sim.Action {
+	var (
+		actions []sim.Action
+		id      sim.ActionID
+	)
+
+	for tick := sim.Tick(1); tick <= sim.Tick(days)*sim.TicksPerDay; tick += sim.Tick(hours) * 60 {
+		id++
+		actions = append(actions, sim.Action{ID: id, Kind: sim.ActionFeed, At: tick, Tank: 1})
+	}
+
+	return actions
+}
+
 func heranca() Scenario {
 	return Scenario{
 		Name: "heranca",
@@ -44,6 +59,7 @@ func heranca() Scenario {
 		Setup: func(s *sim.State) {
 			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 3_000)
 		},
+		Actions: feedEvery(6, 90),
 	}
 }
 
@@ -57,6 +73,7 @@ func comedouroSeca() Scenario {
 		Setup: func(s *sim.State) {
 			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 40)
 		},
+		Actions: feedEvery(6, 60),
 	}
 }
 
@@ -99,6 +116,20 @@ func tanqueRede() Scenario {
 		Setup: func(s *sim.State) {
 			stock(s, sim.TankNetCage, 6_000, 900, 300*sim.MicrogramsPerGram, 2_000)
 		},
+		Actions: feedEvery(6, 30),
+	}
+}
+
+func semTrato() Scenario {
+	return Scenario{
+		Name: "sem-trato",
+		Zone: -180,
+		Seed: 7,
+		Days: 20,
+		Cash: 500_000,
+		Setup: func(s *sim.State) {
+			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 3_000)
+		},
 	}
 }
 
@@ -113,7 +144,7 @@ func comedouroAutomatico() Scenario {
 			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 20)
 		},
 		Actions: []sim.Action{
-			{ID: 1, Kind: sim.ActionBuyUpgrade, At: 1, Auto: sim.AutoFeeder},
+			{ID: 1, Kind: sim.ActionBuyUpgrade, At: 1, Tank: 1, Auto: sim.AutoFeeder},
 		},
 	}
 }
