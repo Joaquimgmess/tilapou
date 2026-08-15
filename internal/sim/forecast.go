@@ -105,16 +105,22 @@ func (s *State) batch(tank TankID, batch BatchID) *Batch {
 	return nil
 }
 
-func (b *Balance) NextClass(mass Micrograms) (upTo Micrograms, gain PPM, ok bool) {
+func (b *Balance) NextClass(mass Micrograms) (entry Micrograms, gain PPM, ok bool) {
 	current := b.ClassPPM(mass)
 
 	for i := range b.Market.ClassCount {
 		class := b.Market.Classes[i]
-		if class.UpToMass <= mass || class.PPM <= current {
+		if class.UpToMass <= mass || i+1 >= b.Market.ClassCount {
 			continue
 		}
 
-		return class.UpToMass, PPM(mulDivFloor(int64(class.PPM), int64(UnitPPM), int64(current))) - UnitPPM, true
+		next := b.Market.Classes[i+1]
+		if next.PPM <= current {
+			return 0, 0, false
+		}
+
+		return class.UpToMass + 1,
+			PPM(mulDivFloor(int64(next.PPM), int64(UnitPPM), int64(current))) - UnitPPM, true
 	}
 
 	return 0, 0, false

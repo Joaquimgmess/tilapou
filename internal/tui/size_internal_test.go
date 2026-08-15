@@ -44,23 +44,43 @@ func sizedSnapshot() client.Snapshot {
 	}
 }
 
+func everyUpgrade() []client.Upgrade {
+	return []client.Upgrade{
+		{Kind: "comedouro", CostCents: 80_000}, {Kind: "aerador", CostCents: 180_000},
+		{Kind: "peao", CostCents: 800_000}, {Kind: "tecnico", CostCents: 1_600_000},
+		{Kind: "contrato", CostCents: 3_200_000},
+	}
+}
+
 func TestFrameFitsCommonTerminals(t *testing.T) {
 	t.Parallel()
 
+	snap := sizedSnapshot()
+	snap.Tanks[0].Upgrades = everyUpgrade()
+
+	overlays := map[string]*menu{
+		"painel":         nil,
+		"menu do tanque": tankMenu(snap, snap.Tanks[0]),
+		"menu do galpao": shedMenu(snap, snap.Tanks[0]),
+	}
+
 	for _, size := range []struct{ w, h int }{{120, 40}, {100, 35}, {80, 24}} {
-		m := New(nil)
-		m.snapshot = sizedSnapshot()
-		m.width, m.height = size.w, size.h
+		for name, overlay := range overlays {
+			m := New(nil)
+			m.snapshot = snap
+			m.menu = overlay
+			m.width, m.height = size.w, size.h
 
-		lines := strings.Split(strings.TrimRight(m.render(), "\n"), "\n")
+			lines := strings.Split(strings.TrimRight(m.render(), "\n"), "\n")
 
-		widest := 0
-		for _, line := range lines {
-			widest = max(widest, lipgloss.Width(line))
-		}
+			widest := 0
+			for _, line := range lines {
+				widest = max(widest, lipgloss.Width(line))
+			}
 
-		if widest > size.w || len(lines) > size.h {
-			t.Errorf("em %dx%d o quadro saiu %dx%d", size.w, size.h, widest, len(lines))
+			if widest > size.w || len(lines) > size.h {
+				t.Errorf("%s em %dx%d saiu %dx%d", name, size.w, size.h, widest, len(lines))
+			}
 		}
 	}
 }

@@ -375,7 +375,9 @@ func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, b
 	tv.BatchID = uint32(batch.ID)
 	tv.Ready = batch.MeanMass >= b.Growth.HarvestMass
 	tv.PriceKgCents = int64(b.PriceFor(batch.MeanMass, state.Tick))
-	tv.NextClassG = nextClassGrams(b, batch.MeanMass)
+	if entry, gain, ok := b.NextClass(batch.MeanMass); ok {
+		tv.NextClassG, tv.NextClassGain = entry.Grams(), int64(gain)
+	}
 	tv.Sick = batch.Sick > 0
 	tv.ClassPPM = int64(b.ClassPPM(batch.MeanMass))
 	tv.CostCents = int64(batch.Cost)
@@ -425,17 +427,6 @@ func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 	view.HoldReached = hold.Reached
 
 	return view
-}
-
-func nextClassGrams(b *sim.Balance, mass sim.Micrograms) int64 {
-	for i := range b.Market.ClassCount {
-		class := b.Market.Classes[i]
-		if mass <= class.UpToMass {
-			return class.UpToMass.Grams()
-		}
-	}
-
-	return 0
 }
 
 func seriesOf(state *sim.State, b *sim.Balance) SeriesView {

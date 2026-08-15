@@ -242,7 +242,7 @@ func upgradeItem(s client.Snapshot, t client.Tank, upgrade client.Upgrade) menuI
 	case s.CashCents < upgrade.CostCents:
 		item.hint = "faltam " + coins(upgrade.CostCents-s.CashCents)
 	default:
-		item.hint = coins(upgrade.CostCents) + " — " + automationHint(upgrade.Kind)
+		item.hint = coins(upgrade.CostCents) + ", " + automationHint(upgrade.Kind)
 	}
 
 	return item
