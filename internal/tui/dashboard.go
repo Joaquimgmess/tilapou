@@ -205,7 +205,7 @@ func (m Model) renderDecision() string {
 				d.HoldDays, coins(d.HoldFeedCents))))
 	}
 
-	return strings.Join(append(lines, renderBreakEven(tank)), "\n")
+	return strings.Join(append(lines, renderBreakEven(tank), renderStocking(tank)), "\n")
 }
 
 func renderBreakEven(tank client.Tank) string {
@@ -226,6 +226,23 @@ func renderBreakEven(tank client.Tank) string {
 	return fmt.Sprintf("%s %s  %s %s  %s",
 		labelStyle.Render("break-even"), coins(breakEven),
 		labelStyle.Render("mercado"), coins(price), verdict)
+}
+
+func renderStocking(tank client.Tank) string {
+	if tank.BreakEven <= 0 {
+		return ""
+	}
+
+	line := fmt.Sprintf("%s %d de %d peixes  %s %d para pagar a manutencao",
+		labelStyle.Render("lotacao"), tank.Fish, tank.Capacity,
+		labelStyle.Render("minimo"), tank.BreakEven)
+
+	if int64(tank.Fish) < tank.BreakEven {
+		return line + dangerStyle.Render("  faltam "+
+			strconv.FormatInt(tank.BreakEven-int64(tank.Fish), 10))
+	}
+
+	return line + okStyle.Render("  no azul")
 }
 
 func (m Model) renderMarket() string {

@@ -12,6 +12,8 @@ const (
 	thinPercent    = 30
 	shedTitle      = "GALPAO"
 	fullPercent    = 100
+	defaultLoan    = 500_000
+	loanStep       = 100_000
 )
 
 type menuItem struct {
@@ -183,6 +185,25 @@ func treatItem(t client.Tank) menuItem {
 	return item
 }
 
+func loanFor(t client.Tank) (amount int64, why string) {
+	missing := t.BreakEven - int64(t.Fish)
+	short := missing - t.StockAdvice
+	if missing <= 0 || short <= 0 || t.CostPerFish <= 0 {
+		return defaultLoan, "juros correm todo dia sobre o saldo"
+	}
+
+	return roundLoan(short * t.CostPerFish),
+		fmt.Sprintf("cobre os %d peixes que faltam para o tanque %d pagar a manutencao", short, t.ID)
+}
+
+func roundLoan(cents int64) int64 {
+	if cents <= 0 {
+		return defaultLoan
+	}
+
+	return (cents + loanStep - 1) / loanStep * loanStep
+}
+
 func stockBlocked(t client.Tank) string {
 	if t.Capacity-int64(t.Fish) <= 0 {
 		return "O tanque " + strconv.FormatInt(int64(t.ID), 10) +
@@ -271,7 +292,7 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 		items = append(items, item)
 	}
 
-	items = append(items, creditItems(s)...)
+	items = append(items, creditItems(s, t)...)
 
 	items = append(items, menuItem{
 		label:   "Comprar outro viveiro",
@@ -284,13 +305,13 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 	return &menu{title: shedTitle, items: items}
 }
 
-func creditItems(s client.Snapshot) []menuItem {
-	const loan = 500_000
+func creditItems(s client.Snapshot, t client.Tank) []menuItem {
+	loan, why := loanFor(t)
 
 	items := []menuItem{{
 		label:   "Pegar emprestimo de " + coins(loan),
-		hint:    "juros correm todo dia sobre o saldo",
-		enabled: true,
+		hint:    why,
+		enabled: loan > 0,
 		status:  "pegando emprestimo",
 		action:  client.Action{Kind: "borrow", Amount: loan},
 	}}

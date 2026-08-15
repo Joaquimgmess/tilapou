@@ -38,6 +38,8 @@ type Tank struct {
 	Sick          bool      `json:"sick"`
 	Capacity      int64     `json:"capacity_fish"`
 	StockAdvice   int64     `json:"stock_advice_fish"`
+	BreakEven     int64     `json:"break_even_fish"`
+	CostPerFish   int64     `json:"stock_cost_per_fish_cents"`
 	ServedFor     int64     `json:"served_for_ticks"`
 	Upgrades      []Upgrade `json:"upgrades"`
 }

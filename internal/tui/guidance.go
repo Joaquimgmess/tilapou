@@ -12,7 +12,6 @@ const (
 	aeratorIndex      = 1
 	minRestockKg      = 10
 	minStock          = 100
-	stockedPercent    = 60
 	shortRunwayDays   = 20
 )
 
@@ -67,19 +66,20 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 func underStocked(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
-		if t.Fish == 0 || t.Capacity <= 0 {
-			continue
-		}
-		if int64(t.Fish)*fullPercent >= t.Capacity*stockedPercent {
-			continue
-		}
-		if t.StockAdvice < minStock {
+		if t.Fish == 0 || t.BreakEven <= 0 || int64(t.Fish) >= t.BreakEven {
 			continue
 		}
 
+		missing := t.BreakEven - int64(t.Fish)
+		if t.StockAdvice >= missing {
+			return advice{fmt.Sprintf(
+				"O tanque %d so paga a manutencao com %d peixes e tem %d. Povoe com [s]",
+				t.ID, t.BreakEven, t.Fish), true}, true
+		}
+
 		return advice{fmt.Sprintf(
-			"O tanque %d tem %d dos %d peixes que cabem. O custo fixo e o mesmo cheio ou vazio: povoe com [s]",
-			t.ID, t.Fish, t.Capacity), false}, true
+			"O tanque %d precisa de %d peixes para pagar a manutencao e o caixa so cobre %d. Pegue credito com [g]",
+			t.ID, t.BreakEven, t.StockAdvice), true}, true
 	}
 
 	return advice{}, false

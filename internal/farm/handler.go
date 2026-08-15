@@ -37,6 +37,8 @@ type TankView struct {
 	Sick          bool          `json:"sick"`
 	Capacity      int64         `json:"capacity_fish"`
 	StockAdvice   int64         `json:"stock_advice_fish"`
+	BreakEven     int64         `json:"break_even_fish"`
+	CostPerFish   int64         `json:"stock_cost_per_fish_cents"`
 	ServedFor     int64         `json:"served_for_ticks"`
 	Upgrades      []UpgradeView `json:"upgrades"`
 }
@@ -184,6 +186,8 @@ var tankKindNames = map[sim.TankKind]string{
 }
 
 func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.Balance) {
+	p := newPlans()
+
 	huma.Register(api, huma.Operation{
 		OperationID: "get-farm",
 		Method:      http.MethodGet,
@@ -196,7 +200,7 @@ func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.B
 			return nil, toHTTPError(err)
 		}
 
-		return &snapshotOutput{Body: viewOf(snap, b)}, nil
+		return &snapshotOutput{Body: viewOf(snap, b, p)}, nil
 	})
 
 	huma.Register(api, huma.Operation{
@@ -217,7 +221,7 @@ func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.B
 			return nil, toHTTPError(err)
 		}
 
-		return &snapshotOutput{Body: viewOf(snap, b)}, nil
+		return &snapshotOutput{Body: viewOf(snap, b, p)}, nil
 	})
 }
 
@@ -270,7 +274,7 @@ func needsTank(kind sim.ActionKind) bool {
 	return false
 }
 
-func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
+func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 	state := &snap.Farm.State
 	market := sim.MarketAt(b, state.Tick)
 
@@ -321,6 +325,8 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 
 	for i := range state.TankCount {
 		tank := &state.Tanks[i]
+		fish, cost := state.StockAdvice(b, tank.ID)
+		advice, perFish := int64(fish), int64(cost)
 		tv := TankView{
 			ID:          uint32(tank.ID),
 			Kind:        tankKindNames[tank.Kind],
@@ -329,7 +335,9 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 			OxygenUgL:   int32(tank.Oxygen),
 			Aerating:    tank.Aerating,
 			Capacity:    tank.Capacity(b),
-			StockAdvice: int64(state.StockAdvice(b, tank.ID)),
+			StockAdvice: advice,
+			CostPerFish: perFish,
+			BreakEven:   int64(p.at(b, tank.Kind, state.Tick, state.Zone).BreakEven),
 			ServedFor:   int64(tank.ServedUntil - state.Tick),
 			Upgrades:    upgradesOf(tank, b),
 		}

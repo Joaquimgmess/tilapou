@@ -75,7 +75,7 @@ func TestProgression(t *testing.T) {
 
 	d.press("f")
 	d.press("h")
-	out.WriteString(d.line("servi e despesquei o lote herdado"))
+	out.WriteString(d.line("vendi o lote herdado"))
 
 	d.press("1")
 	d.press("2")
@@ -87,18 +87,18 @@ func TestProgression(t *testing.T) {
 	}
 	d.press("z")
 	d.press("x")
-	out.WriteString(d.line("peguei credito no galpao"))
+	out.WriteString(d.line("peguei o credito que a tela sugeriu"))
 
 	d.press("s")
-	out.WriteString(d.line("povoei o viveiro"))
+	out.WriteString(d.line("povoei ate o equilibrio"))
 
-	for _, days := range []int{30, 60, 60, 60} {
+	for _, days := range []int{60, 60, 60} {
 		jumpDays(t, days)
 		out.WriteString(d.line(fmt.Sprintf("+%d dias", days)))
 	}
 
 	d.press("h")
-	out.WriteString(d.line("despesquei o ciclo"))
+	out.WriteString(d.line("despesquei"))
 
 	d.press("g")
 	for range 3 {
@@ -108,11 +108,8 @@ func TestProgression(t *testing.T) {
 	d.press("x")
 	out.WriteString(d.line("quitei a divida"))
 
-	d.press("3")
-	out.WriteString(d.line("comprei o peao"))
-
 	d.press("s")
-	out.WriteString(d.line("povoei de novo"))
+	out.WriteString(d.line("povoei o ciclo seguinte"))
 
 	fmt.Fprint(os.Stdout, "\n"+out.String())
 }
