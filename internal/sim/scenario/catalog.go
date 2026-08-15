@@ -9,6 +9,7 @@ func All() []Scenario {
 		densidadeContraOxigenio(),
 		aeradorSalva(),
 		tanqueRede(),
+		comedouroAutomatico(),
 		acaoRejeitadaNoCatchUp(),
 	}
 }
@@ -97,6 +98,22 @@ func tanqueRede() Scenario {
 		Cash: 500_000,
 		Setup: func(s *sim.State) {
 			stock(s, sim.TankNetCage, 6_000, 900, 300*sim.MicrogramsPerGram, 2_000)
+		},
+	}
+}
+
+func comedouroAutomatico() Scenario {
+	return Scenario{
+		Name: "comedouro-automatico",
+		Zone: -180,
+		Seed: 6,
+		Days: 45,
+		Cash: 5_000_000,
+		Setup: func(s *sim.State) {
+			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 20)
+		},
+		Actions: []sim.Action{
+			{ID: 1, Kind: sim.ActionBuyUpgrade, At: 1, Auto: sim.AutoFeeder},
 		},
 	}
 }

@@ -16,6 +16,8 @@ const (
 	EventFeedBought
 	EventActionRejected
 	EventSaturated
+	EventUpgradeBought
+	EventPrestiged
 	eventKindCount
 )
 
@@ -31,6 +33,8 @@ var eventKindNames = [eventKindCount]string{
 	EventFeedBought:       "feed_bought",
 	EventActionRejected:   "action_rejected",
 	EventSaturated:        "saturated",
+	EventUpgradeBought:    "upgrade_bought",
+	EventPrestiged:        "prestiged",
 }
 
 func (k EventKind) String() string {

@@ -14,6 +14,10 @@ func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReaso
 		return applyAerate(s, a)
 	case ActionHarvest:
 		return applyHarvest(s, b, a, at, sink)
+	case ActionBuyUpgrade:
+		return applyBuyUpgrade(s, b, a, at, sink)
+	case ActionPrestige:
+		return prestige(s, b, at, sink)
 	case ActionUnknown, actionKindCount:
 	}
 
@@ -149,29 +153,33 @@ func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reje
 		if a.Amount > 0 && a.Amount < int64(count) {
 			count = FishCount(a.Amount)
 		}
-
-		mass := Micrograms(mulDivFloor(int64(batch.MeanMass), int64(count), 1))
-		revenue := Coins(mulDivFloor(int64(b.Economy.FishPricePerKg), int64(mass), int64(MicrogramsPerKilogram)))
-
-		batch.Fish -= count
-		s.Cash = Coins(addSat(int64(s.Cash), int64(revenue)))
-		s.LifetimeEarned = Coins(addSat(int64(s.LifetimeEarned), int64(revenue)))
-
-		sink.emit(Event{
-			Kind:  EventHarvest,
-			From:  at,
-			To:    at,
-			Tank:  t.ID,
-			Batch: batch.ID,
-			Fish:  count,
-			Mass:  mass,
-			Cash:  revenue,
-		})
+		sell(s, b, t, batch, count, at, sink)
 
 		return RejectNone
 	}
 
 	return RejectNoSuchBatch
+}
+
+func applyBuyUpgrade(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
+	if a.Auto >= autoKindCount {
+		return RejectUnknownKind
+	}
+	if s.Owns(a.Auto) {
+		return RejectAlreadyOwned
+	}
+
+	price := b.Automation[a.Auto].Cost
+	if s.Cash < price {
+		return RejectNotEnoughCash
+	}
+
+	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
+	s.grant(a.Auto)
+
+	sink.emit(Event{Kind: EventUpgradeBought, From: at, To: at, Cash: price, Fish: FishCount(a.Auto)})
+
+	return RejectNone
 }
 
 func ladderCost(base Coins, owned int64, factor PPM) Coins {

@@ -72,10 +72,18 @@ type EconomyBalance struct {
 	AeratorCostTick Coins
 }
 
+type AutomationSpec struct {
+	Cost Coins
+}
+
 type ProgressionBalance struct {
 	CostFactorPPM    PPM
 	PrestigeDivisor  int64
 	PrestigeBonusPPM PPM
+	ContractBonusPPM PPM
+	RestartCash      Coins
+	RestartFish      FishCount
+	RestartFeed      Micrograms
 }
 
 type Balance struct {
@@ -87,6 +95,7 @@ type Balance struct {
 	Economy     EconomyBalance
 	Progression ProgressionBalance
 	Tanks       [tankKindCount]TankSpec
+	Automation  [autoKindCount]AutomationSpec
 }
 
 func (b Balance) Validate() error {
@@ -105,6 +114,11 @@ func (b Balance) Validate() error {
 	for kind := range tankKindCount {
 		if b.Tanks[kind].Litres <= 0 || b.Tanks[kind].MaxDensityPerM3 <= 0 {
 			return ErrBalanceTankSlotEmpty
+		}
+	}
+	for kind := range autoKindCount {
+		if b.Automation[kind].Cost <= 0 {
+			return ErrBalanceAutomationSlotEmpty
 		}
 	}
 

@@ -110,6 +110,8 @@ linters:
         - comando
         - cenario
         - racao
+        - automatico
+        - automatica
     nakedret:
       max-func-lines: 0
     revive:

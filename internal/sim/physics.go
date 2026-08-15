@@ -1,5 +1,7 @@
 package sim
 
+const technicianBonusPPM = 100_000
+
 const (
 	rootScale    = 1000
 	rootCubeUnit = rootScale * rootScale * rootScale
@@ -19,6 +21,8 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 
 	for i := range s.TankCount {
 		t := &s.Tanks[i]
+		t.Oxygen = oxygenAt(b, t, tick, s.Zone)
+		automate(s, b, t, tick, sink)
 		oxygen := oxygenAt(b, t, tick, s.Zone)
 		t.Oxygen = oxygen
 
@@ -31,7 +35,7 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 			}
 
 			eaten, wanted := feedBatch(t, batch, b, tempMult, feeding)
-			growBatch(batch, b, tempMult, eaten, wanted)
+			growBatch(batch, b, tempMult, eaten, wanted, s.prestigeBonus(b), s.Owns(AutoTechnician))
 			killByHypoxia(t, batch, b, oxygen, tick, s.Seed)
 			killByStarvation(t, batch, b, eaten)
 		}
@@ -72,7 +76,7 @@ func feedBatch(t *Tank, batch *Batch, b *Balance, tempMult PPM, feeding bool) (e
 	return Micrograms(eaten), Micrograms(wanted)
 }
 
-func growBatch(batch *Batch, b *Balance, tempMult PPM, eaten, wanted Micrograms) {
+func growBatch(batch *Batch, b *Balance, tempMult PPM, eaten, wanted Micrograms, bonus PPM, technician bool) {
 	if eaten <= 0 || wanted <= 0 || tempMult <= 0 {
 		return
 	}
@@ -89,6 +93,11 @@ func growBatch(batch *Batch, b *Balance, tempMult PPM, eaten, wanted Micrograms)
 		return
 	}
 	dailyRoot = mulDivFloor(dailyRoot, headroom, int64(UnitPPM))
+
+	dailyRoot = mulDivFloor(dailyRoot, int64(bonus), int64(UnitPPM))
+	if technician {
+		dailyRoot = mulDivFloor(dailyRoot, int64(UnitPPM)+technicianBonusPPM, int64(UnitPPM))
+	}
 
 	adequacy := mulDivFloor(int64(eaten), int64(UnitPPM), int64(wanted))
 	dailyRoot = mulDivFloor(dailyRoot, min(adequacy, int64(UnitPPM)), int64(UnitPPM))

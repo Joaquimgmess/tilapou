@@ -31,6 +31,7 @@ type file struct {
 	Tanques      []tanqueRow        `toml:"tanques"`
 	Economia     economiaSection    `toml:"economia"`
 	Progressao   progressaoSection  `toml:"progressao"`
+	Automacao    []automacaoRow     `toml:"automacao"`
 }
 
 type tempoSection struct {
@@ -102,6 +103,24 @@ type progressaoSection struct {
 	MarcosX2                    []int64 `toml:"marcos_x2"`
 	PrestigioDivisor            int64   `toml:"prestigio_divisor"`
 	PrestigioBonusPorUnidadePct float64 `toml:"prestigio_bonus_por_unidade_pct"`
+	ContratoBonusPct            float64 `toml:"contrato_bonus_pct"`
+	ReinicioCaixaTC             int64   `toml:"reinicio_caixa_tc"`
+	ReinicioPeixes              int32   `toml:"reinicio_peixes"`
+	ReinicioRacaoKg             int64   `toml:"reinicio_racao_kg"`
+}
+
+type automacaoRow struct {
+	Nome    string `toml:"nome"`
+	CustoTC int64  `toml:"custo_tc"`
+	Remove  string `toml:"remove"`
+}
+
+var autoKindByName = map[string]sim.AutoKind{
+	"comedouro": sim.AutoFeeder,
+	"aerador":   sim.AutoAerator,
+	"peao":      sim.AutoHarvester,
+	"tecnico":   sim.AutoTechnician,
+	"contrato":  sim.AutoContract,
 }
 
 var tankKindByName = map[string]sim.TankKind{
@@ -185,6 +204,10 @@ func convert(f file) (sim.Balance, error) {
 			CostFactorPPM:    ppmOf(f.Progressao.FatorCusto),
 			PrestigeDivisor:  f.Progressao.PrestigioDivisor,
 			PrestigeBonusPPM: ppmOf(f.Progressao.PrestigioBonusPorUnidadePct / percentScale),
+			ContractBonusPPM: ppmOf(f.Progressao.ContratoBonusPct / percentScale),
+			RestartCash:      sim.Coins(f.Progressao.ReinicioCaixaTC),
+			RestartFish:      sim.FishCount(f.Progressao.ReinicioPeixes),
+			RestartFeed:      sim.Micrograms(f.Progressao.ReinicioRacaoKg) * sim.MicrogramsPerKilogram,
 		},
 	}
 
@@ -198,6 +221,14 @@ func convert(f file) (sim.Balance, error) {
 			MealsPerDay: row.TratosDia,
 		}
 		b.Ration.Len = int32(i + 1)
+	}
+
+	for _, row := range f.Automacao {
+		kind, ok := autoKindByName[row.Nome]
+		if !ok {
+			return sim.Balance{}, fmt.Errorf("%w: %q", ErrUnknownAutomation, row.Nome)
+		}
+		b.Automation[kind] = sim.AutomationSpec{Cost: sim.Coins(row.CustoTC)}
 	}
 
 	for _, row := range f.Tanques {

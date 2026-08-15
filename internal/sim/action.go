@@ -14,17 +14,21 @@ const (
 	ActionFeed
 	ActionAerate
 	ActionHarvest
+	ActionBuyUpgrade
+	ActionPrestige
 	actionKindCount
 )
 
 var actionKindNames = [actionKindCount]string{
-	ActionUnknown: "unknown",
-	ActionBuyTank: "buy_tank",
-	ActionStock:   "stock",
-	ActionBuyFeed: "buy_feed",
-	ActionFeed:    "feed",
-	ActionAerate:  "aerate",
-	ActionHarvest: "harvest",
+	ActionUnknown:    "unknown",
+	ActionBuyTank:    "buy_tank",
+	ActionStock:      "stock",
+	ActionBuyFeed:    "buy_feed",
+	ActionFeed:       "feed",
+	ActionAerate:     "aerate",
+	ActionHarvest:    "harvest",
+	ActionBuyUpgrade: "buy_upgrade",
+	ActionPrestige:   "prestige",
 }
 
 func (k ActionKind) String() string {
@@ -48,20 +52,24 @@ const (
 	RejectFarmFull
 	RejectBadAmount
 	RejectTooDense
+	RejectAlreadyOwned
+	RejectNotEnoughLifetime
 	rejectReasonCount
 )
 
 var rejectReasonNames = [rejectReasonCount]string{
-	RejectNone:          "none",
-	RejectUnknownKind:   "unknown_kind",
-	RejectNoSuchTank:    "no_such_tank",
-	RejectNoSuchBatch:   "no_such_batch",
-	RejectNotEnoughCash: "not_enough_cash",
-	RejectNotEnoughFeed: "not_enough_feed",
-	RejectTankFull:      "tank_full",
-	RejectFarmFull:      "farm_full",
-	RejectBadAmount:     "bad_amount",
-	RejectTooDense:      "too_dense",
+	RejectNone:              "none",
+	RejectUnknownKind:       "unknown_kind",
+	RejectNoSuchTank:        "no_such_tank",
+	RejectNoSuchBatch:       "no_such_batch",
+	RejectNotEnoughCash:     "not_enough_cash",
+	RejectNotEnoughFeed:     "not_enough_feed",
+	RejectTankFull:          "tank_full",
+	RejectFarmFull:          "farm_full",
+	RejectBadAmount:         "bad_amount",
+	RejectTooDense:          "too_dense",
+	RejectAlreadyOwned:      "already_owned",
+	RejectNotEnoughLifetime: "not_enough_lifetime",
 }
 
 func (r RejectReason) String() string {
@@ -79,6 +87,7 @@ type Action struct {
 	Tank     TankID
 	Batch    BatchID
 	TankKind TankKind
+	Auto     AutoKind
 	Amount   int64
 }
 

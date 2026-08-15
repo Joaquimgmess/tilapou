@@ -24,6 +24,7 @@ type document struct {
 	Cash           int64          `json:"cash"`
 	LifetimeEarned int64          `json:"lifetime_earned"`
 	Prestige       uint32         `json:"prestige"`
+	Upgrades       uint32         `json:"upgrades"`
 	NextTankID     uint32         `json:"next_tank_id"`
 	NextBatchID    uint32         `json:"next_batch_id"`
 	EventSeq       uint64         `json:"event_seq"`
@@ -74,6 +75,7 @@ func Encode(s sim.State) ([]byte, error) {
 		Cash:           int64(s.Cash),
 		LifetimeEarned: int64(s.LifetimeEarned),
 		Prestige:       s.Prestige,
+		Upgrades:       s.Upgrades,
 		NextTankID:     uint32(s.NextTankID),
 		NextBatchID:    uint32(s.NextBatchID),
 		EventSeq:       s.EventSeq,
@@ -142,6 +144,7 @@ func Decode(raw []byte) (sim.State, error) {
 	state.Cash = sim.Coins(doc.Cash)
 	state.LifetimeEarned = sim.Coins(doc.LifetimeEarned)
 	state.Prestige = doc.Prestige
+	state.Upgrades = doc.Upgrades
 	state.NextTankID = sim.TankID(doc.NextTankID)
 	state.NextBatchID = sim.BatchID(doc.NextBatchID)
 	state.EventSeq = doc.EventSeq

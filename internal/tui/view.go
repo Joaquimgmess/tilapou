@@ -63,6 +63,7 @@ func (m Model) render() string {
 	sections := []string{
 		m.renderHeader(),
 		m.renderTanks(),
+		m.renderUpgrades(),
 		m.renderEvents(),
 		m.renderFooter(),
 	}
@@ -136,6 +137,34 @@ func oxygenBar(level int32) string {
 	return okStyle.Render(text)
 }
 
+func (m Model) renderUpgrades() string {
+	if len(m.snapshot.Upgrades) == 0 {
+		return ""
+	}
+
+	parts := make([]string, 0, len(m.snapshot.Upgrades))
+	for i, u := range m.snapshot.Upgrades {
+		label := fmt.Sprintf("[%d] %s %s", i+1, u.Kind, coins(u.CostCents))
+		if u.Owned {
+			parts = append(parts, okStyle.Render("["+strconv.Itoa(i+1)+"] "+u.Kind+" ok"))
+			continue
+		}
+		if m.snapshot.CashCents >= u.CostCents {
+			parts = append(parts, valueStyle.Render(label))
+			continue
+		}
+		parts = append(parts, dimStyle.Render(label))
+	}
+
+	line := labelStyle.Render("automacao  ") + strings.Join(parts, dimStyle.Render("  "))
+	if m.snapshot.PrestigeNow > m.snapshot.Prestige {
+		line += "\n" + okStyle.Render(fmt.Sprintf("[p] tilapar agora rende %d matrizes (voce tem %d)",
+			m.snapshot.PrestigeNow, m.snapshot.Prestige))
+	}
+
+	return line
+}
+
 func (m Model) renderEvents() string {
 	if len(m.snapshot.Events) == 0 {
 		return dimStyle.Render("sem eventos ainda")
@@ -170,6 +199,10 @@ func describe(e client.Event) string {
 		return fmt.Sprintf("povoou %d alevinos por %s", e.Fish, coins(e.CashTC))
 	case "tank_bought":
 		return "comprou um tanque por " + coins(e.CashTC)
+	case "upgrade_bought":
+		return "automacao comprada por " + coins(e.CashTC)
+	case "prestiged":
+		return fmt.Sprintf("voce tilapou: +%d matrizes", e.Fish)
 	case "action_rejected":
 		return "acao recusada: " + e.Reason
 	default:
@@ -178,7 +211,7 @@ func describe(e client.Event) string {
 }
 
 func (m Model) renderFooter() string {
-	keys := dimStyle.Render("[f] racao  [a] aerador  [h] despescar  [s] povoar  [t] tanque  [r] atualizar  [q] sair")
+	keys := dimStyle.Render("[f] racao  [a] aerador  [h] despescar  [s] povoar  [t] tanque  [1-5] automacao  [p] tilapar  [q] sair")
 	if m.status == "" {
 		return keys
 	}

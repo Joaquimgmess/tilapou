@@ -40,21 +40,29 @@ type Event struct {
 	Reason string `json:"reason"`
 }
 
+type Upgrade struct {
+	Kind      string `json:"kind"`
+	Owned     bool   `json:"owned"`
+	CostCents int64  `json:"cost_cents"`
+}
+
 type Snapshot struct {
-	FarmID      string  `json:"farm_id"`
-	Name        string  `json:"name"`
-	Tick        int64   `json:"tick"`
-	Hour        int32   `json:"hour"`
-	TempMilliC  int32   `json:"temp_milli_c"`
-	CashCents   int64   `json:"cash_cents"`
-	LifetimeTC  int64   `json:"lifetime_cents"`
-	BiomassG    int64   `json:"biomass_grams"`
-	Fish        int32   `json:"fish"`
-	Prestige    uint32  `json:"prestige"`
-	Tanks       []Tank  `json:"tanks"`
-	Events      []Event `json:"events"`
-	LastApplied bool    `json:"last_action_applied"`
-	LastReason  string  `json:"last_action_reason"`
+	FarmID      string    `json:"farm_id"`
+	Name        string    `json:"name"`
+	Tick        int64     `json:"tick"`
+	Hour        int32     `json:"hour"`
+	TempMilliC  int32     `json:"temp_milli_c"`
+	CashCents   int64     `json:"cash_cents"`
+	LifetimeTC  int64     `json:"lifetime_cents"`
+	BiomassG    int64     `json:"biomass_grams"`
+	Fish        int32     `json:"fish"`
+	Prestige    uint32    `json:"prestige"`
+	Tanks       []Tank    `json:"tanks"`
+	Upgrades    []Upgrade `json:"upgrades"`
+	PrestigeNow uint32    `json:"prestige_available"`
+	Events      []Event   `json:"events"`
+	LastApplied bool      `json:"last_action_applied"`
+	LastReason  string    `json:"last_action_reason"`
 }
 
 type Action struct {
@@ -63,6 +71,7 @@ type Action struct {
 	Tank     uint32 `json:"tank_id,omitempty"`
 	Batch    uint32 `json:"batch_id,omitempty"`
 	TankKind string `json:"tank_kind,omitempty"`
+	Auto     string `json:"auto,omitempty"`
 	Amount   int64  `json:"amount,omitempty"`
 }
 

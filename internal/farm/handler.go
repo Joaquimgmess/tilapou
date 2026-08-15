@@ -38,21 +38,29 @@ type EventView struct {
 	Reason string `json:"reason"`
 }
 
+type UpgradeView struct {
+	Kind      string `json:"kind"`
+	Owned     bool   `json:"owned"`
+	CostCents int64  `json:"cost_cents"`
+}
+
 type SnapshotView struct {
-	FarmID      string      `json:"farm_id"`
-	Name        string      `json:"name"`
-	Tick        int64       `json:"tick"`
-	Hour        int32       `json:"hour"`
-	TempMilliC  int32       `json:"temp_milli_c"`
-	CashCents   int64       `json:"cash_cents"`
-	LifetimeTC  int64       `json:"lifetime_cents"`
-	BiomassG    int64       `json:"biomass_grams"`
-	Fish        int32       `json:"fish"`
-	Prestige    uint32      `json:"prestige"`
-	Tanks       []TankView  `json:"tanks"`
-	Events      []EventView `json:"events"`
-	LastApplied bool        `json:"last_action_applied"`
-	LastReason  string      `json:"last_action_reason"`
+	FarmID      string        `json:"farm_id"`
+	Name        string        `json:"name"`
+	Tick        int64         `json:"tick"`
+	Hour        int32         `json:"hour"`
+	TempMilliC  int32         `json:"temp_milli_c"`
+	CashCents   int64         `json:"cash_cents"`
+	LifetimeTC  int64         `json:"lifetime_cents"`
+	BiomassG    int64         `json:"biomass_grams"`
+	Fish        int32         `json:"fish"`
+	Prestige    uint32        `json:"prestige"`
+	Tanks       []TankView    `json:"tanks"`
+	Upgrades    []UpgradeView `json:"upgrades"`
+	PrestigeNow uint32        `json:"prestige_available"`
+	Events      []EventView   `json:"events"`
+	LastApplied bool          `json:"last_action_applied"`
+	LastReason  string        `json:"last_action_reason"`
 }
 
 type snapshotOutput struct {
@@ -61,10 +69,11 @@ type snapshotOutput struct {
 
 type actionBody struct {
 	Key      uint64 `doc:"Chave de idempotencia da acao"   json:"key"`
-	Kind     string `doc:"Acao a executar"                 enum:"buy_tank,stock,buy_feed,aerate,harvest"              json:"kind"`
+	Kind     string `doc:"Acao a executar"                 enum:"buy_tank,stock,buy_feed,aerate,harvest,buy_upgrade,prestige" json:"kind"`
 	Tank     uint32 `doc:"Tanque alvo"                     json:"tank_id,omitempty"`
 	Batch    uint32 `doc:"Lote alvo"                       json:"batch_id,omitempty"`
-	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao" json:"tank_kind,omitempty"`
+	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"         json:"tank_kind,omitempty"`
+	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                     json:"auto,omitempty"`
 	Amount   int64  `doc:"Quantidade, quando a acao pedir" json:"amount,omitempty"`
 }
 
@@ -73,11 +82,21 @@ type actionInput struct {
 }
 
 var actionKindByName = map[string]sim.ActionKind{
-	"buy_tank": sim.ActionBuyTank,
-	"stock":    sim.ActionStock,
-	"buy_feed": sim.ActionBuyFeed,
-	"aerate":   sim.ActionAerate,
-	"harvest":  sim.ActionHarvest,
+	"buy_tank":    sim.ActionBuyTank,
+	"stock":       sim.ActionStock,
+	"buy_feed":    sim.ActionBuyFeed,
+	"aerate":      sim.ActionAerate,
+	"harvest":     sim.ActionHarvest,
+	"buy_upgrade": sim.ActionBuyUpgrade,
+	"prestige":    sim.ActionPrestige,
+}
+
+var autoKindByName = map[string]sim.AutoKind{
+	"comedouro": sim.AutoFeeder,
+	"aerador":   sim.AutoAerator,
+	"peao":      sim.AutoHarvester,
+	"tecnico":   sim.AutoTechnician,
+	"contrato":  sim.AutoContract,
 }
 
 var tankKindByName = map[string]sim.TankKind{
@@ -146,6 +165,14 @@ func actionOf(body actionBody) (sim.Action, error) {
 		Amount: body.Amount,
 	}
 
+	if kind == sim.ActionBuyUpgrade {
+		auto, ok := autoKindByName[body.Auto]
+		if !ok {
+			return sim.Action{}, ErrUnknownAction
+		}
+		action.Auto = auto
+	}
+
 	if kind == sim.ActionBuyTank {
 		tankKind, ok := tankKindByName[body.TankKind]
 		if !ok {
@@ -161,18 +188,20 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 	state := &snap.Farm.State
 
 	view := SnapshotView{
-		FarmID:     snap.Farm.ID.String(),
-		Name:       snap.Farm.Name,
-		Tick:       int64(snap.Projection.Tick),
-		Hour:       snap.Projection.Tick.At(state.Zone).Hour,
-		TempMilliC: int32(snap.Temp),
-		CashCents:  int64(snap.Projection.Cash),
-		LifetimeTC: int64(snap.Projection.Lifetime),
-		BiomassG:   snap.Projection.Biomass.Grams(),
-		Fish:       int32(snap.Projection.Fish),
-		Prestige:   snap.Projection.Prestige,
-		Tanks:      make([]TankView, 0, state.TankCount),
-		Events:     make([]EventView, 0, len(snap.Events)),
+		FarmID:      snap.Farm.ID.String(),
+		Name:        snap.Farm.Name,
+		Tick:        int64(snap.Projection.Tick),
+		Hour:        snap.Projection.Tick.At(state.Zone).Hour,
+		TempMilliC:  int32(snap.Temp),
+		CashCents:   int64(snap.Projection.Cash),
+		LifetimeTC:  int64(snap.Projection.Lifetime),
+		BiomassG:    snap.Projection.Biomass.Grams(),
+		Fish:        int32(snap.Projection.Fish),
+		Prestige:    snap.Projection.Prestige,
+		Tanks:       make([]TankView, 0, state.TankCount),
+		Upgrades:    upgradesOf(state, b),
+		PrestigeNow: sim.PrestigePointsFor(state.LifetimeEarned, b.Progression.PrestigeDivisor),
+		Events:      make([]EventView, 0, len(snap.Events)),
 	}
 
 	if snap.Outcome != nil {
@@ -217,6 +246,27 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 	}
 
 	return view
+}
+
+var upgradeOrder = []sim.AutoKind{
+	sim.AutoFeeder,
+	sim.AutoAerator,
+	sim.AutoHarvester,
+	sim.AutoTechnician,
+	sim.AutoContract,
+}
+
+func upgradesOf(state *sim.State, b *sim.Balance) []UpgradeView {
+	views := make([]UpgradeView, 0, len(upgradeOrder))
+	for _, kind := range upgradeOrder {
+		views = append(views, UpgradeView{
+			Kind:      kind.String(),
+			Owned:     state.Owns(kind),
+			CostCents: int64(b.Automation[kind].Cost),
+		})
+	}
+
+	return views
 }
 
 func toHTTPError(err error) error {

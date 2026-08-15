@@ -99,9 +99,31 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	case "t":
 		return m.act(client.Action{Kind: "buy_tank", TankKind: "viveiro_escavado"}, "comprando viveiro")
+
+	case "p":
+		return m.act(client.Action{Kind: "prestige"}, "tilapando: vendendo tudo e recomecando")
+
+	case "1", "2", "3", "4", "5":
+		return m.buyUpgrade(int(msg.String()[0] - '1'))
 	}
 
 	return m, nil
+}
+
+func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
+	if index < 0 || index >= len(m.snapshot.Upgrades) {
+		return m, nil
+	}
+
+	upgrade := m.snapshot.Upgrades[index]
+	if upgrade.Owned {
+		m.status = upgrade.Kind + " ja esta na fazenda"
+		m.view = ""
+
+		return m, nil
+	}
+
+	return m.act(client.Action{Kind: "buy_upgrade", Auto: upgrade.Kind}, "comprando "+upgrade.Kind)
 }
 
 func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {

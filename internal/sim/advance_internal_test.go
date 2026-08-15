@@ -57,6 +57,10 @@ func testBalance(t *testing.T) *Balance {
 			CostFactorPPM:    1_150_000,
 			PrestigeDivisor:  1_000_000,
 			PrestigeBonusPPM: 50_000,
+			ContractBonusPPM: 100_000,
+			RestartCash:      50_000,
+			RestartFish:      2_000,
+			RestartFeed:      200 * MicrogramsPerKilogram,
 		},
 		Economy: EconomyBalance{
 			FishPricePerKg:  900,
@@ -80,6 +84,14 @@ func testBalance(t *testing.T) *Balance {
 		TankNetCage:       {MaxDensityPerM3: 160, RenewalPPMPerHour: 900_000, BaseCost: 400_000, Litres: 6_000},
 		TankBiofloc:       {MaxDensityPerM3: 80, RenewalPPMPerHour: 200_000, BaseCost: 1_800_000, Litres: 30_000},
 		TankRecirculation: {MaxDensityPerM3: 120, RenewalPPMPerHour: 990_000, BaseCost: 6_000_000, Litres: 20_000},
+	}
+
+	b.Automation = [autoKindCount]AutomationSpec{
+		AutoFeeder:     {Cost: 250_000},
+		AutoAerator:    {Cost: 600_000},
+		AutoHarvester:  {Cost: 2_000_000},
+		AutoTechnician: {Cost: 7_500_000},
+		AutoContract:   {Cost: 25_000_000},
 	}
 
 	if err := b.Validate(); err != nil {

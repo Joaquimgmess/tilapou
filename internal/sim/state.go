@@ -91,6 +91,7 @@ type State struct {
 	Cash           Coins
 	LifetimeEarned Coins
 	Prestige       uint32
+	Upgrades       uint32
 	Tanks          [maxTanks]Tank
 	TankCount      int32
 	NextTankID     TankID
