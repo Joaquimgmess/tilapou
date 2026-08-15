@@ -96,6 +96,11 @@ func (m Model) renderTopBar() string {
 }
 
 func (m Model) renderGoal() string {
+	if m.mode == ModeGameBoy && !m.fitsGameBoy() {
+		return dangerStyle.Render(fmt.Sprintf(
+			"o mapa precisa de %dx%d e o terminal tem %dx%d, entao ficam os numeros",
+			gbCols, gbRows, m.width, m.height))
+	}
 	if m.message != "" {
 		return valueStyle.Render(clipTo(m.message, m.effectiveWidth()))
 	}
@@ -308,11 +313,11 @@ func viability(ratio, viable int64) string {
 
 func (m Model) renderKeys() string {
 	if m.effectiveWidth() < wideWidth {
-		return dimStyle.Render("j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  m mapa  q sair")
+		return dimStyle.Render("j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair")
 	}
 
 	return dimStyle.Render(
-		"j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  m mapa  q sair")
+		"j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  tab mapa  q sair")
 }
 
 func sparkline(values []int64) string {

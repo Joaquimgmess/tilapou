@@ -65,7 +65,7 @@ func tankMenu(s client.Snapshot, t client.Tank) *menu {
 
 	items = append(items, menuItem{
 		label:   "Ver painel de numeros",
-		hint:    "tecla m",
+		hint:    "tecla tab",
 		enabled: true,
 		panel:   true,
 	})

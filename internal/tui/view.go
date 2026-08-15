@@ -52,7 +52,7 @@ func (m Model) render() string {
 
 		return dimStyle.Render("conectando no daemon...\n")
 	}
-	if m.mode == ModeGameBoy {
+	if m.mode == ModeGameBoy && m.fitsGameBoy() {
 		return m.renderGameBoy()
 	}
 

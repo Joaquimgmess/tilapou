@@ -22,6 +22,7 @@ func frameAfter(t *testing.T, msgs ...tea.Msg) (model Model, frame string) {
 	t.Helper()
 
 	m := New(nil)
+	m.mode = ModeDashboard
 	m.width, m.height = 100, 35
 
 	var next tea.Model = m

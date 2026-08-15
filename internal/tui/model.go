@@ -29,8 +29,8 @@ type tickMsg time.Time
 type Mode uint8
 
 const (
-	ModeDashboard Mode = iota
-	ModeGameBoy
+	ModeGameBoy Mode = iota
+	ModeDashboard
 )
 
 type Model struct {
@@ -173,16 +173,8 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 	case "r":
 		return m, m.fetch()
 
-	case "m":
-		m.mode, m.view = m.otherMode(), ""
-
-		return m, nil
-
 	case "tab":
-		if len(m.snapshot.Tanks) > 0 {
-			m.selected = (m.selected + 1) % len(m.snapshot.Tanks)
-		}
-		m.view = ""
+		m.mode, m.view = m.otherMode(), ""
 
 		return m, nil
 
