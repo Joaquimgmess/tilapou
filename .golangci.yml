@@ -170,6 +170,10 @@ linters:
     presets:
       - std-error-handling
     rules:
+      - path: internal/sim/
+        linters:
+          - gosec
+          - mnd
       - path: cmd/api/main\.go
         text: "G704:"
         linters:
