@@ -31,7 +31,7 @@ func stock(state *sim.State, kind sim.TankKind, litres sim.Litres, fish sim.Fish
 		return
 	}
 
-	state.StockTank(id, fish, mass)
+	state.StockTank(id, fish, mass, 0)
 	state.LoadFeed(id, sim.Micrograms(feedKg)*sim.MicrogramsPerKilogram)
 }
 

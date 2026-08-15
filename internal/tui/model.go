@@ -28,8 +28,8 @@ type tickMsg time.Time
 type Mode uint8
 
 const (
-	ModeGameBoy Mode = iota
-	ModeDashboard
+	ModeDashboard Mode = iota
+	ModeGameBoy
 )
 
 type Model struct {
@@ -113,7 +113,21 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	if move, ok := movements[key]; ok {
-		return m.move(move.dx, move.dy, move.facing), nil
+		if m.mode == ModeGameBoy || m.menu != nil {
+			return m.move(move.dx, move.dy, move.facing), nil
+		}
+		if move.dy != 0 {
+			return m.selectDelta(move.dy), nil
+		}
+
+		return m, nil
+	}
+
+	switch key {
+	case "j":
+		return m.selectDelta(1), nil
+	case "k":
+		return m.selectDelta(-1), nil
 	}
 
 	if m.confirming {
@@ -378,6 +392,17 @@ func (m Model) otherMode() Mode {
 	}
 
 	return ModeGameBoy
+}
+
+func (m Model) selectDelta(delta int) Model {
+	if len(m.snapshot.Tanks) == 0 {
+		return m
+	}
+
+	m.selected = (m.selected + delta + len(m.snapshot.Tanks)) % len(m.snapshot.Tanks)
+	m.view = ""
+
+	return m
 }
 
 func (m Model) tank() (client.Tank, bool) {

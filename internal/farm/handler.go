@@ -25,12 +25,19 @@ type TankView struct {
 	Ready        bool   `json:"ready_to_harvest"`
 	BatchID      uint32 `json:"batch_id"`
 
-	PriceKgCents int64         `json:"price_kg_cents"`
-	NextClassG   int64         `json:"next_class_grams"`
-	Sick         bool          `json:"sick"`
-	Capacity     int64         `json:"capacity_fish"`
-	ServedFor    int64         `json:"served_for_ticks"`
-	Upgrades     []UpgradeView `json:"upgrades"`
+	PriceKgCents  int64         `json:"price_kg_cents"`
+	ValueCents    int64         `json:"value_cents"`
+	CostCents     int64         `json:"cost_cents"`
+	MarginCents   int64         `json:"margin_cents"`
+	CostPerKg     int64         `json:"cost_per_kg_cents"`
+	ClassPPM      int64         `json:"class_ppm"`
+	NextClassGain int64         `json:"next_class_gain_ppm"`
+	Decision      DecisionView  `json:"decision"`
+	NextClassG    int64         `json:"next_class_grams"`
+	Sick          bool          `json:"sick"`
+	Capacity      int64         `json:"capacity_fish"`
+	ServedFor     int64         `json:"served_for_ticks"`
+	Upgrades      []UpgradeView `json:"upgrades"`
 }
 
 type EventView struct {
@@ -76,6 +83,28 @@ type CycleView struct {
 	FCRPPM     int64 `json:"fcr_ppm"`
 }
 
+type DecisionView struct {
+	SellNowCents   int64 `json:"sell_now_cents"`
+	SellNowMargin  int64 `json:"sell_now_margin_cents"`
+	HoldToGrams    int64 `json:"hold_to_grams"`
+	HoldDays       int64 `json:"hold_days"`
+	HoldCents      int64 `json:"hold_cents"`
+	HoldMargin     int64 `json:"hold_margin_cents"`
+	HoldFeedCents  int64 `json:"hold_feed_cents"`
+	HoldReached    bool  `json:"hold_reached"`
+	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
+	GainPerDayMg   int64 `json:"gain_per_day_mg"`
+	FeedPerDayG    int64 `json:"feed_per_day_grams"`
+	FeedCostPerDay int64 `json:"feed_cost_per_day_cents"`
+	DaysOfFeed     int64 `json:"days_of_feed"`
+}
+
+type SeriesView struct {
+	FishKgCents []int64 `json:"fish_kg_cents"`
+	FeedKgCents []int64 `json:"feed_kg_cents"`
+	StepTicks   int64   `json:"step_ticks"`
+}
+
 type SnapshotView struct {
 	FarmID      string       `json:"farm_id"`
 	Name        string       `json:"name"`
@@ -92,6 +121,9 @@ type SnapshotView struct {
 	Prices      PriceView    `json:"prices"`
 	Debt        int64        `json:"debt_cents"`
 	LastCycle   CycleView    `json:"last_cycle"`
+	Series      SeriesView   `json:"series"`
+	InterestDay int64        `json:"interest_per_day_cents"`
+	RunwayDays  int64        `json:"runway_days"`
 	Events      []EventView  `json:"events"`
 	LastOutcome *OutcomeView `json:"last_outcome,omitempty"`
 }
@@ -254,6 +286,9 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 		Prestige:    snap.Projection.Prestige,
 		Tanks:       make([]TankView, 0, state.TankCount),
 		PrestigeNow: sim.PrestigePointsFor(state.LifetimeEarned, b.Progression.PrestigeDivisor),
+		Series:      seriesOf(state, b),
+		InterestDay: int64(state.Debt) * int64(b.Credit.DailyRatePPM) / ppmUnit,
+		RunwayDays:  runwayDays(state, b),
 		Prices: PriceView{
 			FeedKgCents:     int64(market.FeedKg),
 			FingerlingCents: int64(b.Economy.FingerlingPrice),
@@ -300,13 +335,7 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 			tv.DensityMilli = int64(tank.Biomass()) / (litresPerCubicMetre * int64(tank.Litres))
 		}
 		if tank.BatchCount > 0 {
-			batch := &tank.Batches[0]
-			tv.MeanGrams = batch.MeanMass.Grams()
-			tv.BatchID = uint32(batch.ID)
-			tv.Ready = batch.MeanMass >= b.Growth.HarvestMass
-			tv.PriceKgCents = int64(b.PriceFor(batch.MeanMass, state.Tick))
-			tv.NextClassG = nextClassGrams(b, batch.MeanMass)
-			tv.Sick = batch.Sick > 0
+			fillBatch(&tv, state, b, tank, &tank.Batches[0])
 		}
 		view.Tanks = append(view.Tanks, tv)
 	}
@@ -328,6 +357,63 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 	return view
 }
 
+func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch) {
+	tv.MeanGrams = batch.MeanMass.Grams()
+	tv.BatchID = uint32(batch.ID)
+	tv.Ready = batch.MeanMass >= b.Growth.HarvestMass
+	tv.PriceKgCents = int64(b.PriceFor(batch.MeanMass, state.Tick))
+	tv.NextClassG = nextClassGrams(b, batch.MeanMass)
+	tv.Sick = batch.Sick > 0
+	tv.ClassPPM = int64(b.ClassPPM(batch.MeanMass))
+	tv.CostCents = int64(batch.Cost)
+
+	kilos := int64(batch.Biomass()) / int64(sim.MicrogramsPerKilogram)
+	tv.ValueCents = tv.PriceKgCents * kilos
+	tv.MarginCents = tv.ValueCents - tv.CostCents
+	if kilos > 0 {
+		tv.CostPerKg = tv.CostCents / kilos
+	}
+
+	tv.Decision = decisionFor(state, b, tank, batch, tv)
+}
+
+func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, tv *TankView) DecisionView {
+	view := DecisionView{
+		SellNowCents:   tv.ValueCents,
+		SellNowMargin:  tv.MarginCents,
+		BreakEvenPerKg: tv.CostPerKg,
+	}
+
+	feedKg := int64(tank.FeedStock) / int64(sim.MicrogramsPerKilogram)
+
+	ahead := state.Forecast(b, tank.ID, batch.ID, batch.MeanMass+sim.MicrogramsPerGram)
+	if ahead.Days > 0 {
+		view.GainPerDayMg = int64(ahead.MeanMass-batch.MeanMass) / ahead.Days / microsPerMilli
+		view.FeedCostPerDay = int64(ahead.FeedCost) / ahead.Days
+		if daily := int64(ahead.FeedCost) / ahead.Days; daily > 0 && b.Market.FeedBasePerKg > 0 {
+			view.FeedPerDayG = daily * gramsPerKilo / int64(sim.MarketAt(b, state.Tick).FeedKg)
+		}
+	}
+	if view.FeedPerDayG > 0 {
+		view.DaysOfFeed = feedKg * gramsPerKilo / view.FeedPerDayG
+	}
+
+	target, _, ok := b.NextClass(batch.MeanMass)
+	if !ok {
+		return view
+	}
+
+	hold := state.Forecast(b, tank.ID, batch.ID, target)
+	view.HoldToGrams = target.Grams()
+	view.HoldDays = hold.Days
+	view.HoldCents = int64(hold.Value)
+	view.HoldMargin = int64(hold.Margin)
+	view.HoldFeedCents = int64(hold.FeedCost)
+	view.HoldReached = hold.Reached
+
+	return view
+}
+
 func nextClassGrams(b *sim.Balance, mass sim.Micrograms) int64 {
 	for i := range b.Market.ClassCount {
 		class := b.Market.Classes[i]
@@ -337,6 +423,43 @@ func nextClassGrams(b *sim.Balance, mass sim.Micrograms) int64 {
 	}
 
 	return 0
+}
+
+func seriesOf(state *sim.State, b *sim.Balance) SeriesView {
+	fish, feed := state.Series(b, seriesPoints, sim.TicksPerDay)
+
+	view := SeriesView{
+		FishKgCents: make([]int64, 0, len(fish)),
+		FeedKgCents: make([]int64, 0, len(feed)),
+		StepTicks:   int64(sim.TicksPerDay),
+	}
+	for i := range fish {
+		view.FishKgCents = append(view.FishKgCents, int64(fish[i]))
+		view.FeedKgCents = append(view.FeedKgCents, int64(feed[i]))
+	}
+
+	return view
+}
+
+const (
+	seriesPoints   = 21
+	microsPerMilli = 1_000
+	gramsPerKilo   = 1_000
+	ppmUnit        = 1_000_000
+)
+
+func runwayDays(state *sim.State, b *sim.Balance) int64 {
+	daily := int64(state.Debt) * int64(b.Credit.DailyRatePPM) / ppmUnit
+
+	for i := range state.TankCount {
+		tank := &state.Tanks[i]
+		daily += int64(b.Tanks[tank.Kind].UpkeepPerDay)
+	}
+	if daily <= 0 {
+		return -1
+	}
+
+	return int64(state.Cash) / daily
 }
 
 var upgradeOrder = []sim.AutoKind{

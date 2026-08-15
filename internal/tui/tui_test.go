@@ -88,7 +88,9 @@ func TestGameBoyScreenShowsTheFarm(t *testing.T) {
 	tm := teatest.NewTestModel(t, tui.New(client.New(server.URL, time.Second)),
 		teatest.WithInitialTermSize(120, 60))
 
-	waitForAll(t, tm, "TILAPOU", "URGENTE", "TANQUE 1", "306 g")
+	tm.Send(tea.KeyPressMsg{Code: 'm', Text: "m"})
+
+	waitForAll(t, tm, "TANQUE 1", "306 g")
 }
 
 func TestInteractOpensTheTankMenu(t *testing.T) {
@@ -102,6 +104,7 @@ func TestInteractOpensTheTankMenu(t *testing.T) {
 		return bytes.Contains(b, []byte("TILAPOU"))
 	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
 
+	tm.Send(tea.KeyPressMsg{Code: 'm', Text: "m"})
 	for range 3 {
 		tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
 	}
@@ -110,20 +113,14 @@ func TestInteractOpensTheTankMenu(t *testing.T) {
 	waitForAll(t, tm, "Servir o trato", "Instalar comedouro", "faltam")
 }
 
-func TestDashboardShowsTheNumbers(t *testing.T) {
+func TestDashboardIsTheDefaultScreen(t *testing.T) {
 	t.Parallel()
 
 	server := fakeDaemon(t, sampleSnapshot())
 	tm := teatest.NewTestModel(t, tui.New(client.New(server.URL, time.Second)),
 		teatest.WithInitialTermSize(120, 60))
 
-	teatest.WaitFor(t, tm.Output(), func(b []byte) bool {
-		return bytes.Contains(b, []byte("TILAPOU"))
-	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
-
-	tm.Send(tea.KeyPressMsg{Code: 'm', Text: "m"})
-
-	waitForAll(t, tm, "biomassa", "612 kg", "306 g", "automacao do tanque")
+	waitForAll(t, tm, "DECISAO", "vender agora", "MERCADO")
 }
 
 func TestGameBoyWarnsAboutSuffocation(t *testing.T) {
@@ -137,9 +134,10 @@ func TestGameBoyWarnsAboutSuffocation(t *testing.T) {
 		return bytes.Contains(b, []byte("TILAPOU"))
 	}, teatest.WithDuration(5*time.Second), teatest.WithCheckInterval(20*time.Millisecond))
 
-	tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
-	tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
-	tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
+	tm.Send(tea.KeyPressMsg{Code: 'm', Text: "m"})
+	for range 3 {
+		tm.Send(tea.KeyPressMsg{Code: tea.KeyUp})
+	}
 
 	waitForAll(t, tm, "sufocando")
 }
