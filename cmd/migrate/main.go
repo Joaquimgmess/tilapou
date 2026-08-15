@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -14,13 +15,16 @@ import (
 )
 
 func main() {
-	if err := run(); err != nil {
+	status := flag.Bool("status", false, "list pending migrations instead of applying them")
+	flag.Parse()
+
+	if err := run(*status); err != nil {
 		slog.Error("migrate failed", slog.Any("error", err))
 		os.Exit(1)
 	}
 }
 
-func run() error {
+func run(statusOnly bool) error {
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -38,5 +42,17 @@ func run() error {
 	}
 	defer pool.Close()
 
-	return migrations.Apply(logging.WithLogger(ctx, logger), pool)
+	ctx = logging.WithLogger(ctx, logger)
+
+	if statusOnly {
+		pending, err := migrations.Pending(ctx, pool)
+		if err != nil {
+			return err
+		}
+		logger.InfoContext(ctx, "pending migrations", slog.Any("versions", pending))
+
+		return nil
+	}
+
+	return migrations.Apply(ctx, pool)
 }

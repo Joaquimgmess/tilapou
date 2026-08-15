@@ -3,14 +3,13 @@ package migrations
 import (
 	"context"
 	"embed"
-	"errors"
 	"fmt"
 	"io/fs"
 	"log/slog"
-	"slices"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
+	"github.com/pressly/goose/v3"
 
 	"github.com/Joaquimgmess/catalog/internal/platform/logging"
 )
@@ -18,84 +17,65 @@ import (
 //go:embed sql/*.sql
 var files embed.FS
 
-const createTable = `
-	CREATE TABLE IF NOT EXISTS schema_migrations (
-		version     TEXT PRIMARY KEY,
-		applied_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-	)`
-
 func Apply(ctx context.Context, pool *pgxpool.Pool) error {
-	if _, err := pool.Exec(ctx, createTable); err != nil {
-		return fmt.Errorf("creating schema_migrations: %w", err)
-	}
-
-	applied, err := appliedVersions(ctx, pool)
+	provider, err := newProvider(ctx, pool)
 	if err != nil {
 		return err
 	}
 
-	pending, err := fs.Glob(files, "sql/*.sql")
+	results, err := provider.Up(ctx)
 	if err != nil {
-		return fmt.Errorf("listing migrations: %w", err)
+		return fmt.Errorf("applying migrations: %w", err)
 	}
-	slices.Sort(pending)
 
 	logger := logging.FromContext(ctx)
-	for _, name := range pending {
-		if slices.Contains(applied, name) {
-			continue
-		}
-		if err := applyOne(ctx, pool, name); err != nil {
-			return err
-		}
-		logger.InfoContext(ctx, "migration applied", slog.String("version", name))
+	for _, result := range results {
+		logger.InfoContext(ctx, "migration applied",
+			slog.Int64("version", result.Source.Version),
+			slog.String("source", result.Source.Path),
+			slog.Duration("duration", result.Duration),
+		)
 	}
 
 	return nil
 }
 
-func appliedVersions(ctx context.Context, pool *pgxpool.Pool) ([]string, error) {
-	rows, err := pool.Query(ctx, `SELECT version FROM schema_migrations`)
+func Pending(ctx context.Context, pool *pgxpool.Pool) ([]int64, error) {
+	provider, err := newProvider(ctx, pool)
 	if err != nil {
-		return nil, fmt.Errorf("reading schema_migrations: %w", err)
+		return nil, err
 	}
 
-	versions, err := pgx.CollectRows(rows, pgx.RowTo[string])
+	statuses, err := provider.Status(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("collecting schema_migrations: %w", err)
+		return nil, fmt.Errorf("reading migration status: %w", err)
 	}
 
-	return versions, nil
+	var pending []int64
+	for _, status := range statuses {
+		if status.State == goose.StatePending {
+			pending = append(pending, status.Source.Version)
+		}
+	}
+
+	return pending, nil
 }
 
-func applyOne(ctx context.Context, pool *pgxpool.Pool, name string) error {
-	statements, err := files.ReadFile(name)
+func newProvider(ctx context.Context, pool *pgxpool.Pool) (*goose.Provider, error) {
+	sqlFS, err := fs.Sub(files, "sql")
 	if err != nil {
-		return fmt.Errorf("reading %s: %w", name, err)
+		return nil, fmt.Errorf("opening migrations directory: %w", err)
 	}
 
-	tx, err := pool.Begin(ctx)
+	provider, err := goose.NewProvider(
+		goose.DialectPostgres,
+		stdlib.OpenDBFromPool(pool),
+		sqlFS,
+		goose.WithSlog(logging.FromContext(ctx)),
+	)
 	if err != nil {
-		return fmt.Errorf("begin %s: %w", name, err)
-	}
-	defer func() {
-		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-			logging.FromContext(ctx).ErrorContext(ctx, "rolling back migration",
-				slog.String("version", name), slog.Any("error", err))
-		}
-	}()
-
-	if _, err := tx.Exec(ctx, string(statements)); err != nil {
-		return fmt.Errorf("applying %s: %w", name, err)
+		return nil, fmt.Errorf("creating migration provider: %w", err)
 	}
 
-	if _, err := tx.Exec(ctx, `INSERT INTO schema_migrations (version) VALUES ($1)`, name); err != nil {
-		return fmt.Errorf("recording %s: %w", name, err)
-	}
-
-	if err := tx.Commit(ctx); err != nil {
-		return fmt.Errorf("commit %s: %w", name, err)
-	}
-
-	return nil
+	return provider, nil
 }

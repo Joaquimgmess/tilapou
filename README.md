@@ -19,7 +19,7 @@ internal/platform           shared kernel, no business rules
   httpx                     router, middlewares, RFC 7807 errors, metrics, health
   logging                   structured slog + request_id propagated via context
   postgres                  connection pool
-internal/migrations         embedded SQL + applier, one transaction per migration
+internal/migrations         goose migrations embedded in the binary
 ```
 
 ## Rules the template enforces
@@ -78,13 +78,23 @@ so a client report maps straight to a log line.
 
 ## Migrations
 
-SQL files live in `internal/migrations/sql`, embedded in the binary and applied in filename order
-by `cmd/migrate`. Each one runs in its own transaction and is recorded in `schema_migrations`, so
-re-running is a no-op. Compose runs it as a job before the API starts.
+SQL files live in `internal/migrations/sql`, embedded in the binary and applied by [goose](https://github.com/pressly/goose)
+through `cmd/migrate` — as a library, so deploys ship one binary and no extra CLI. Each migration
+runs in its own transaction and is recorded in `goose_db_version`, making re-runs a no-op. Compose
+runs it as a job that must finish before the API starts.
+
+```sh
+make migrate                          # apply pending
+make migrate-status                   # list pending
+make migrate-create name=add_stock    # scaffold a new pair of Up/Down
+```
+
+Schema changes go out as expand → backfill → contract, never a destructive `ALTER` in a single
+deploy: add the nullable column, write to both, backfill, move reads, then drop the old one.
 
 ## Stack
 
-chi (routing + middleware) · huma (OpenAPI, validation, RFC 7807 errors) · pgx (Postgres) · slog (logs) · golangci-lint
+chi (routing + middleware) · huma (OpenAPI, validation, RFC 7807 errors) · goose (migrations) · pgx (Postgres) · slog (logs) · golangci-lint
 
 ## License
 
