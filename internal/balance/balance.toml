@@ -1,0 +1,199 @@
+version = 1
+
+# 1 segundo real = 60 segundos de jogo. Consequencias:
+#   ciclo dia/noite = 24 min reais (a madrugada critica volta nessa cadencia)
+#   engorda de 140 dias = ~2,3 dias reais
+#   8h offline = 20 dias de jogo
+[tempo]
+tick_segundos_de_jogo = 60
+compressao = 60
+
+# Oreochromis niloticus.
+# ganho_dia = [(raiz3(W) + tgc*t_ref)^3 - W] * mult(temperatura) * (1 - W/peso_maximo)
+# Calibrado contra dados de campo (validado em teste):
+#   140 d a 22 C -> 44 g   (medido 49)
+#   140 d a 30 C -> 389 g  (medido 398)
+#   GPD a 28 C: 0,66 (10 g), 2,80 (100 g), 4,93 (400 g), 3,35 (800 g)
+#   ciclo 30 g -> 800 g: 199 d a 28 C, 185 d a 30 C, 516 d a 22 C, inviavel abaixo de 20 C
+[crescimento]
+tgc = 0.0014
+temperatura_referencia_c = 26.0
+peso_maximo_mg = 1100000
+peso_alevino_mg = 1000
+peso_abate_mg = 800000
+
+# Multiplicador global sobre consumo e crescimento.
+# Abaixo de 18 C para de comer; letal sustentado a 13 C.
+[[crescimento.temperatura]]
+graus = 13.0
+multiplicador = 0.0
+[[crescimento.temperatura]]
+graus = 18.0
+multiplicador = 0.05
+[[crescimento.temperatura]]
+graus = 22.0
+multiplicador = 0.5
+[[crescimento.temperatura]]
+graus = 25.0
+multiplicador = 0.7
+[[crescimento.temperatura]]
+graus = 27.0
+multiplicador = 1.25
+[[crescimento.temperatura]]
+graus = 30.0
+multiplicador = 1.4
+[[crescimento.temperatura]]
+graus = 33.0
+multiplicador = 0.7
+
+# Gontijo 2008, 25-26 C: % da biomassa por dia, por classe de peso.
+[[arracoamento]]
+ate_peso_mg = 5000
+taxa_biomassa_pct = 25.0
+tratos_dia = 6
+proteina_pct = 40
+[[arracoamento]]
+ate_peso_mg = 30000
+taxa_biomassa_pct = 10.0
+tratos_dia = 5
+proteina_pct = 36
+[[arracoamento]]
+ate_peso_mg = 175000
+taxa_biomassa_pct = 4.0
+tratos_dia = 4
+proteina_pct = 36
+[[arracoamento]]
+ate_peso_mg = 350000
+taxa_biomassa_pct = 3.0
+tratos_dia = 3
+proteina_pct = 32
+[[arracoamento]]
+ate_peso_mg = 1200000
+taxa_biomassa_pct = 2.0
+tratos_dia = 2
+proteina_pct = 32
+
+# O teto ambiental de racao e o coracao do trade-off densidade x oxigenio.
+# Medido: 34 kg/ha/dia -> OD 4,5 e CAA 1,3 e sobrevivencia 99%
+#         78 kg/ha/dia -> OD 2,1 e CAA 2,5 e sobrevivencia 83%
+[agua]
+teto_racao_kg_ha_dia_sem_aeracao = 40.0
+teto_racao_kg_ha_dia_com_aeracao = 120.0
+od_ideal_min_ugl = 5000
+od_ideal_max_ugl = 8000
+od_para_alimentar_min_ugl = 3000
+od_critico_ugl = 2000
+od_letal_ugl = 1000
+od_pico_hora = 17
+od_minimo_hora = 6
+secchi_ideal_min_cm = 30
+secchi_ideal_max_cm = 50
+secchi_letal_cm = 12
+
+# Fracao de amonia nao-ionizada (a toxica) por pH, a 28 C.
+# 2 ppm de amonia total a pH 7 e inocuo; a pH 9 e letal.
+[[agua.amonia_por_ph]]
+ph = 7.0
+fracao_toxica_pct = 0.73
+[[agua.amonia_por_ph]]
+ph = 7.5
+fracao_toxica_pct = 2.2
+[[agua.amonia_por_ph]]
+ph = 8.0
+fracao_toxica_pct = 6.9
+[[agua.amonia_por_ph]]
+ph = 8.5
+fracao_toxica_pct = 19.6
+[[agua.amonia_por_ph]]
+ph = 9.0
+fracao_toxica_pct = 45.0
+
+# Sobrevive a 0,4-0,7 mg/L por 3-5 h: a hipoxia mata por tempo acumulado, nao instantaneamente.
+[mortalidade]
+sobrevivencia_engorda_pct = 80.0
+horas_para_letal_em_hipoxia = 4.0
+fome_dias_ate_perda = 3.0
+fome_perda_diaria_pct = 2.0
+
+# Estreptococose acima de 27 C, francisellose abaixo de 25 C: calendarios opostos.
+[[doencas]]
+nome = "estreptococose"
+temperatura_min_c = 27.0
+temperatura_max_c = 40.0
+mortalidade_pct = 70.0
+dias_ate_morte = 3
+[[doencas]]
+nome = "francisellose"
+temperatura_min_c = 0.0
+temperatura_max_c = 25.0
+mortalidade_pct = 50.0
+dias_ate_morte = 7
+[[doencas]]
+nome = "columnariose"
+temperatura_min_c = 18.0
+temperatura_max_c = 32.0
+mortalidade_pct = 20.0
+dias_ate_morte = 2
+
+# Regra 1:10 do tanque-rede: 1 m2 de gaiola por 10 m2 de espelho d'agua.
+[[tanques]]
+tipo = "viveiro_escavado"
+volume_litros = 1000000
+densidade_max_peixes_m3 = 5
+renovacao_por_hora_pct = 0.0
+custo_base_tc = 1500
+[[tanques]]
+tipo = "tanque_rede"
+volume_litros = 6000
+densidade_max_peixes_m3 = 160
+renovacao_por_hora_pct = 100.0
+custo_base_tc = 4000
+[[tanques]]
+tipo = "bioflocos"
+volume_litros = 30000
+densidade_max_peixes_m3 = 80
+renovacao_por_hora_pct = 20.0
+custo_base_tc = 18000
+[[tanques]]
+tipo = "recirculacao"
+volume_litros = 20000
+densidade_max_peixes_m3 = 120
+renovacao_por_hora_pct = 300.0
+custo_base_tc = 60000
+
+# CEPEA fev/2026: R$ 8,69-10,39/kg na fazenda. Racao e 64-80% do custo.
+# Equivalencia peixe-racao = preco / (CAA * preco_racao): <1,25 inviavel, >2,00 excelente.
+[economia]
+preco_peixe_tc_kg = 900
+preco_racao_tc_kg = 320
+custo_alevino_tc = 35
+caa_referencia = 1.6
+custo_energia_aerador_tc_hora = 12
+
+# Escada classica: custo base * 1.15^n. Marcos de x2 acumulativos.
+[progressao]
+fator_custo = 1.15
+marcos_x2 = [10, 25, 50, 100, 200]
+prestigio_divisor = 1000000
+prestigio_bonus_por_unidade_pct = 5.0
+
+[[automacao]]
+nome = "comedouro"
+custo_tc = 2500
+remove = "alimentar"
+[[automacao]]
+nome = "aerador"
+custo_tc = 6000
+remove = "arejar"
+[[automacao]]
+nome = "peao"
+custo_tc = 20000
+remove = "despescar"
+[[automacao]]
+nome = "tecnico"
+custo_tc = 75000
+remove = "ajustar_racao"
+[[automacao]]
+nome = "contrato"
+custo_tc = 250000
+remove = "vender"
