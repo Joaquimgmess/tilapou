@@ -125,7 +125,7 @@ func closeCycle(s *State, batch *Batch, count FishCount, mass Micrograms, revenu
 		return
 	}
 
-	share := Coins(mulDivFloor(int64(batch.Cost), int64(count), int64(count)+int64(batch.Fish)))
+	share := Coins(mulDivFloor(int64(batch.Cost), int64(count), int64(batch.Fish)))
 	batch.Cost = Coins(subSat(int64(batch.Cost), int64(share)))
 
 	kilos := int64(mass) / int64(MicrogramsPerKilogram)

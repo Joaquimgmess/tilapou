@@ -218,3 +218,30 @@ func TestCrowdingRaisesDiseaseRisk(t *testing.T) {
 		t.Errorf("lotacao nao aumentou o risco de surto: folgado=%d lotado=%d", sparse, packed)
 	}
 }
+
+func TestHarvestMovesTheWholeCostOfWhatWasSold(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name  string
+		fish  FishCount
+		sold  FishCount
+		share Coins
+	}{
+		{"despesca total leva o custo inteiro", 1_000, 1_000, 100_000},
+		{"meia despesca leva metade", 1_000, 500, 50_000},
+		{"um decimo leva um decimo", 1_000, 100, 10_000},
+	} {
+		batch := Batch{Fish: tc.fish, Cost: 100_000, MassGained: 1, FeedEaten: 1}
+		s := NewState(1, 0, 0)
+
+		closeCycle(&s, &batch, tc.sold, Micrograms(tc.sold)*MicrogramsPerKilogram, 0)
+
+		if s.LastCycle.Cost != tc.share {
+			t.Errorf("%s: o ciclo levou %d centavos, queria %d", tc.name, s.LastCycle.Cost, tc.share)
+		}
+		if left := Coins(100_000) - tc.share; batch.Cost != left {
+			t.Errorf("%s: sobrou %d no lote, queria %d", tc.name, batch.Cost, left)
+		}
+	}
+}
