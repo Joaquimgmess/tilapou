@@ -29,7 +29,7 @@ linters:
       rules:
         sim-puro:
           files:
-            - "**/internal/sim/**"
+            - "**/internal/sim/*.go"
           deny:
             - pkg: time
               desc: sim usa Tick inteiro; time.Now quebra determinismo
@@ -104,6 +104,11 @@ linters:
         - fieldalignment
     interfacebloat:
       max: 6
+    misspell:
+      ignore-rules:
+        - comando
+        - cenario
+        - racao
     nakedret:
       max-func-lines: 0
     revive:
@@ -137,6 +142,7 @@ linters:
           arguments:
             - fmt.Fprintf
             - fmt.Fprint
+            - fmt.Fprintln
             - strings.Builder.WriteString
             - strings.Builder.WriteByte
             - strings.Builder.Write

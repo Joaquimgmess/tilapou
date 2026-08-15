@@ -1,0 +1,13 @@
+cenario: aerador-salva
+semente: 3  fuso: -180  dias: 5
+
+ dia   peixes   peso_g racao_kg     caixa_tc   o2_ugl kg_por_m3
+   1     8034      602     4929         5000     5144      4840
+   2     8034      605     4845         5000     5123      4864
+   3     8034      608     4760         5000     5100      4889
+   4     8034      611     4674         5000     5079      4914
+   5     8034      614     4588         5000     5056      4938
+
+eventos
+growth                   86
+hypoxia_deaths            4

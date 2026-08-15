@@ -132,6 +132,52 @@ func (s *State) Fish() FishCount {
 	return FishCount(min(total, maxInt32))
 }
 
+func (t *Tank) addBatch(id BatchID, fish FishCount, mass Micrograms, at Tick) bool {
+	if t.BatchCount >= maxBatchesPerTank {
+		return false
+	}
+
+	t.Batches[t.BatchCount] = Batch{
+		ID:        id,
+		Fish:      fish,
+		MeanMass:  mass,
+		MassRoot:  massRootOf(mass),
+		StockedAt: at,
+	}
+	t.BatchCount++
+
+	return true
+}
+
+func (s *State) AddTank(kind TankKind, litres Litres) (TankID, bool) {
+	return s.addTank(kind, litres)
+}
+
+func (s *State) StockTank(id TankID, fish FishCount, mass Micrograms) bool {
+	t := s.tank(id)
+	if t == nil {
+		return false
+	}
+
+	if !t.addBatch(s.NextBatchID, fish, mass, s.Tick) {
+		return false
+	}
+	s.NextBatchID++
+
+	return true
+}
+
+func (s *State) LoadFeed(id TankID, mass Micrograms) bool {
+	t := s.tank(id)
+	if t == nil {
+		return false
+	}
+
+	t.FeedStock = Micrograms(addSat(int64(t.FeedStock), int64(mass)))
+
+	return true
+}
+
 func (s *State) tank(id TankID) *Tank {
 	for i := range s.TankCount {
 		if s.Tanks[i].ID == id {
@@ -153,21 +199,4 @@ func (s *State) addTank(kind TankKind, litres Litres) (TankID, bool) {
 	s.NextTankID++
 
 	return id, true
-}
-
-func (t *Tank) addBatch(id BatchID, fish FishCount, mass Micrograms, at Tick) bool {
-	if t.BatchCount >= maxBatchesPerTank {
-		return false
-	}
-
-	t.Batches[t.BatchCount] = Batch{
-		ID:        id,
-		Fish:      fish,
-		MeanMass:  mass,
-		MassRoot:  massRootOf(mass),
-		StockedAt: at,
-	}
-	t.BatchCount++
-
-	return true
 }
