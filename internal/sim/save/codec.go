@@ -30,7 +30,18 @@ type document struct {
 	EventSeq       uint64         `json:"event_seq"`
 	Debt           int64          `json:"debt"`
 	DebtCarry      int64          `json:"debt_carry"`
+	LastCycle      cycleDocument  `json:"last_cycle,omitzero"`
 	Tanks          []tankDocument `json:"tanks"`
+}
+
+type cycleDocument struct {
+	Fish       int32 `json:"fish,omitempty"`
+	Mass       int64 `json:"mass,omitempty"`
+	Revenue    int64 `json:"revenue,omitempty"`
+	Cost       int64 `json:"cost,omitempty"`
+	CostPerKg  int64 `json:"cost_per_kg,omitempty"`
+	PricePerKg int64 `json:"price_per_kg,omitempty"`
+	FCRPPM     int64 `json:"fcr_ppm,omitempty"`
 }
 
 type tankDocument struct {
@@ -88,7 +99,16 @@ func Encode(s sim.State) ([]byte, error) {
 		EventSeq:       s.EventSeq,
 		Debt:           int64(s.Debt),
 		DebtCarry:      s.DebtCarry,
-		Tanks:          make([]tankDocument, 0, s.TankCount),
+		LastCycle: cycleDocument{
+			Fish:       int32(s.LastCycle.Fish),
+			Mass:       int64(s.LastCycle.Mass),
+			Revenue:    int64(s.LastCycle.Revenue),
+			Cost:       int64(s.LastCycle.Cost),
+			CostPerKg:  int64(s.LastCycle.CostPerKg),
+			PricePerKg: int64(s.LastCycle.PricePerKg),
+			FCRPPM:     int64(s.LastCycle.FCRPPM),
+		},
+		Tanks: make([]tankDocument, 0, s.TankCount),
 	}
 
 	for i := range s.TankCount {
@@ -164,6 +184,15 @@ func Decode(raw []byte) (sim.State, error) {
 	state.EventSeq = doc.EventSeq
 	state.Debt = sim.Coins(doc.Debt)
 	state.DebtCarry = doc.DebtCarry
+	state.LastCycle = sim.Cycle{
+		Fish:       sim.FishCount(doc.LastCycle.Fish),
+		Mass:       sim.Micrograms(doc.LastCycle.Mass),
+		Revenue:    sim.Coins(doc.LastCycle.Revenue),
+		Cost:       sim.Coins(doc.LastCycle.Cost),
+		CostPerKg:  sim.Coins(doc.LastCycle.CostPerKg),
+		PricePerKg: sim.Coins(doc.LastCycle.PricePerKg),
+		FCRPPM:     sim.PPM(doc.LastCycle.FCRPPM),
+	}
 
 	if len(doc.Tanks) > len(state.Tanks) {
 		return sim.State{}, ErrTooManyTanks
