@@ -27,11 +27,6 @@ type echoOutput struct {
 	Body echoBody
 }
 
-func TestMain(m *testing.M) {
-	httpx.SetErrorDocsPrefix(errorDocs)
-	m.Run()
-}
-
 func newServer(t *testing.T, ready func(ctx context.Context) error) http.Handler {
 	t.Helper()
 
@@ -41,6 +36,7 @@ func newServer(t *testing.T, ready func(ctx context.Context) error) http.Handler
 		Version:        "1.0.0",
 		APIPrefix:      "/v1",
 		RequestTimeout: time.Second,
+		ErrorDocsURL:   errorDocs,
 	})
 	httpx.RegisterHealth(router, ready)
 
@@ -140,5 +136,136 @@ func TestReadyzReportsDependencyFailure(t *testing.T) {
 	}
 	if got := do(t, handler, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/healthz", http.NoBody)).Code; got != http.StatusOK {
 		t.Errorf("healthz = %d, want %d", got, http.StatusOK)
+	}
+}
+
+func problemFrom(t *testing.T, rec *httptest.ResponseRecorder) huma.ErrorModel {
+	t.Helper()
+
+	if ct := rec.Header().Get("Content-Type"); ct != "application/problem+json" {
+		t.Fatalf("content type = %q, want application/problem+json", ct)
+	}
+
+	var model huma.ErrorModel
+	if err := json.Unmarshal(rec.Body.Bytes(), &model); err != nil {
+		t.Fatalf("decoding problem body: %v", err)
+	}
+	if model.Instance == "" {
+		t.Error("instance is empty, want the request id")
+	}
+
+	return model
+}
+
+func TestUnmatchedRouteReturnsProblem(t *testing.T) {
+	t.Parallel()
+
+	handler := newServer(t, func(context.Context) error { return nil })
+	rec := do(t, handler, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/nope", http.NoBody))
+
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+	problemFrom(t, rec)
+}
+
+func TestWrongMethodReturnsProblem(t *testing.T) {
+	t.Parallel()
+
+	handler := newServer(t, func(context.Context) error { return nil })
+	rec := do(t, handler, httptest.NewRequestWithContext(context.Background(), http.MethodDelete, "/v1/echo", http.NoBody))
+
+	if rec.Code != http.StatusMethodNotAllowed {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusMethodNotAllowed)
+	}
+	problemFrom(t, rec)
+}
+
+func TestUnsupportedMediaTypeReturnsProblem(t *testing.T) {
+	t.Parallel()
+
+	handler := newServer(t, func(context.Context) error { return nil })
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/echo", strings.NewReader("name=a"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+	rec := do(t, handler, req)
+
+	if rec.Code != http.StatusUnsupportedMediaType {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusUnsupportedMediaType)
+	}
+	problemFrom(t, rec)
+}
+
+func TestPanicReturnsProblemAndIsLogged(t *testing.T) {
+	t.Parallel()
+
+	var logged strings.Builder
+	logger := slog.New(slog.NewJSONHandler(&logged, nil))
+	router, api := httpx.NewAPI(logger, httpx.Options{Title: "t", Version: "1.0.0", APIPrefix: "/v1", RequestTimeout: time.Second, ErrorDocsURL: errorDocs})
+	huma.Register(api, huma.Operation{OperationID: "boom", Method: http.MethodGet, Path: "/boom"},
+		func(context.Context, *struct{}) (*struct{}, error) { panic("boom") })
+
+	rec := do(t, router, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/boom", http.NoBody))
+
+	if rec.Code != http.StatusInternalServerError {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusInternalServerError)
+	}
+	model := problemFrom(t, rec)
+	if strings.Contains(model.Detail, "boom") {
+		t.Errorf("detail %q leaks the panic value", model.Detail)
+	}
+
+	out := logged.String()
+	if !strings.Contains(out, "panic recovered") || !strings.Contains(out, "request_id") {
+		t.Errorf("panic log missing structure: %s", out)
+	}
+	if !strings.Contains(out, `"msg":"http request"`) {
+		t.Errorf("request log line missing for panic: %s", out)
+	}
+}
+
+func TestMetricsExposeRequestHistogram(t *testing.T) {
+	t.Parallel()
+
+	handler := newServer(t, func(context.Context) error { return nil })
+	do(t, handler, jsonPost("/v1/echo"))
+
+	rec := do(t, handler, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/metrics", http.NoBody))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusOK)
+	}
+
+	body := rec.Body.String()
+	if !strings.Contains(body, `http_request_duration_seconds_count{method="POST",route="/v1/echo",status="200"} 1`) {
+		t.Errorf("metrics missing the echo series:\n%s", body)
+	}
+}
+
+func TestHandlerErrorsCarryTypeAndInstance(t *testing.T) {
+	t.Parallel()
+
+	logger := slog.New(slog.DiscardHandler)
+	router, api := httpx.NewAPI(logger, httpx.Options{
+		Title: "t", Version: "1.0.0", APIPrefix: "/v1",
+		RequestTimeout: time.Second, ErrorDocsURL: errorDocs,
+	})
+	huma.Register(api, huma.Operation{OperationID: "missing", Method: http.MethodGet, Path: "/missing"},
+		func(context.Context, *struct{}) (*struct{}, error) {
+			return nil, huma.Error404NotFound("thing not found")
+		})
+
+	rec := do(t, router, httptest.NewRequestWithContext(context.Background(), http.MethodGet, "/v1/missing", http.NoBody))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("status = %d, want %d", rec.Code, http.StatusNotFound)
+	}
+
+	var model huma.ErrorModel
+	if err := json.Unmarshal(rec.Body.Bytes(), &model); err != nil {
+		t.Fatalf("decoding body: %v", err)
+	}
+	if model.Type != errorDocs+"404" {
+		t.Errorf("type = %q, want %q", model.Type, errorDocs+"404")
+	}
+	if model.Instance == "" {
+		t.Error("instance is empty, want the request id")
 	}
 }

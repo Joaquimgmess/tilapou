@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"testing"
+	"time"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/danielgtaylor/huma/v2/humatest"
@@ -33,12 +34,14 @@ func (f *fakeStore) ByID(_ context.Context, id uuid.UUID) (product.Product, erro
 	return p, nil
 }
 
+var fixedNow = time.Date(2026, time.August, 14, 12, 0, 0, 0, time.UTC)
+
 func newTestAPI(t *testing.T) (humatest.TestAPI, *fakeStore) {
 	t.Helper()
 
 	_, api := humatest.New(t, huma.DefaultConfig("test", "1.0.0"))
 	store := newFakeStore()
-	product.RegisterRoutes(api, store)
+	product.RegisterRoutes(api, store, func() time.Time { return fixedNow })
 
 	return api, store
 }
@@ -54,6 +57,11 @@ func TestCreateProduct(t *testing.T) {
 	}
 	if len(store.items) != 1 {
 		t.Fatalf("store has %d items, want 1", len(store.items))
+	}
+	for _, p := range store.items {
+		if !p.CreatedAt.Equal(fixedNow) {
+			t.Errorf("CreatedAt = %v, want %v", p.CreatedAt, fixedNow)
+		}
 	}
 }
 

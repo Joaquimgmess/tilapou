@@ -7,6 +7,7 @@ Go HTTP API template: DDD inside a vertical slice, no framework leaking into the
 
 ```
 cmd/api                     process entrypoint: config, wiring, graceful shutdown
+cmd/migrate                 applies pending migrations, tracked in schema_migrations
 internal/product            the vertical slice
   product.go                aggregate + invariants (New)
   create.go / get.go        use cases: pure decision, I/O only through Store
@@ -15,10 +16,10 @@ internal/product            the vertical slice
   errors.go                 domain errors (ErrNotFound, InvalidError)
 internal/platform           shared kernel, no business rules
   config                    environment, fail fast on startup
-  httpx                     chi router, middlewares, /healthz and /readyz
+  httpx                     router, middlewares, RFC 7807 errors, metrics, health
   logging                   structured slog + request_id propagated via context
   postgres                  connection pool
-migrations                  plain SQL, applied by compose on first boot
+internal/migrations         embedded SQL + applier, one transaction per migration
 ```
 
 ## Rules the template enforces
@@ -34,7 +35,10 @@ migrations                  plain SQL, applied by compose on first boot
   the pool and the logger are concrete types.
 - **Testable without a container.** Every test runs on `go test ./...` with a fake store.
 - **Observability at the edges.** Each request gets a `request_id` carried in the context; the
-  slice logs with it, no argument threading.
+  slice logs with it, no argument threading. Latency and status are exported per route on
+  `/metrics` in Prometheus text format.
+- **One error shape.** Every failure path — validation, domain, panic, 404, 405, 415 — answers
+  `application/problem+json` with `instance` set to the request id.
 - **Bounded I/O.** Every query runs under `DB_TIMEOUT`, every request under `REQUEST_TIMEOUT`,
   request bodies are capped at 1 MiB, and the server shuts down gracefully.
 - **Versioned surface.** Slices register into a `huma.Group` prefixed with `/v1`; health checks
@@ -53,8 +57,8 @@ migrations                  plain SQL, applied by compose on first boot
 
 ```sh
 cp .env.example .env
-make up          # postgres + api on :8080, migrations applied on first boot
-make check       # fmt, lint, test -race, build
+make up          # postgres, migrations, then the api on :8080
+make check       # fmt, lint, test -race, build, govulncheck
 ```
 
 OpenAPI at `http://localhost:8080/docs`, health at `/healthz` and `/readyz`.
@@ -67,9 +71,16 @@ OpenAPI at `http://localhost:8080/docs`, health at `/healthz` and `/readyz`.
 | GET    | `/v1/products/{id}` | Get a product    |
 | GET    | `/healthz`          | Liveness         |
 | GET    | `/readyz`           | Readiness (DB)   |
+| GET    | `/metrics`          | Prometheus text  |
 
 Errors follow RFC 7807 (`application/problem+json`), with `instance` carrying the request id
 so a client report maps straight to a log line.
+
+## Migrations
+
+SQL files live in `internal/migrations/sql`, embedded in the binary and applied in filename order
+by `cmd/migrate`. Each one runs in its own transaction and is recorded in `schema_migrations`, so
+re-running is a no-op. Compose runs it as a job before the API starts.
 
 ## Stack
 

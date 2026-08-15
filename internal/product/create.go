@@ -15,8 +15,8 @@ type CreateCommand struct {
 	PriceCents int64
 }
 
-func Create(ctx context.Context, store Store, cmd CreateCommand) (Product, error) {
-	p, err := New(uuid.New(), cmd.Name, cmd.PriceCents, time.Now())
+func Create(ctx context.Context, store Store, clock func() time.Time, cmd CreateCommand) (Product, error) {
+	p, err := New(uuid.New(), cmd.Name, cmd.PriceCents, clock())
 	if err != nil {
 		return Product{}, err
 	}

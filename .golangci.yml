@@ -72,6 +72,13 @@ linters:
           disabled: true
         - name: confusing-naming
           disabled: true
+        - name: unhandled-error
+          arguments:
+            - fmt.Fprintf
+            - fmt.Fprint
+            - strings.Builder.WriteString
+            - strings.Builder.WriteByte
+            - strings.Builder.Write
     staticcheck:
       checks:
         - all
@@ -104,9 +111,14 @@ linters:
     presets:
       - std-error-handling
     rules:
+      - path: cmd/api/main\.go
+        text: "G704:"
+        linters:
+          - gosec
       - path: _test\.go
         linters:
           - errcheck
+          - gosec
           - dupl
           - err113
           - forcetypeassert

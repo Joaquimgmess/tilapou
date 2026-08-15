@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 	"time"
@@ -11,7 +12,7 @@ import (
 type Config struct {
 	Addr            string
 	DatabaseURL     string
-	LogLevel        string
+	LogLevel        slog.Level
 	DBMaxConns      int32
 	DBTimeout       time.Duration
 	RequestTimeout  time.Duration
@@ -38,11 +39,15 @@ func Load() (Config, error) {
 	cfg := Config{
 		Addr:        env("ADDR", ":8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
-		LogLevel:    env("LOG_LEVEL", "info"),
 	}
 
 	if cfg.DatabaseURL == "" {
 		return Config{}, errMissingDatabaseURL
+	}
+
+	cfg.LogLevel, err = levelEnv("LOG_LEVEL", slog.LevelInfo)
+	if err != nil {
+		return Config{}, err
 	}
 
 	cfg.DBMaxConns, err = int32Env("DB_MAX_CONNS", defaultMaxConns)
@@ -81,6 +86,20 @@ func env(key, fallback string) string {
 		return v
 	}
 	return fallback
+}
+
+func levelEnv(key string, fallback slog.Level) (slog.Level, error) {
+	raw := os.Getenv(key)
+	if raw == "" {
+		return fallback, nil
+	}
+
+	var level slog.Level
+	if err := level.UnmarshalText([]byte(raw)); err != nil {
+		return 0, fmt.Errorf("config: invalid %s: %w", key, err)
+	}
+
+	return level, nil
 }
 
 func int32Env(key string, fallback int32) (int32, error) {

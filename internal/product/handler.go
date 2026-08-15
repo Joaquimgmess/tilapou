@@ -38,7 +38,7 @@ type GetOutput struct {
 	Body Response
 }
 
-func RegisterRoutes(api huma.API, store Store) {
+func RegisterRoutes(api huma.API, store Store, clock func() time.Time) {
 	huma.Register(api, huma.Operation{
 		OperationID:   "create-product",
 		Method:        http.MethodPost,
@@ -47,7 +47,7 @@ func RegisterRoutes(api huma.API, store Store) {
 		Tags:          []string{"products"},
 		DefaultStatus: http.StatusCreated,
 	}, func(ctx context.Context, in *CreateInput) (*CreateOutput, error) {
-		p, err := Create(ctx, store, CreateCommand{Name: in.Body.Name, PriceCents: in.Body.PriceCents})
+		p, err := Create(ctx, store, clock, CreateCommand{Name: in.Body.Name, PriceCents: in.Body.PriceCents})
 		if err != nil {
 			return nil, toHTTPError(err)
 		}

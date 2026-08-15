@@ -8,12 +8,8 @@ import (
 
 type contextKey struct{}
 
-func New(level string) *slog.Logger {
-	var lvl slog.Level
-	if err := lvl.UnmarshalText([]byte(level)); err != nil {
-		lvl = slog.LevelInfo
-	}
-	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: lvl}))
+func New(level slog.Level) *slog.Logger {
+	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 }
 
 func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {

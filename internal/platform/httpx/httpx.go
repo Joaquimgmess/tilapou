@@ -3,7 +3,6 @@ package httpx
 import (
 	"log/slog"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -25,25 +24,30 @@ type Options struct {
 	APIPrefix      string
 	RequestTimeout time.Duration
 	TrustedProxies int
-}
-
-func SetErrorDocsPrefix(prefix string) {
-	huma.NewErrorWithContext = errorWithInstance(prefix)
+	ErrorDocsURL   string
 }
 
 func NewAPI(logger *slog.Logger, opts Options) (chi.Router, *huma.Group) {
+	metrics := NewMetrics()
+	problem := problems{docsPrefix: opts.ErrorDocsURL}
+
 	router := chi.NewRouter()
+	router.NotFound(problem.notFound)
+	router.MethodNotAllowed(problem.methodNotAllowed)
 	router.Use(middleware.RequestID)
 	router.Use(clientIP(opts.TrustedProxies))
-	router.Use(middleware.Recoverer)
-	router.Use(requestLogger(logger))
+	router.Use(observe(logger, metrics))
+	router.Use(problem.recoverer)
 	router.Use(middleware.Timeout(opts.RequestTimeout))
 	router.Use(middleware.RequestSize(maxRequestBytes))
-	router.Use(middleware.AllowContentType("application/json"))
+	router.Use(problem.allowContentType("application/json"))
 	router.Use(middleware.Compress(compressionLevel))
 
 	cfg := huma.DefaultConfig(opts.Title, opts.Version)
 	cfg.RejectUnknownQueryParameters = true
+	cfg.Transformers = append(cfg.Transformers, problem.transformer)
+
+	router.Get("/metrics", metrics.Handler())
 
 	api := humachi.New(router, cfg)
 
@@ -57,26 +61,7 @@ func clientIP(trustedProxies int) func(http.Handler) http.Handler {
 	return middleware.ClientIPFromXFFTrustedProxies(trustedProxies)
 }
 
-func errorWithInstance(docsPrefix string) func(huma.Context, int, string, ...error) huma.StatusError {
-	return func(ctx huma.Context, status int, msg string, errs ...error) huma.StatusError {
-		err := huma.NewError(status, msg, errs...)
-
-		model, ok := err.(*huma.ErrorModel)
-		if !ok {
-			return err
-		}
-		if docsPrefix != "" {
-			model.Type = docsPrefix + strconv.Itoa(status)
-		}
-		if ctx != nil {
-			model.Instance = middleware.GetReqID(ctx.Context())
-		}
-
-		return model
-	}
-}
-
-func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
+func observe(logger *slog.Logger, metrics *Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqLogger := logger.With(
@@ -89,11 +74,17 @@ func requestLogger(logger *slog.Logger) func(http.Handler) http.Handler {
 			start := time.Now()
 			next.ServeHTTP(ww, r.WithContext(ctx))
 
+			elapsed := time.Since(start)
+			route := routePattern(r)
+
+			metrics.observe(r.Method, route, ww.Status(), elapsed)
+
 			reqLogger.InfoContext(ctx, "http request",
 				slog.String("method", r.Method),
+				slog.String("route", route),
 				slog.String("path", r.URL.Path),
 				slog.Int("status", ww.Status()),
-				slog.Duration("duration", time.Since(start)),
+				slog.Duration("duration", elapsed),
 			)
 		})
 	}

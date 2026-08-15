@@ -1,9 +1,10 @@
-.PHONY: build run test lint fmt tidy check up down migrate
+.PHONY: build run test lint fmt tidy check up down migrate vuln
 
 BIN := bin/api
 
 build:
 	go build -o $(BIN) ./cmd/api
+	go build -o bin/migrate ./cmd/migrate
 
 run:
 	go run ./cmd/api
@@ -20,7 +21,7 @@ fmt:
 tidy:
 	go mod tidy
 
-check: fmt lint test build
+check: fmt lint test build vuln
 
 up:
 	docker compose up -d --build
@@ -29,4 +30,7 @@ down:
 	docker compose down -v
 
 migrate:
-	docker compose exec -T postgres psql -U catalog -d catalog < migrations/0001_products.sql
+	go run ./cmd/migrate
+
+vuln:
+	go run golang.org/x/vuln/cmd/govulncheck@latest ./...

@@ -22,6 +22,9 @@ jobs:
       - name: verify formatting
         run: test -z "$(gofmt -l .)"
 
+      - name: tidy is up to date
+        run: go mod tidy -diff
+
       - name: vet
         run: go vet ./...
 
@@ -30,6 +33,27 @@ jobs:
 
       - name: test
         run: go test ./... -race -cover
+
+  vuln:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build image
+        run: docker build -t catalog:ci .
 
   lint:
     runs-on: ubuntu-latest
