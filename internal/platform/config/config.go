@@ -14,6 +14,8 @@ type Config struct {
 	LogLevel        string
 	DBMaxConns      int32
 	DBTimeout       time.Duration
+	RequestTimeout  time.Duration
+	TrustedProxies  int32
 	ReadTimeout     time.Duration
 	WriteTimeout    time.Duration
 	ShutdownTimeout time.Duration
@@ -24,6 +26,7 @@ var errMissingDatabaseURL = errors.New("config: DATABASE_URL is required")
 const (
 	defaultMaxConns      = 10
 	defaultDBTimeout     = 3 * time.Second
+	defaultReqTimeout    = 30 * time.Second
 	defaultReadTimeout   = 10 * time.Second
 	defaultWriteTimeout  = 15 * time.Second
 	defaultShutdownGrace = 15 * time.Second
@@ -47,12 +50,18 @@ func Load() (Config, error) {
 		return Config{}, err
 	}
 
+	cfg.TrustedProxies, err = int32Env("TRUSTED_PROXIES", 0)
+	if err != nil {
+		return Config{}, err
+	}
+
 	durations := []struct {
 		key      string
 		fallback time.Duration
 		dst      *time.Duration
 	}{
 		{"DB_TIMEOUT", defaultDBTimeout, &cfg.DBTimeout},
+		{"REQUEST_TIMEOUT", defaultReqTimeout, &cfg.RequestTimeout},
 		{"READ_TIMEOUT", defaultReadTimeout, &cfg.ReadTimeout},
 		{"WRITE_TIMEOUT", defaultWriteTimeout, &cfg.WriteTimeout},
 		{"SHUTDOWN_TIMEOUT", defaultShutdownGrace, &cfg.ShutdownTimeout},

@@ -18,7 +18,10 @@ import (
 	"github.com/Joaquimgmess/catalog/internal/product"
 )
 
-const readHeaderTimeout = 5 * time.Second
+const (
+	readHeaderTimeout = 5 * time.Second
+	errorDocsPrefix   = "https://github.com/Joaquimgmess/catalog/blob/main/docs/errors.md#"
+)
 
 func main() {
 	if err := run(); err != nil {
@@ -45,7 +48,15 @@ func run() error {
 	}
 	defer pool.Close()
 
-	router, api := httpx.NewAPI(logger, "Catalog API", "1.0.0")
+	httpx.SetErrorDocsPrefix(errorDocsPrefix)
+
+	router, api := httpx.NewAPI(logger, httpx.Options{
+		Title:          "Catalog API",
+		Version:        "1.0.0",
+		APIPrefix:      "/v1",
+		RequestTimeout: cfg.RequestTimeout,
+		TrustedProxies: int(cfg.TrustedProxies),
+	})
 	httpx.RegisterHealth(router, pool.Ping)
 	product.RegisterRoutes(api, product.NewDB(pool, cfg.DBTimeout))
 

@@ -35,8 +35,10 @@ migrations                  plain SQL, applied by compose on first boot
 - **Testable without a container.** Every test runs on `go test ./...` with a fake store.
 - **Observability at the edges.** Each request gets a `request_id` carried in the context; the
   slice logs with it, no argument threading.
-- **Bounded I/O.** Every query runs under `DB_TIMEOUT`; the server has read/write timeouts and
-  shuts down gracefully.
+- **Bounded I/O.** Every query runs under `DB_TIMEOUT`, every request under `REQUEST_TIMEOUT`,
+  request bodies are capped at 1 MiB, and the server shuts down gracefully.
+- **Versioned surface.** Slices register into a `huma.Group` prefixed with `/v1`; health checks
+  stay outside it. Unknown query parameters and non-JSON content types are rejected.
 
 ## Adding a slice
 
@@ -59,16 +61,19 @@ OpenAPI at `http://localhost:8080/docs`, health at `/healthz` and `/readyz`.
 
 ## Endpoints
 
-| Method | Path             | Description        |
-| ------ | ---------------- | ------------------ |
-| POST   | `/products`      | Create a product   |
-| GET    | `/products/{id}` | Get a product      |
-| GET    | `/healthz`       | Liveness           |
-| GET    | `/readyz`        | Readiness (DB)     |
+| Method | Path                | Description      |
+| ------ | ------------------- | ---------------- |
+| POST   | `/v1/products`      | Create a product |
+| GET    | `/v1/products/{id}` | Get a product    |
+| GET    | `/healthz`          | Liveness         |
+| GET    | `/readyz`           | Readiness (DB)   |
+
+Errors follow RFC 7807 (`application/problem+json`), with `instance` carrying the request id
+so a client report maps straight to a log line.
 
 ## Stack
 
-chi (routing) · huma (OpenAPI + validation) · pgx (Postgres) · slog (logs) · golangci-lint
+chi (routing + middleware) · huma (OpenAPI, validation, RFC 7807 errors) · pgx (Postgres) · slog (logs) · golangci-lint
 
 ## License
 
