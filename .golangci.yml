@@ -58,6 +58,7 @@ linters:
         tui-sem-regra-de-jogo:
           files:
             - "**/internal/tui/**"
+            - "!**/*_test.go"
           deny:
             - pkg: github.com/Joaquimgmess/catalog/internal/sim
               desc: a TUI nao calcula nada; ela desenha o snapshot do servidor

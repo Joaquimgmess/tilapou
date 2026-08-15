@@ -23,6 +23,8 @@ func run(args []string) error {
 	switch args[0] {
 	case "sim":
 		return runSim(args[1:])
+	case "play":
+		return runPlay(args[1:])
 	case "serve":
 		return runServe(args[1:])
 	case "health":

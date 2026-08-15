@@ -1,0 +1,199 @@
+package tui
+
+import (
+	"fmt"
+	"strconv"
+	"strings"
+
+	tea "charm.land/bubbletea/v2"
+	"charm.land/lipgloss/v2"
+
+	"github.com/Joaquimgmess/catalog/internal/client"
+)
+
+const (
+	minutesPerHour = 60
+	hoursPerDay    = 24
+	oxygenBarWidth = 24
+	oxygenFullUgL  = 9000
+	oxygenLowUgL   = 3000
+	eventsShown    = 8
+	gramsPerKg     = 1000
+	milliPerUnit   = 1000
+	centsPerCoin   = 100
+	panelWidth     = 52
+)
+
+var (
+	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#8BAC0F"))
+	labelStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
+	valueStyle  = lipgloss.NewStyle().Bold(true)
+	dangerStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#D64545"))
+	okStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#4CAF50"))
+	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+	panelStyle  = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).Padding(0, 1).Width(panelWidth)
+)
+
+func (m Model) View() tea.View {
+	if m.quitting {
+		return tea.NewView("ate mais, piscicultor\n")
+	}
+
+	content := m.view
+	if content == "" {
+		content = m.render()
+	}
+
+	view := tea.NewView(content)
+	view.AltScreen = true
+	view.WindowTitle = "tilapou"
+
+	return view
+}
+
+func (m Model) render() string {
+	if m.err != nil {
+		return dangerStyle.Render("daemon fora do ar: "+m.err.Error()) +
+			dimStyle.Render("\n\nsuba com: tilapou serve\n[r] tentar de novo   [q] sair\n")
+	}
+	if m.snapshot.FarmID == "" {
+		return dimStyle.Render("conectando no daemon...\n")
+	}
+
+	sections := []string{
+		m.renderHeader(),
+		m.renderTanks(),
+		m.renderEvents(),
+		m.renderFooter(),
+	}
+
+	return strings.Join(sections, "\n") + "\n"
+}
+
+func (m Model) renderHeader() string {
+	s := m.snapshot
+	day := s.Tick / (hoursPerDay * minutesPerHour)
+	minute := s.Tick % minutesPerHour
+
+	clock := fmt.Sprintf("dia %d  %02d:%02d  %.1f C", day, s.Hour, minute, float64(s.TempMilliC)/milliPerUnit)
+
+	line := fmt.Sprintf("%s   %s %s   %s %s   %s %s",
+		titleStyle.Render("TILAPOU"),
+		labelStyle.Render("caixa"), valueStyle.Render(coins(s.CashCents)),
+		labelStyle.Render("biomassa"), valueStyle.Render(fmt.Sprintf("%d kg", s.BiomassG/gramsPerKg)),
+		labelStyle.Render("peixes"), valueStyle.Render(strconv.Itoa(int(s.Fish))),
+	)
+
+	return line + "\n" + dimStyle.Render(clock)
+}
+
+func (m Model) renderTanks() string {
+	if len(m.snapshot.Tanks) == 0 {
+		return dimStyle.Render("nenhum tanque")
+	}
+
+	panels := make([]string, 0, len(m.snapshot.Tanks))
+	for _, t := range m.snapshot.Tanks {
+		panels = append(panels, panelStyle.Render(renderTank(t)))
+	}
+
+	return lipgloss.JoinVertical(lipgloss.Left, panels...)
+}
+
+func renderTank(t client.Tank) string {
+	aerator := dimStyle.Render("aerador off")
+	if t.Aerating {
+		aerator = okStyle.Render("aerador ON")
+	}
+
+	ready := ""
+	if t.Ready {
+		ready = okStyle.Render("  PRONTO PARA DESPESCA")
+	}
+
+	return fmt.Sprintf("%s %s%s\n%s %s   %s %s   %s %s\n%s %s   %s\n%s",
+		titleStyle.Render(fmt.Sprintf("tanque %d", t.ID)), dimStyle.Render(t.Kind), ready,
+		labelStyle.Render("peixes"), valueStyle.Render(strconv.Itoa(int(t.Fish))),
+		labelStyle.Render("peso"), valueStyle.Render(fmt.Sprintf("%d g", t.MeanGrams)),
+		labelStyle.Render("densidade"), valueStyle.Render(fmt.Sprintf("%d kg/m3", t.DensityKg)),
+		labelStyle.Render("racao"), valueStyle.Render(fmt.Sprintf("%d kg", t.FeedKg)),
+		aerator,
+		oxygenBar(t.OxygenUgL),
+	)
+}
+
+func oxygenBar(level int32) string {
+	filled := int(int64(level) * oxygenBarWidth / oxygenFullUgL)
+	filled = max(0, min(filled, oxygenBarWidth))
+
+	bar := strings.Repeat("█", filled) + strings.Repeat("░", oxygenBarWidth-filled)
+	text := fmt.Sprintf("O2 %s %d ug/L", bar, level)
+
+	if level < oxygenLowUgL {
+		return dangerStyle.Render(text)
+	}
+
+	return okStyle.Render(text)
+}
+
+func (m Model) renderEvents() string {
+	if len(m.snapshot.Events) == 0 {
+		return dimStyle.Render("sem eventos ainda")
+	}
+
+	lines := []string{labelStyle.Render("eventos recentes")}
+	for i, e := range m.snapshot.Events {
+		if i >= eventsShown {
+			break
+		}
+		lines = append(lines, "  "+dimStyle.Render(describe(e)))
+	}
+
+	return strings.Join(lines, "\n")
+}
+
+func describe(e client.Event) string {
+	switch e.Kind {
+	case "hypoxia_deaths":
+		return fmt.Sprintf("%d peixes morreram por falta de oxigenio", e.Fish)
+	case "starvation_deaths":
+		return fmt.Sprintf("%d peixes morreram de fome", e.Fish)
+	case "harvest":
+		return fmt.Sprintf("despesca de %d peixes, %d kg, %s", e.Fish, e.MassG/gramsPerKg, coins(e.CashTC))
+	case "feed_bought":
+		return fmt.Sprintf("comprou %d kg de racao por %s", e.MassG/gramsPerKg, coins(e.CashTC))
+	case "feed_exhausted":
+		return "a racao acabou no tanque " + strconv.FormatUint(uint64(e.Tank), 10)
+	case "growth":
+		return fmt.Sprintf("o lote ganhou %d g", e.MassG)
+	case "stocked":
+		return fmt.Sprintf("povoou %d alevinos por %s", e.Fish, coins(e.CashTC))
+	case "tank_bought":
+		return "comprou um tanque por " + coins(e.CashTC)
+	case "action_rejected":
+		return "acao recusada: " + e.Reason
+	default:
+		return e.Kind
+	}
+}
+
+func (m Model) renderFooter() string {
+	keys := dimStyle.Render("[f] racao  [a] aerador  [h] despescar  [s] povoar  [t] tanque  [r] atualizar  [q] sair")
+	if m.status == "" {
+		return keys
+	}
+
+	return keys + "\n" + labelStyle.Render(m.status)
+}
+
+func coins(cents int64) string {
+	return fmt.Sprintf("%d,%02d TC", cents/centsPerCoin, abs(cents%centsPerCoin))
+}
+
+func abs(v int64) int64 {
+	if v < 0 {
+		return -v
+	}
+
+	return v
+}
