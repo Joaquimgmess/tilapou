@@ -13,13 +13,13 @@ const (
 	swimDivisor       = 2
 	pathRowFromBottom = 2
 	mapCols           = 11
-	mapRows           = 8
+	mapRows           = 7
 	pondCols          = 4
 	pondRows          = 3
 	pondOriginX       = 1
 	pondOriginY       = 1
 	shedX             = 9
-	shedY             = 5
+	shedY             = 4
 )
 
 type tileKind uint8

@@ -20,7 +20,8 @@ status:
 	TILAPOU_DAEMON=$(TILAPOU_DAEMON) go run ./cmd/tilapou status
 
 test:
-	go test ./... -race -cover
+	go test ./... -race
+	go test ./... -cover
 
 lint:
 	golangci-lint config verify

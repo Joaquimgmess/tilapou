@@ -44,14 +44,15 @@ func (m Model) View() tea.View {
 }
 
 func (m Model) render() string {
-	if m.err != nil {
-		return dangerStyle.Render("daemon fora do ar: "+m.err.Error()) +
-			dimStyle.Render("\n\nsuba com: make up\n[r] tentar de novo   [q] sair\n")
-	}
 	if m.snapshot.FarmID == "" {
+		if m.err != nil {
+			return dangerStyle.Render("daemon fora do ar: "+m.err.Error()) +
+				dimStyle.Render("\n\nsuba com: make up\n[r] tentar de novo   [q] sair\n")
+		}
+
 		return dimStyle.Render("conectando no daemon...\n")
 	}
-	if m.mode == ModeGameBoy {
+	if m.mode == ModeGameBoy && m.fitsGameBoy() {
 		return m.renderGameBoy()
 	}
 

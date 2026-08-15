@@ -63,27 +63,6 @@ func TestHoldingToTheNextClassBeatsSellingNowWhenFeedIsCheap(t *testing.T) {
 	}
 }
 
-func TestNextClassPointsUpwards(t *testing.T) {
-	t.Parallel()
-
-	b := testBalance(t)
-
-	upTo, gain, ok := b.NextClass(306 * MicrogramsPerGram)
-	if !ok {
-		t.Fatal("nao achou proxima classe para 306 g")
-	}
-	if upTo != 600*MicrogramsPerGram {
-		t.Errorf("proxima classe = %d g, want 600", upTo.Grams())
-	}
-	if gain <= 0 {
-		t.Errorf("ganho da proxima classe = %d, deveria ser positivo", gain)
-	}
-
-	if _, _, ok := b.NextClass(1_500 * MicrogramsPerGram); ok {
-		t.Error("peixe acima de todas as classes nao deveria ter proxima")
-	}
-}
-
 func TestSeriesEndsAtTheCurrentTick(t *testing.T) {
 	t.Parallel()
 

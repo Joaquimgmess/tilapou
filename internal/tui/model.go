@@ -16,6 +16,7 @@ const (
 	refreshEvery   = time.Second
 	callTimeout    = 5 * time.Second
 	feedPurchaseKg = 100
+	messageTicks   = 5
 )
 
 type snapshotMsg struct {
@@ -28,8 +29,8 @@ type tickMsg time.Time
 type Mode uint8
 
 const (
-	ModeDashboard Mode = iota
-	ModeGameBoy
+	ModeGameBoy Mode = iota
+	ModeDashboard
 )
 
 type Model struct {
@@ -49,6 +50,8 @@ type Model struct {
 	height     int
 	quitting   bool
 	view       string
+	messageAt  int
+	staleTicks int
 }
 
 func New(c *client.Client) Model {
@@ -69,7 +72,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tickMsg:
 		m.frame++
+		m.staleTicks++
 		m.view = ""
+
+		if m.message != "" && !m.confirming && m.frame-m.messageAt >= messageTicks {
+			m.message = ""
+		}
 
 		return m, tea.Batch(m.fetch(), tick())
 
@@ -84,17 +92,25 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) onSnapshot(msg snapshotMsg) Model {
-	m.snapshot, m.err = msg.snapshot, msg.err
+	m.err, m.view = msg.err, ""
+	if msg.err != nil {
+		return m
+	}
+
+	m.snapshot, m.staleTicks = msg.snapshot, 0
 	m.farm = newFarmMap(len(msg.snapshot.Tanks))
 	m.selected = min(m.selected, max(len(msg.snapshot.Tanks)-1, 0))
 
-	if msg.err == nil {
-		if failure := explain(msg.snapshot.LastOutcome, msg.snapshot.CashCents); failure != "" {
-			m.message = failure
-		}
-		m.menu = m.refreshedMenu()
+	if failure := explain(msg.snapshot.LastOutcome, msg.snapshot.CashCents); failure != "" {
+		return m.say(failure)
 	}
-	m.view = ""
+	m.menu = m.refreshedMenu()
+
+	return m
+}
+
+func (m Model) say(text string) Model {
+	m.message, m.messageAt, m.view = text, m.frame, ""
 
 	return m
 }
@@ -123,19 +139,19 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	switch key {
-	case "j":
-		return m.selectDelta(1), nil
-	case "k":
-		return m.selectDelta(-1), nil
-	}
-
 	if m.confirming {
 		return m.onConfirm(key)
 	}
 
 	if m.menu != nil {
 		return m.onMenuKey(key)
+	}
+
+	switch key {
+	case "j":
+		return m.selectDelta(1), nil
+	case "k":
+		return m.selectDelta(-1), nil
 	}
 
 	if len(key) == 1 {
@@ -157,16 +173,8 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 	case "r":
 		return m, m.fetch()
 
-	case "m":
-		m.mode, m.view = m.otherMode(), ""
-
-		return m, nil
-
 	case "tab":
-		if len(m.snapshot.Tanks) > 0 {
-			m.selected = (m.selected + 1) % len(m.snapshot.Tanks)
-		}
-		m.view = ""
+		m.mode, m.view = m.otherMode(), ""
 
 		return m, nil
 
@@ -205,11 +213,9 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 
 func (m Model) onConfirm(key string) (tea.Model, tea.Cmd) {
 	m.confirming = false
-	m.view = ""
+	m = m.say("tilapada cancelada")
 
 	if key != "y" && key != "s" {
-		m.message = "tilapada cancelada"
-
 		return m, nil
 	}
 
@@ -218,15 +224,11 @@ func (m Model) onConfirm(key string) (tea.Model, tea.Cmd) {
 
 func (m Model) askPrestige() (tea.Model, tea.Cmd) {
 	if m.snapshot.PrestigeNow <= m.snapshot.Prestige {
-		m.message = "Ainda nao da para tilapar: fature mais antes"
-		m.view = ""
-
-		return m, nil
+		return m.say("Ainda nao da para tilapar: fature mais antes"), nil
 	}
 
+	m = m.say("Tilapar zera tanques, caixa e automacoes. Confirma? [s/n]")
 	m.confirming = true
-	m.message = "Tilapar zera tanques, caixa e automacoes. Confirma? [s/n]"
-	m.view = ""
 
 	return m, nil
 }
@@ -239,10 +241,7 @@ func (m Model) stock() (tea.Model, tea.Cmd) {
 
 	amount := tank.StockAdvice
 	if amount <= 0 {
-		m.message = stockBlocked(tank)
-		m.view = ""
-
-		return m, nil
+		return m.say(stockBlocked(tank)), nil
 	}
 
 	return m.act(client.Action{Kind: "stock", Tank: tank.ID, Amount: amount},
@@ -317,9 +316,7 @@ func (m Model) onMenuKey(key string) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		if !item.enabled {
-			m.message = "Nao da agora: " + item.hint
-
-			return m, nil
+			return m.say("Nao da agora: " + item.hint), nil
 		}
 
 		return m.act(item.action, item.status)
@@ -336,17 +333,11 @@ func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
 
 	upgrade := tank.Upgrades[index]
 	if upgrade.Owned {
-		m.message = "o tanque " + strconv.FormatUint(uint64(tank.ID), 10) + " ja tem " + upgrade.Kind
-		m.view = ""
-
-		return m, nil
+		return m.say("o tanque " + strconv.FormatUint(uint64(tank.ID), 10) + " ja tem " + upgrade.Kind), nil
 	}
 	if m.snapshot.CashCents < upgrade.CostCents {
-		m.message = "Sem grana: " + upgrade.Kind + " custa " + coins(upgrade.CostCents) +
-			" e faltam " + coins(upgrade.CostCents-m.snapshot.CashCents)
-		m.view = ""
-
-		return m, nil
+		return m.say("Sem grana: " + upgrade.Kind + " custa " + coins(upgrade.CostCents) +
+			" e faltam " + coins(upgrade.CostCents-m.snapshot.CashCents)), nil
 	}
 
 	return m.act(client.Action{Kind: "buy_upgrade", Tank: tank.ID, Auto: upgrade.Kind},
@@ -356,8 +347,7 @@ func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
 func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {
 	action.Key = m.nextKey
 	m.nextKey++
-	m.message = status
-	m.view = ""
+	m = m.say(status)
 
 	c := m.client
 

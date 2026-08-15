@@ -38,13 +38,19 @@ func (m Model) renderDashboard() string {
 		m.renderBatches(),
 	}
 
-	if m.effectiveWidth() >= wideWidth {
+	wide := m.effectiveWidth() >= wideWidth
+
+	switch {
+	case m.menu != nil:
+		rows = append(rows, panel(m.effectiveWidth()-panelInset, renderMenu(m.menu)))
+	case wide:
 		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top,
 			panel(decisionCol, m.renderDecision()),
 			panel(marketCol, m.renderMarket()),
 		))
-	} else {
-		rows = append(rows, panel(m.effectiveWidth()-panelInset, m.renderDecision()), panel(m.effectiveWidth()-panelInset, m.renderMarket()))
+	default:
+		rows = append(rows, panel(m.effectiveWidth()-panelInset, m.renderDecision()),
+			panel(m.effectiveWidth()-panelInset, m.renderMarket()))
 	}
 
 	rows = append(rows, m.renderKeys())
@@ -82,17 +88,37 @@ func (m Model) renderTopBar() string {
 		parts = append(parts, dimStyle.Render(fmt.Sprintf("d%d %02dh %.1f C",
 			s.Tick/(hoursPerDay*minutesPerHour), s.Hour, float64(s.TempMilliC)/milliUnit)))
 	}
+	if m.staleTicks > 1 {
+		parts = append(parts, dangerStyle.Render(fmt.Sprintf("! %ds sem resposta", m.staleTicks)))
+	}
 
 	return strings.Join(parts, "  ")
 }
 
 func (m Model) renderGoal() string {
-	goal, urgent := objective(m.snapshot)
-	if urgent {
-		return dangerStyle.Render("! " + goal)
+	if m.mode == ModeGameBoy && !m.fitsGameBoy() {
+		return dangerStyle.Render(fmt.Sprintf(
+			"o mapa precisa de %dx%d e o terminal tem %dx%d, entao ficam os numeros",
+			gbCols, gbRows, m.width, m.height))
+	}
+	if m.message != "" {
+		return valueStyle.Render(clipTo(m.message, m.effectiveWidth()))
 	}
 
-	return okStyle.Render("> " + goal)
+	goal, urgent := objective(m.snapshot)
+	if urgent {
+		return dangerStyle.Render("! " + clipTo(goal, m.effectiveWidth()-panelInset))
+	}
+
+	return okStyle.Render("> " + clipTo(goal, m.effectiveWidth()-panelInset))
+}
+
+func clipTo(text string, width int) string {
+	if width <= 1 || len(text) <= width {
+		return text
+	}
+
+	return text[:width-1] + "~"
 }
 
 func (m Model) renderBatches() string {
@@ -287,11 +313,11 @@ func viability(ratio, viable int64) string {
 
 func (m Model) renderKeys() string {
 	if m.effectiveWidth() < wideWidth {
-		return dimStyle.Render("j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  m mapa  q sair")
+		return dimStyle.Render("j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair")
 	}
 
 	return dimStyle.Render(
-		"j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  m mapa  q sair")
+		"j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  tab mapa  q sair")
 }
 
 func sparkline(values []int64) string {

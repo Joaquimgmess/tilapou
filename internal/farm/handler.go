@@ -39,6 +39,7 @@ type TankView struct {
 	StockAdvice   int64         `json:"stock_advice_fish"`
 	BreakEven     int64         `json:"break_even_fish"`
 	CostPerFish   int64         `json:"stock_cost_per_fish_cents"`
+	LoanAdvice    int64         `json:"loan_advice_cents"`
 	ServedFor     int64         `json:"served_for_ticks"`
 	Upgrades      []UpgradeView `json:"upgrades"`
 }
@@ -327,6 +328,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		tank := &state.Tanks[i]
 		fish, cost := state.StockAdvice(b, tank.ID)
 		advice, perFish := int64(fish), int64(cost)
+		plan := p.at(b, tank.Kind, state.Tick, state.Zone)
 		tv := TankView{
 			ID:          uint32(tank.ID),
 			Kind:        tankKindNames[tank.Kind],
@@ -337,7 +339,8 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			Capacity:    tank.Capacity(b),
 			StockAdvice: advice,
 			CostPerFish: perFish,
-			BreakEven:   int64(p.at(b, tank.Kind, state.Tick, state.Zone).BreakEven),
+			BreakEven:   int64(plan.BreakEven),
+			LoanAdvice:  int64(state.LoanAdvice(b, tank.ID, plan.BreakEven)),
 			ServedFor:   int64(tank.ServedUntil - state.Tick),
 			Upgrades:    upgradesOf(tank, b),
 		}
@@ -372,7 +375,9 @@ func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, b
 	tv.BatchID = uint32(batch.ID)
 	tv.Ready = batch.MeanMass >= b.Growth.HarvestMass
 	tv.PriceKgCents = int64(b.PriceFor(batch.MeanMass, state.Tick))
-	tv.NextClassG = nextClassGrams(b, batch.MeanMass)
+	if entry, gain, ok := b.NextClass(batch.MeanMass); ok {
+		tv.NextClassG, tv.NextClassGain = entry.Grams(), int64(gain)
+	}
 	tv.Sick = batch.Sick > 0
 	tv.ClassPPM = int64(b.ClassPPM(batch.MeanMass))
 	tv.CostCents = int64(batch.Cost)
@@ -422,17 +427,6 @@ func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 	view.HoldReached = hold.Reached
 
 	return view
-}
-
-func nextClassGrams(b *sim.Balance, mass sim.Micrograms) int64 {
-	for i := range b.Market.ClassCount {
-		class := b.Market.Classes[i]
-		if mass <= class.UpToMass {
-			return class.UpToMass.Grams()
-		}
-	}
-
-	return 0
 }
 
 func seriesOf(state *sim.State, b *sim.Balance) SeriesView {

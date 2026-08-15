@@ -51,6 +51,33 @@ var (
 	selectedStyle = lipgloss.NewStyle().Reverse(true).Bold(true)
 )
 
+const (
+	dialogueRows = 4
+	gbChromeRows = 7
+	gbCols       = mapCols * gb.TileSize
+	gbRows       = mapRows*gb.TileSize/2 + gbChromeRows
+)
+
+func cropTo(frame string, rows int) string {
+	lines := strings.Split(frame, "\n")
+	if rows >= len(lines) {
+		return frame
+	}
+	if rows < 1 {
+		rows = 1
+	}
+
+	return strings.Join(lines[:rows], "\n")
+}
+
+func (m Model) fitsGameBoy() bool {
+	if m.width <= 0 {
+		return true
+	}
+
+	return m.width >= gbCols && m.height >= gbRows
+}
+
 func (m Model) renderGameBoy() string {
 	snapshot := m.snapshot
 
@@ -77,7 +104,8 @@ func (m Model) renderGameBoy() string {
 	return strings.Join([]string{
 		hud,
 		banner,
-		renderMap(m.farm, m.you, snapshot, m.frame),
+		cropTo(renderMap(m.farm, m.you, snapshot, m.frame),
+			gbRows-gbChromeRows+dialogueRows-lipgloss.Height(body)),
 		body,
 		m.renderGameBoyKeys(),
 	}, "\n")
@@ -151,12 +179,7 @@ func (m Model) renderGameBoyKeys() string {
 		return screenStyle.Render("setas escolhem   z confirma   x fecha   q sai")
 	}
 
-	selected := ""
-	if tank, ok := m.tank(); ok && len(m.snapshot.Tanks) > 1 {
-		selected = "  [tab] tanque " + strconv.FormatUint(uint64(tank.ID), 10)
-	}
-
-	return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despescar  m painel  q sai" + selected)
+	return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despescar  tab numeros  q sai")
 }
 
 func (m Model) interact() (updated Model, target string) {

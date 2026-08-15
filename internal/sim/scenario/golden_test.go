@@ -109,7 +109,7 @@ func TestDensityScenarioDivergesFromAeratedOne(t *testing.T) {
 	}
 
 	if with.Fish() <= without.Fish() {
-		t.Errorf("aerador nao mudou o resultado: com=%d sem=%d — o trade-off virou cosmetico",
+		t.Errorf("aerador nao mudou o resultado: com=%d sem=%d, o trade-off virou cosmetico",
 			with.Fish(), without.Fish())
 	}
 }

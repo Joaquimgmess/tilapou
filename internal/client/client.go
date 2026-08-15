@@ -40,6 +40,7 @@ type Tank struct {
 	StockAdvice   int64     `json:"stock_advice_fish"`
 	BreakEven     int64     `json:"break_even_fish"`
 	CostPerFish   int64     `json:"stock_cost_per_fish_cents"`
+	LoanAdvice    int64     `json:"loan_advice_cents"`
 	ServedFor     int64     `json:"served_for_ticks"`
 	Upgrades      []Upgrade `json:"upgrades"`
 }
