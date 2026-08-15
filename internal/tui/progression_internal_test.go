@@ -48,9 +48,16 @@ func (d *driver) line(label string) string {
 	}
 
 	goal, _ := objective(s)
+	note := d.model.(Model).message
+	if note != "" {
+		note = "  << " + note
+	}
 
-	return fmt.Sprintf("%-26s caixa %10s  %5d peixes de %3d g  racao %4d kg  auto[%s]\n%-26s %s\n",
-		label, coins(s.CashCents), t.Fish, t.MeanGrams, t.FeedKg, strings.Join(auto, ","), "", goal)
+	return fmt.Sprintf("%-26s caixa %10s  %5d peixes de %3d g  racao %4d kg  auto[%s]\n"+
+		"%-26s margem %10s  custo %s/kg  mercado %s/kg%s\n%-26s %s\n",
+		label, coins(s.CashCents), t.Fish, t.MeanGrams, t.FeedKg, strings.Join(auto, ","),
+		"", signedPlain(t.MarginCents), coins(t.CostPerKg), coins(t.PriceKgCents), note,
+		"", goal)
 }
 
 func TestProgression(t *testing.T) {
@@ -68,47 +75,41 @@ func TestProgression(t *testing.T) {
 
 	d.press("f")
 	d.press("h")
-	out.WriteString(d.line("servi e despesquei"))
+	out.WriteString(d.line("vendi o lote herdado"))
 
 	d.press("1")
-	out.WriteString(d.line("comprei o comedouro"))
-
-	d.press("s")
-	out.WriteString(d.line("povoei com juvenis"))
-
 	d.press("2")
-	out.WriteString(d.line("comprei o aerador"))
+	out.WriteString(d.line("comprei comedouro e aerador"))
 
-	for _, days := range []int{15, 30, 60, 60} {
-		jumpDays(t, days)
-		out.WriteString(d.line(fmt.Sprintf("+%d dias", days)))
-	}
-
-	for range 3 {
-		d.press("up")
-	}
-	d.press("z")
-	for range 4 {
+	d.press("g")
+	for range 2 {
 		d.press("down")
 	}
 	d.press("z")
 	d.press("x")
-	out.WriteString(d.line("raleei 30% do lote"))
+	out.WriteString(d.line("peguei o credito que a tela sugeriu"))
 
-	for _, days := range []int{60, 60} {
+	d.press("s")
+	out.WriteString(d.line("povoei ate o equilibrio"))
+
+	for _, days := range []int{60, 60, 60} {
 		jumpDays(t, days)
 		out.WriteString(d.line(fmt.Sprintf("+%d dias", days)))
 	}
 
 	d.press("h")
-	out.WriteString(d.line("despesquei o resto"))
+	out.WriteString(d.line("despesquei"))
 
-	d.press("3")
-	out.WriteString(d.line("comprei o peao"))
+	d.press("g")
+	for range 3 {
+		d.press("down")
+	}
+	d.press("z")
+	d.press("x")
+	out.WriteString(d.line("quitei a divida"))
 
-	d.press("p")
 	d.press("s")
-	out.WriteString(d.line("tilapei"))
+	out.WriteString(d.line("povoei o ciclo seguinte"))
 
 	fmt.Fprint(os.Stdout, "\n"+out.String())
 }

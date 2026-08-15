@@ -2,6 +2,7 @@ package tui
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"strings"
 	"time"
@@ -12,10 +13,9 @@ import (
 )
 
 const (
-	refreshEvery      = time.Second
-	callTimeout       = 5 * time.Second
-	feedPurchaseKg    = 100
-	fingerlingsPerBuy = 500
+	refreshEvery   = time.Second
+	callTimeout    = 5 * time.Second
+	feedPurchaseKg = 100
 )
 
 type snapshotMsg struct {
@@ -28,8 +28,8 @@ type tickMsg time.Time
 type Mode uint8
 
 const (
-	ModeGameBoy Mode = iota
-	ModeDashboard
+	ModeDashboard Mode = iota
+	ModeGameBoy
 )
 
 type Model struct {
@@ -113,7 +113,21 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	if move, ok := movements[key]; ok {
-		return m.move(move.dx, move.dy, move.facing), nil
+		if m.mode == ModeGameBoy || m.menu != nil {
+			return m.move(move.dx, move.dy, move.facing), nil
+		}
+		if move.dy != 0 {
+			return m.selectDelta(move.dy), nil
+		}
+
+		return m, nil
+	}
+
+	switch key {
+	case "j":
+		return m.selectDelta(1), nil
+	case "k":
+		return m.selectDelta(-1), nil
 	}
 
 	if m.confirming {
@@ -173,6 +187,9 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 	case "h":
 		return m.act(client.Action{Kind: "harvest", Tank: m.tankID(), Batch: m.batchID()}, "despescando o lote")
 
+	case "g":
+		return m.openShed()
+
 	case "s":
 		return m.stock()
 
@@ -220,19 +237,39 @@ func (m Model) stock() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	room := tank.Capacity - int64(tank.Fish)
-	if room <= 0 {
-		m.message = "Esse tanque ja esta no limite de densidade"
+	amount := tank.StockAdvice
+	if amount <= 0 {
+		m.message = stockBlocked(tank)
 		m.view = ""
 
 		return m, nil
 	}
 
-	return m.act(client.Action{Kind: "stock", Tank: tank.ID, Amount: min(room, fingerlingsPerBuy)},
-		"povoando com alevinos")
+	return m.act(client.Action{Kind: "stock", Tank: tank.ID, Amount: amount},
+		fmt.Sprintf("povoando com %d alevinos", amount))
+}
+
+func (m Model) openShed() (tea.Model, tea.Cmd) {
+	tank, ok := m.tank()
+	if !ok {
+		return m, nil
+	}
+	m.menu, m.message, m.view = shedMenu(m.snapshot, tank), "", ""
+
+	return m, nil
 }
 
 func (m Model) onInteract() (tea.Model, tea.Cmd) {
+	if m.mode == ModeDashboard {
+		tank, ok := m.tank()
+		if !ok {
+			return m, nil
+		}
+		m.menu, m.message, m.view = tankMenu(m.snapshot, tank), "", ""
+
+		return m, nil
+	}
+
 	updated, target := m.interact()
 	tank, ok := updated.tank()
 	if !ok {
@@ -378,6 +415,17 @@ func (m Model) otherMode() Mode {
 	}
 
 	return ModeGameBoy
+}
+
+func (m Model) selectDelta(delta int) Model {
+	if len(m.snapshot.Tanks) == 0 {
+		return m
+	}
+
+	m.selected = (m.selected + delta + len(m.snapshot.Tanks)) % len(m.snapshot.Tanks)
+	m.view = ""
+
+	return m
 }
 
 func (m Model) tank() (client.Tank, bool) {

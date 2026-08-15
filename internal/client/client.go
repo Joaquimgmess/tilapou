@@ -16,22 +16,32 @@ var (
 )
 
 type Tank struct {
-	ID           uint32    `json:"id"`
-	Kind         string    `json:"kind"`
-	Fish         int32     `json:"fish"`
-	MeanGrams    int64     `json:"mean_grams"`
-	FeedKg       int64     `json:"feed_kg"`
-	OxygenUgL    int32     `json:"oxygen_ugl"`
-	Aerating     bool      `json:"aerating"`
-	DensityMilli int64     `json:"density_milli_kg_m3"`
-	Ready        bool      `json:"ready_to_harvest"`
-	BatchID      uint32    `json:"batch_id"`
-	PriceKgCents int64     `json:"price_kg_cents"`
-	NextClassG   int64     `json:"next_class_grams"`
-	Sick         bool      `json:"sick"`
-	Capacity     int64     `json:"capacity_fish"`
-	ServedFor    int64     `json:"served_for_ticks"`
-	Upgrades     []Upgrade `json:"upgrades"`
+	ID            uint32    `json:"id"`
+	Kind          string    `json:"kind"`
+	Fish          int32     `json:"fish"`
+	MeanGrams     int64     `json:"mean_grams"`
+	FeedKg        int64     `json:"feed_kg"`
+	OxygenUgL     int32     `json:"oxygen_ugl"`
+	Aerating      bool      `json:"aerating"`
+	DensityMilli  int64     `json:"density_milli_kg_m3"`
+	Ready         bool      `json:"ready_to_harvest"`
+	BatchID       uint32    `json:"batch_id"`
+	PriceKgCents  int64     `json:"price_kg_cents"`
+	ValueCents    int64     `json:"value_cents"`
+	CostCents     int64     `json:"cost_cents"`
+	MarginCents   int64     `json:"margin_cents"`
+	CostPerKg     int64     `json:"cost_per_kg_cents"`
+	ClassPPM      int64     `json:"class_ppm"`
+	NextClassGain int64     `json:"next_class_gain_ppm"`
+	Decision      Decision  `json:"decision"`
+	NextClassG    int64     `json:"next_class_grams"`
+	Sick          bool      `json:"sick"`
+	Capacity      int64     `json:"capacity_fish"`
+	StockAdvice   int64     `json:"stock_advice_fish"`
+	BreakEven     int64     `json:"break_even_fish"`
+	CostPerFish   int64     `json:"stock_cost_per_fish_cents"`
+	ServedFor     int64     `json:"served_for_ticks"`
+	Upgrades      []Upgrade `json:"upgrades"`
 }
 
 type Event struct {
@@ -77,6 +87,28 @@ type Cycle struct {
 	FCRPPM     int64 `json:"fcr_ppm"`
 }
 
+type Decision struct {
+	SellNowCents   int64 `json:"sell_now_cents"`
+	SellNowMargin  int64 `json:"sell_now_margin_cents"`
+	HoldToGrams    int64 `json:"hold_to_grams"`
+	HoldDays       int64 `json:"hold_days"`
+	HoldCents      int64 `json:"hold_cents"`
+	HoldMargin     int64 `json:"hold_margin_cents"`
+	HoldFeedCents  int64 `json:"hold_feed_cents"`
+	HoldReached    bool  `json:"hold_reached"`
+	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
+	GainPerDayMg   int64 `json:"gain_per_day_mg"`
+	FeedPerDayG    int64 `json:"feed_per_day_grams"`
+	FeedCostPerDay int64 `json:"feed_cost_per_day_cents"`
+	DaysOfFeed     int64 `json:"days_of_feed"`
+}
+
+type Series struct {
+	FishKgCents []int64 `json:"fish_kg_cents"`
+	FeedKgCents []int64 `json:"feed_kg_cents"`
+	StepTicks   int64   `json:"step_ticks"`
+}
+
 type Snapshot struct {
 	FarmID      string   `json:"farm_id"`
 	Name        string   `json:"name"`
@@ -93,6 +125,9 @@ type Snapshot struct {
 	Prices      Prices   `json:"prices"`
 	Debt        int64    `json:"debt_cents"`
 	LastCycle   Cycle    `json:"last_cycle"`
+	Series      Series   `json:"series"`
+	InterestDay int64    `json:"interest_per_day_cents"`
+	RunwayDays  int64    `json:"runway_days"`
 	Events      []Event  `json:"events"`
 	LastOutcome *Outcome `json:"last_outcome,omitempty"`
 }

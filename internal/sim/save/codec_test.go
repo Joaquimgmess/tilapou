@@ -13,7 +13,7 @@ func sample() sim.State {
 	s.LifetimeEarned = 1_234_567
 
 	id, _ := s.AddTank(sim.TankNetCage, 6_000)
-	s.StockTank(id, 900, 250*sim.MicrogramsPerGram)
+	s.StockTank(id, 900, 250*sim.MicrogramsPerGram, 0)
 	s.LoadFeed(id, 300*sim.MicrogramsPerKilogram)
 
 	return s

@@ -185,7 +185,7 @@ func (s *State) AddTank(kind TankKind, litres Litres) (TankID, bool) {
 	return s.addTank(kind, litres)
 }
 
-func (s *State) StockTank(id TankID, fish FishCount, mass Micrograms) bool {
+func (s *State) StockTank(id TankID, fish FishCount, mass Micrograms, cost Coins) bool {
 	t := s.tank(id)
 	if t == nil {
 		return false
@@ -194,6 +194,7 @@ func (s *State) StockTank(id TankID, fish FishCount, mass Micrograms) bool {
 	if !t.addBatch(s.NextBatchID, fish, mass, s.Tick) {
 		return false
 	}
+	t.Batches[t.BatchCount-1].Cost = cost
 	s.NextBatchID++
 
 	return true
