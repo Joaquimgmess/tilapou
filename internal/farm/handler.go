@@ -36,6 +36,7 @@ type TankView struct {
 	NextClassG    int64         `json:"next_class_grams"`
 	Sick          bool          `json:"sick"`
 	Capacity      int64         `json:"capacity_fish"`
+	StockAdvice   int64         `json:"stock_advice_fish"`
 	ServedFor     int64         `json:"served_for_ticks"`
 	Upgrades      []UpgradeView `json:"upgrades"`
 }
@@ -321,15 +322,16 @@ func viewOf(snap Snapshot, b *sim.Balance) SnapshotView {
 	for i := range state.TankCount {
 		tank := &state.Tanks[i]
 		tv := TankView{
-			ID:        uint32(tank.ID),
-			Kind:      tankKindNames[tank.Kind],
-			Fish:      int32(tank.Fish()),
-			FeedKg:    int64(tank.FeedStock / sim.MicrogramsPerKilogram),
-			OxygenUgL: int32(tank.Oxygen),
-			Aerating:  tank.Aerating,
-			Capacity:  tank.Capacity(b),
-			ServedFor: int64(tank.ServedUntil - state.Tick),
-			Upgrades:  upgradesOf(tank, b),
+			ID:          uint32(tank.ID),
+			Kind:        tankKindNames[tank.Kind],
+			Fish:        int32(tank.Fish()),
+			FeedKg:      int64(tank.FeedStock / sim.MicrogramsPerKilogram),
+			OxygenUgL:   int32(tank.Oxygen),
+			Aerating:    tank.Aerating,
+			Capacity:    tank.Capacity(b),
+			StockAdvice: int64(state.StockAdvice(b, tank.ID)),
+			ServedFor:   int64(tank.ServedUntil - state.Tick),
+			Upgrades:    upgradesOf(tank, b),
 		}
 		if tank.Litres > 0 {
 			tv.DensityMilli = int64(tank.Biomass()) / (litresPerCubicMetre * int64(tank.Litres))

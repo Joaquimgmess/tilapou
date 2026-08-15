@@ -12,6 +12,8 @@ const (
 	aeratorIndex      = 1
 	minRestockKg      = 10
 	minStock          = 100
+	stockedPercent    = 60
+	shortRunwayDays   = 20
 )
 
 type advice struct {
@@ -27,10 +29,12 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 	checks := []func(client.Snapshot) (advice, bool){
 		suffocating,
 		sickBatch,
-		crushingDebt,
 		outOfFeed,
+		shortRunway,
+		crushingDebt,
 		unfed,
 		readyToHarvest,
+		underStocked,
 		affordableAutomation,
 		prestigeReady,
 	}
@@ -44,7 +48,7 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 	tank := s.Tanks[0]
 	if tank.Fish == 0 {
 		if s.CashCents < s.Prices.FingerlingCents*minStock {
-			return "Tanque vazio e sem grana para povoar. Abra [z] no galpao e pegue um emprestimo", true
+			return "Tanque vazio e sem grana para povoar. Pegue um emprestimo com [g]", true
 		}
 
 		return "O tanque esta vazio. Povoe com [s]", false
@@ -58,6 +62,27 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 	}
 
 	return fmt.Sprintf("Engorde ate 800 g (esta em %d g) e sirva o trato antes de acabar", tank.MeanGrams), false
+}
+
+func underStocked(s client.Snapshot) (advice, bool) {
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
+		if t.Fish == 0 || t.Capacity <= 0 {
+			continue
+		}
+		if int64(t.Fish)*fullPercent >= t.Capacity*stockedPercent {
+			continue
+		}
+		if t.StockAdvice < minStock {
+			continue
+		}
+
+		return advice{fmt.Sprintf(
+			"O tanque %d tem %d dos %d peixes que cabem. O custo fixo e o mesmo cheio ou vazio: povoe com [s]",
+			t.ID, t.Fish, t.Capacity), false}, true
+	}
+
+	return advice{}, false
 }
 
 func suffocating(s client.Snapshot) (advice, bool) {
@@ -78,6 +103,25 @@ func sickBatch(s client.Snapshot) (advice, bool) {
 			return advice{fmt.Sprintf(
 				"Doenca no tanque %d. Abra [z] e trate, ou aceite as perdas", t.ID), true}, true
 		}
+	}
+
+	return advice{}, false
+}
+
+func shortRunway(s client.Snapshot) (advice, bool) {
+	if s.RunwayDays < 0 || s.RunwayDays >= shortRunwayDays {
+		return advice{}, false
+	}
+
+	for i := range s.Tanks {
+		t := &s.Tanks[i]
+		if t.Fish == 0 || t.Decision.HoldDays <= s.RunwayDays {
+			continue
+		}
+
+		return advice{fmt.Sprintf(
+			"O caixa dura %d dias e o lote do tanque %d so fecha em %d. Pegue credito com [g]",
+			s.RunwayDays, t.ID, t.Decision.HoldDays), true}, true
 	}
 
 	return advice{}, false

@@ -138,3 +138,38 @@ func (s *State) Series(b *Balance, points int, step Tick) (fish, feed []Coins) {
 
 	return fish, feed
 }
+
+func (s *State) StockAdvice(b *Balance, tank TankID) FishCount {
+	t := s.tank(tank)
+	if t == nil {
+		return 0
+	}
+
+	room := t.Capacity(b) - int64(t.Fish())
+	if room <= 0 {
+		return 0
+	}
+
+	perFish := b.Economy.FingerlingPrice + feedToRaise(b, s.Tick)
+	if perFish <= 0 {
+		return 0
+	}
+
+	return FishCount(min(room, int64(s.Cash)/int64(perFish)))
+}
+
+func feedToRaise(b *Balance, at Tick) Coins {
+	target := b.Growth.FingerlingMass
+	if b.Market.ClassCount > 0 {
+		target = b.Market.Classes[b.Market.ClassCount-1].UpToMass
+	}
+
+	gain := int64(target) - int64(b.Growth.FingerlingMass)
+	if gain <= 0 {
+		return 0
+	}
+
+	feed := mulDivCeil(gain, int64(b.Ration.TargetFCRPPM), int64(UnitPPM))
+
+	return Coins(mulDivCeil(feed, int64(MarketAt(b, at).FeedKg), int64(MicrogramsPerKilogram)))
+}

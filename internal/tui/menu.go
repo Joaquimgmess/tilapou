@@ -183,26 +183,33 @@ func treatItem(t client.Tank) menuItem {
 	return item
 }
 
+func stockBlocked(t client.Tank) string {
+	if t.Capacity-int64(t.Fish) <= 0 {
+		return "O tanque " + strconv.FormatInt(int64(t.ID), 10) +
+			" ja esta no limite de densidade: " + strconv.FormatInt(t.Capacity, 10) + " peixes"
+	}
+
+	return "Sem grana para povoar: o caixa nao paga o alevino mais a racao ate a despesca"
+}
+
 func stockItem(s client.Snapshot, t client.Tank) menuItem {
+	amount := t.StockAdvice
 	room := t.Capacity - int64(t.Fish)
-	amount := min(room, fingerlingsPerBuy)
-	price := amount * s.Prices.FingerlingCents
 
 	item := menuItem{
 		label:   "Povoar com alevinos",
-		enabled: room > 0 && s.CashCents >= price && amount > 0,
+		enabled: amount > 0,
 		status:  "povoando",
 		action:  client.Action{Kind: "stock", Tank: t.ID, Amount: amount},
 	}
 
-	switch {
-	case room <= 0:
-		item.hint = "densidade no limite: " + strconv.FormatInt(t.Capacity, 10) + " peixes"
-	case s.CashCents < price:
-		item.hint = "faltam " + coins(price-s.CashCents)
-	default:
-		item.hint = fmt.Sprintf("%d alevinos por %s, cabem %d", amount, coins(price), room)
+	if amount <= 0 {
+		item.hint = stockBlocked(t)
+
+		return item
 	}
+	item.hint = fmt.Sprintf("%d alevinos por %s, cabem %d e o caixa banca a racao deles",
+		amount, coins(amount*s.Prices.FingerlingCents), room)
 
 	return item
 }

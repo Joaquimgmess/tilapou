@@ -116,12 +116,12 @@ func (m Model) renderBatches() string {
 
 		row := fmt.Sprintf("%-7s %6d %4d g %11s %11s  %s",
 			fmt.Sprintf("T%d-L%d", t.ID, t.BatchID), t.Fish, t.MeanGrams,
-			coins(t.ValueCents), plainSigned(t.MarginCents), state)
+			coins(t.ValueCents), signedPlain(t.MarginCents), state)
 
 		if wide {
 			row = fmt.Sprintf("%-7s %6d %4d g %11s %11s %12s  %s",
 				fmt.Sprintf("T%d-L%d", t.ID, t.BatchID), t.Fish, t.MeanGrams,
-				coins(t.ValueCents), plainSigned(t.MarginCents), nextClass(t), state)
+				coins(t.ValueCents), signedPlain(t.MarginCents), nextClass(t), state)
 		}
 
 		lines = append(lines, m.decorateRow(i, row, alert))
@@ -270,11 +270,11 @@ func viability(ratio, viable int64) string {
 
 func (m Model) renderKeys() string {
 	if m.effectiveWidth() < wideWidth {
-		return dimStyle.Render("j/k lote  f trato  c racao  a aerador  h despescar  m mapa  q sair")
+		return dimStyle.Render("j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  m mapa  q sair")
 	}
 
 	return dimStyle.Render(
-		"j/k lote  f trato  c racao  a aerador  h despescar  1-5 automacao  m mapa  q sair")
+		"j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  m mapa  q sair")
 }
 
 func sparkline(values []int64) string {
@@ -309,7 +309,7 @@ func panel(width int, content string) string {
 	return lipgloss.NewStyle().Width(width).MaxWidth(width).Render(content)
 }
 
-func plainSigned(cents int64) string {
+func signedPlain(cents int64) string {
 	if cents < 0 {
 		return "-" + coins(-cents)
 	}

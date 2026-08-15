@@ -37,6 +37,7 @@ type Tank struct {
 	NextClassG    int64     `json:"next_class_grams"`
 	Sick          bool      `json:"sick"`
 	Capacity      int64     `json:"capacity_fish"`
+	StockAdvice   int64     `json:"stock_advice_fish"`
 	ServedFor     int64     `json:"served_for_ticks"`
 	Upgrades      []Upgrade `json:"upgrades"`
 }
