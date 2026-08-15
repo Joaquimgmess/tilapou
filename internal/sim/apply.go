@@ -26,7 +26,7 @@ func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reje
 	}
 
 	spec := b.Tanks[a.TankKind]
-	price := ladderCost(spec.BaseCost, int64(s.TankCount))
+	price := ladderCost(spec.BaseCost, int64(s.TankCount), b.Progression.CostFactorPPM)
 	if s.Cash < price {
 		return RejectNotEnoughCash
 	}
@@ -174,10 +174,14 @@ func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reje
 	return RejectNoSuchBatch
 }
 
-func ladderCost(base Coins, owned int64) Coins {
+func ladderCost(base Coins, owned int64, factor PPM) Coins {
+	if factor <= 0 {
+		factor = UnitPPM
+	}
+
 	cost := int64(base)
 	for range owned {
-		cost = mulDivCeil(cost, 115, 100)
+		cost = mulDivCeil(cost, int64(factor), int64(UnitPPM))
 	}
 
 	return Coins(cost)

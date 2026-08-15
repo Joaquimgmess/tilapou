@@ -176,6 +176,10 @@ linters:
         linters:
           - gosec
           - mnd
+      - path: internal/balance/
+        text: "G115:"
+        linters:
+          - gosec
       - path: cmd/api/main\.go
         text: "G704:"
         linters:

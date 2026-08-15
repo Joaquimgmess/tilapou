@@ -53,6 +53,11 @@ func testBalance(t *testing.T) *Balance {
 			StarvationTicksGrace: 4_320,
 			StarvationRatePPM:    1_000,
 		},
+		Progression: ProgressionBalance{
+			CostFactorPPM:    1_150_000,
+			PrestigeDivisor:  1_000_000,
+			PrestigeBonusPPM: 50_000,
+		},
 		Economy: EconomyBalance{
 			FishPricePerKg:  900,
 			FeedPricePerKg:  320,

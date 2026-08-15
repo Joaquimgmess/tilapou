@@ -72,14 +72,21 @@ type EconomyBalance struct {
 	AeratorCostTick Coins
 }
 
+type ProgressionBalance struct {
+	CostFactorPPM    PPM
+	PrestigeDivisor  int64
+	PrestigeBonusPPM PPM
+}
+
 type Balance struct {
-	Version uint16
-	Growth  GrowthBalance
-	Ration  RationBalance
-	Water   WaterBalance
-	Death   MortalityBalance
-	Economy EconomyBalance
-	Tanks   [tankKindCount]TankSpec
+	Version     uint16
+	Growth      GrowthBalance
+	Ration      RationBalance
+	Water       WaterBalance
+	Death       MortalityBalance
+	Economy     EconomyBalance
+	Progression ProgressionBalance
+	Tanks       [tankKindCount]TankSpec
 }
 
 func (b Balance) Validate() error {

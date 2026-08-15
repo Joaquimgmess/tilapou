@@ -77,6 +77,13 @@ proteina_pct = 32
 # Medido: 34 kg/ha/dia -> OD 4,5 e CAA 1,3 e sobrevivencia 99%
 #         78 kg/ha/dia -> OD 2,1 e CAA 2,5 e sobrevivencia 83%
 [agua]
+temperatura_base_c = 27.0
+temperatura_variacao_diaria_c = 4.0
+temperatura_pico_hora = 15
+od_variacao_diaria_ugl = 6000
+od_base_ugl = 6000
+od_consumo_por_kg_m3_ugl = 900
+od_recuperacao_aerador_ugl = 2500
 teto_racao_kg_ha_dia_sem_aeracao = 40.0
 teto_racao_kg_ha_dia_com_aeracao = 120.0
 od_ideal_min_ugl = 5000
@@ -112,6 +119,7 @@ fracao_toxica_pct = 45.0
 [mortalidade]
 sobrevivencia_engorda_pct = 80.0
 horas_para_letal_em_hipoxia = 4.0
+hipoxia_perda_por_tick_pct = 0.3
 fome_dias_ate_perda = 3.0
 fome_perda_diaria_pct = 2.0
 
