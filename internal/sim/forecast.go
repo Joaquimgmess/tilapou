@@ -19,7 +19,7 @@ type Forecast struct {
 }
 
 func (s *State) Forecast(b *Balance, tank TankID, batch BatchID, target Micrograms) Forecast {
-	start := *s
+	start := s.isolate(tank)
 	found := start.batch(tank, batch)
 	if found == nil || found.Empty() {
 		return Forecast{}
@@ -52,6 +52,18 @@ func (s *State) Forecast(b *Balance, tank TankID, batch BatchID, target Microgra
 	}
 
 	return closeForecast(&start, b, current, spent, ate, forecastCapDays, false)
+}
+
+func (s *State) isolate(tank TankID) State {
+	only := *s
+	only.TankCount = 0
+
+	if t := s.tank(tank); t != nil {
+		only.Tanks[0] = *t
+		only.TankCount = 1
+	}
+
+	return only
 }
 
 func keepManaged(s *State, b *Balance, tank TankID) {

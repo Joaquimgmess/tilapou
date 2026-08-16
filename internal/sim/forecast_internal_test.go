@@ -203,3 +203,64 @@ func TestLoanAdviceSaysWhyItOffersNothing(t *testing.T) {
 		}
 	}
 }
+
+func TestPrevisaoNaoDependeDosOutrosTanques(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	target := Micrograms(600) * MicrogramsPerGram
+
+	build := func(tanks int) State {
+		s := NewState(1, 0, 0)
+		s.Cash = 60_000
+		for range tanks {
+			id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			if !ok {
+				t.Fatal("sem tanque")
+			}
+			s.StockTank(id, 900, 450*MicrogramsPerGram, 300_000)
+			s.LoadFeed(id, 20*MicrogramsPerKilogram, MarketAt(b, 0).FeedKg)
+		}
+		s.SeedOxygen(b)
+
+		return s
+	}
+
+	one := build(1)
+	want := one.Forecast(b, 1, 1, target)
+
+	for _, tanks := range []int{4, 16} {
+		many := build(tanks)
+		if got := many.Forecast(b, 1, 1, target); got != want {
+			t.Errorf("com %d tanques a previsao do lote 1 mudou:\n  got  %+v\n  want %+v", tanks, got, want)
+		}
+	}
+}
+
+func TestAPrevisaoSimulaSoOTanqueAlvo(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Cash = 10_000_000
+
+	for range 8 {
+		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+		s.StockTank(id, 900, 450*MicrogramsPerGram, 0)
+	}
+
+	only := s.isolate(5)
+
+	if only.TankCount != 1 {
+		t.Errorf("a previsao levou %d tanques para o Advance: o custo cresce com a fazenda inteira", only.TankCount)
+	}
+	if only.Tanks[0].ID != 5 {
+		t.Errorf("isolou o tanque %d em vez do alvo 5", only.Tanks[0].ID)
+	}
+	if only.batch(5, only.Tanks[0].Batches[0].ID) == nil {
+		t.Error("o lote alvo nao e mais alcancavel depois de isolar")
+	}
+}
