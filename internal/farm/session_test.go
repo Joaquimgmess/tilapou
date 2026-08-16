@@ -14,7 +14,7 @@ import (
 
 type memoryStore struct {
 	farm    farm.Farm
-	actions map[sim.ActionID]bool
+	actions map[sim.ActionID]sim.Outcome
 	saves   int
 }
 
@@ -28,10 +28,16 @@ func (m *memoryStore) Insert(_ context.Context, f farm.Farm) error {
 	return nil
 }
 
-func (m *memoryStore) Save(_ context.Context, f farm.Farm, _ []sim.Event) error {
+func (m *memoryStore) Save(_ context.Context, f farm.Farm, _ []sim.Event, outcome *sim.Outcome) error {
 	m.farm = f
 	m.farm.Revision++
 	m.saves++
+
+	if outcome != nil {
+		if _, seen := m.actions[outcome.ID]; !seen {
+			m.actions[outcome.ID] = *outcome
+		}
+	}
 
 	return nil
 }
@@ -40,14 +46,10 @@ func (*memoryStore) Events(context.Context, farm.ID, int32) ([]farm.StoredEvent,
 	return nil, nil
 }
 
-func (m *memoryStore) AlreadyApplied(_ context.Context, _ farm.ID, key sim.ActionID) (bool, error) {
-	return m.actions[key], nil
-}
+func (m *memoryStore) AppliedOutcome(_ context.Context, _ farm.ID, key sim.ActionID) (sim.Outcome, bool, error) {
+	out, ok := m.actions[key]
 
-func (m *memoryStore) RecordAction(_ context.Context, _ farm.ID, key sim.ActionID, _ sim.Outcome) error {
-	m.actions[key] = true
-
-	return nil
+	return out, ok, nil
 }
 
 func TestAnActionLandsAtTheCurrentTickNotTheStaleOne(t *testing.T) {
@@ -61,7 +63,7 @@ func TestAnActionLandsAtTheCurrentTickNotTheStaleOne(t *testing.T) {
 	epoch := time.Unix(0, 0).UTC()
 	store := &memoryStore{
 		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
-		actions: map[sim.ActionID]bool{},
+		actions: map[sim.ActionID]sim.Outcome{},
 	}
 
 	away := 3 * 24 * time.Hour
@@ -94,7 +96,7 @@ func TestAReadWithNoTimePassedDoesNotWriteTheState(t *testing.T) {
 	epoch := time.Unix(0, 0).UTC()
 	store := &memoryStore{
 		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
-		actions: map[sim.ActionID]bool{},
+		actions: map[sim.ActionID]sim.Outcome{},
 	}
 
 	frozen := epoch.Add(time.Hour)
@@ -128,7 +130,7 @@ func TestActingDoesNotPushTheFarmClockAheadOfRealTime(t *testing.T) {
 	epoch := time.Unix(0, 0).UTC()
 	store := &memoryStore{
 		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
-		actions: map[sim.ActionID]bool{},
+		actions: map[sim.ActionID]sim.Outcome{},
 	}
 
 	frozen := epoch.Add(time.Hour)
@@ -158,7 +160,7 @@ func TestAnActionWithNoTimePassingIsStillPersisted(t *testing.T) {
 	epoch := time.Unix(0, 0).UTC()
 	store := &memoryStore{
 		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
-		actions: map[sim.ActionID]bool{},
+		actions: map[sim.ActionID]sim.Outcome{},
 	}
 
 	frozen := epoch.Add(time.Hour)
@@ -186,5 +188,52 @@ func TestAnActionWithNoTimePassingIsStillPersisted(t *testing.T) {
 	}
 	if store.farm.State.Tanks[0].FeedStock <= before {
 		t.Errorf("a racao comprada nao sobreviveu: %d, antes %d", store.farm.State.Tanks[0].FeedStock, before)
+	}
+}
+
+func TestReenviarAMesmaChaveDevolveAMesmaRespostaSemAplicarDeNovo(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	epoch := time.Unix(0, 0).UTC()
+	store := &memoryStore{
+		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
+		actions: map[sim.ActionID]sim.Outcome{},
+	}
+
+	frozen := epoch.Add(time.Hour)
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	player := store.farm.PlayerID
+	buy := sim.Action{ID: 7, Kind: sim.ActionBuyFeed, Tank: 1, Amount: 50}
+
+	first, err := sessions.Act(context.Background(), player, buy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Outcome.Applied {
+		t.Fatalf("a primeira chamada foi recusada: %v", first.Outcome.Reason)
+	}
+
+	stock := store.farm.State.Tanks[0].FeedStock
+	cash := store.farm.State.Cash
+
+	second, err := sessions.Act(context.Background(), player, buy)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if second.Outcome == nil {
+		t.Fatal("o retry com a mesma chave devolveu outcome nulo: o cliente nao sabe o que aconteceu")
+	}
+	if *second.Outcome != *first.Outcome {
+		t.Errorf("o retry devolveu outra resposta: %+v, a primeira foi %+v", *second.Outcome, *first.Outcome)
+	}
+	if store.farm.State.Tanks[0].FeedStock != stock || store.farm.State.Cash != cash {
+		t.Errorf("o retry aplicou a acao de novo: racao %d (era %d), caixa %d (era %d)",
+			store.farm.State.Tanks[0].FeedStock, stock, store.farm.State.Cash, cash)
 	}
 }

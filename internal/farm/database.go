@@ -19,10 +19,9 @@ import (
 type Store interface {
 	ByPlayer(ctx context.Context, playerID uuid.UUID) (Farm, error)
 	Insert(ctx context.Context, f Farm) error
-	Save(ctx context.Context, f Farm, events []sim.Event) error
+	Save(ctx context.Context, f Farm, events []sim.Event, outcome *sim.Outcome) error
 	Events(ctx context.Context, id ID, limit int32) ([]StoredEvent, error)
-	AlreadyApplied(ctx context.Context, id ID, key sim.ActionID) (bool, error)
-	RecordAction(ctx context.Context, id ID, key sim.ActionID, outcome sim.Outcome) error
+	AppliedOutcome(ctx context.Context, id ID, key sim.ActionID) (sim.Outcome, bool, error)
 }
 
 type StoredEvent struct {
@@ -101,7 +100,7 @@ func (d *DB) Insert(ctx context.Context, f Farm) error {
 	return nil
 }
 
-func (d *DB) Save(ctx context.Context, f Farm, events []sim.Event) error {
+func (d *DB) Save(ctx context.Context, f Farm, events []sim.Event, outcome *sim.Outcome) error {
 	raw, err := save.Encode(f.State)
 	if err != nil {
 		return err
@@ -139,8 +138,31 @@ func (d *DB) Save(ctx context.Context, f Farm, events []sim.Event) error {
 		return err
 	}
 
+	if err := insertOutcome(ctx, tx, f.ID, outcome); err != nil {
+		return err
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit save of farm %s: %w", f.ID, err)
+	}
+
+	return nil
+}
+
+func insertOutcome(ctx context.Context, tx pgx.Tx, id ID, outcome *sim.Outcome) error {
+	if outcome == nil {
+		return nil
+	}
+
+	const query = `
+		INSERT INTO farm_actions (farm_id, idempotency_key, applied, reason, at_tick, needed_cents)
+		VALUES ($1, $2, $3, $4, $5, $6)
+		ON CONFLICT (farm_id, idempotency_key) DO NOTHING`
+
+	_, err := tx.Exec(ctx, query, id, int64(outcome.ID), outcome.Applied,
+		outcome.Reason.String(), int64(outcome.At), int64(outcome.Needed))
+	if err != nil {
+		return fmt.Errorf("record action of farm %s: %w", id, err)
 	}
 
 	return nil
@@ -204,33 +226,31 @@ func (d *DB) Events(ctx context.Context, id ID, limit int32) ([]StoredEvent, err
 	return events, nil
 }
 
-func (d *DB) AlreadyApplied(ctx context.Context, id ID, key sim.ActionID) (bool, error) {
-	const query = `SELECT EXISTS (SELECT 1 FROM farm_actions WHERE farm_id = $1 AND idempotency_key = $2)`
-
-	ctx, cancel := context.WithTimeout(ctx, d.timeout)
-	defer cancel()
-
-	var exists bool
-	if err := d.pool.QueryRow(ctx, query, id, int64(key)).Scan(&exists); err != nil {
-		return false, fmt.Errorf("check idempotency of farm %s: %w", id, err)
-	}
-
-	return exists, nil
-}
-
-func (d *DB) RecordAction(ctx context.Context, id ID, key sim.ActionID, outcome sim.Outcome) error {
+func (d *DB) AppliedOutcome(ctx context.Context, id ID, key sim.ActionID) (sim.Outcome, bool, error) {
 	const query = `
-		INSERT INTO farm_actions (farm_id, idempotency_key, applied, reason, at_tick)
-		VALUES ($1, $2, $3, $4, $5)
-		ON CONFLICT (farm_id, idempotency_key) DO NOTHING`
+		SELECT applied, reason, at_tick, needed_cents
+		FROM farm_actions WHERE farm_id = $1 AND idempotency_key = $2`
 
 	ctx, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
 
-	_, err := d.pool.Exec(ctx, query, id, int64(key), outcome.Applied, outcome.Reason.String(), int64(outcome.At))
+	var (
+		reason string
+		tick   int64
+		needed int64
+		out    = sim.Outcome{ID: key}
+	)
+
+	err := d.pool.QueryRow(ctx, query, id, int64(key)).Scan(&out.Applied, &reason, &tick, &needed)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return sim.Outcome{}, false, nil
+	}
 	if err != nil {
-		return fmt.Errorf("record action of farm %s: %w", id, err)
+		return sim.Outcome{}, false, fmt.Errorf("read idempotency of farm %s: %w", id, err)
 	}
 
-	return nil
+	out.At, out.Needed = sim.Tick(tick), sim.Coins(needed)
+	out.Reason, _ = sim.RejectReasonNamed(reason)
+
+	return out, true, nil
 }

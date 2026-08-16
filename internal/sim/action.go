@@ -64,6 +64,16 @@ var rejectReasonNames = [rejectReasonCount]string{
 	RejectNothingSick:       "nothing_sick",
 }
 
+func RejectReasonNamed(name string) (RejectReason, bool) {
+	for reason, known := range rejectReasonNames {
+		if known == name {
+			return RejectReason(reason), true
+		}
+	}
+
+	return RejectNone, false
+}
+
 func (r RejectReason) String() string {
 	if r >= rejectReasonCount {
 		return invalidName

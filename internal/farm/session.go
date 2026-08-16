@@ -59,13 +59,14 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 		return Snapshot{}, err
 	}
 
+	var replayed *sim.Outcome
 	if action != nil {
-		applied, appliedErr := s.store.AlreadyApplied(ctx, f.ID, action.ID)
+		stored, applied, appliedErr := s.store.AppliedOutcome(ctx, f.ID, action.ID)
 		if appliedErr != nil {
 			return Snapshot{}, appliedErr
 		}
 		if applied {
-			action = nil
+			action, replayed = nil, &stored
 		}
 	}
 
@@ -83,22 +84,19 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 		return Snapshot{}, err
 	}
 
+	outcome := replayed
+	if len(out.Outcomes) > 0 {
+		outcome = &out.Outcomes[0]
+	}
+
 	changed := out.State.Tick != f.State.Tick || len(out.Outcomes) > 0
 	f.State = out.State
 
 	if changed {
-		if err := s.store.Save(ctx, f, out.Events); err != nil {
+		if err := s.store.Save(ctx, f, out.Events, outcome); err != nil {
 			return Snapshot{}, err
 		}
 		f.Revision++
-	}
-
-	var outcome *sim.Outcome
-	if len(out.Outcomes) > 0 {
-		outcome = &out.Outcomes[0]
-		if err := s.store.RecordAction(ctx, f.ID, outcome.ID, *outcome); err != nil {
-			return Snapshot{}, err
-		}
 	}
 
 	logging.FromContext(ctx).DebugContext(ctx, "farm advanced",
