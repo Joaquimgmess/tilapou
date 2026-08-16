@@ -93,7 +93,10 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 	f.State = out.State
 
 	if changed {
-		if err := s.store.Save(ctx, f, out.Events, outcome); err != nil {
+		switch err := s.store.Save(ctx, f, out.Events, outcome); {
+		case errors.Is(err, ErrAlreadyApplied):
+			return s.withFarm(ctx, playerID, nil)
+		case err != nil:
 			return Snapshot{}, err
 		}
 		f.Revision++

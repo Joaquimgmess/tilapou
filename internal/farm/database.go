@@ -119,6 +119,10 @@ func (d *DB) Save(ctx context.Context, f Farm, events []sim.Event, outcome *sim.
 		}
 	}()
 
+	if outcomeErr := insertOutcome(ctx, tx, f.ID, outcome); outcomeErr != nil {
+		return outcomeErr
+	}
+
 	projection := sim.Project(&f.State)
 
 	const update = `
@@ -135,10 +139,6 @@ func (d *DB) Save(ctx context.Context, f Farm, events []sim.Event, outcome *sim.
 	}
 
 	if err := insertEvents(ctx, tx, f.ID, events); err != nil {
-		return err
-	}
-
-	if err := insertOutcome(ctx, tx, f.ID, outcome); err != nil {
 		return err
 	}
 
@@ -159,10 +159,13 @@ func insertOutcome(ctx context.Context, tx pgx.Tx, id ID, outcome *sim.Outcome) 
 		VALUES ($1, $2, $3, $4, $5, $6)
 		ON CONFLICT (farm_id, idempotency_key) DO NOTHING`
 
-	_, err := tx.Exec(ctx, query, id, int64(outcome.ID), outcome.Applied,
+	tag, err := tx.Exec(ctx, query, id, int64(outcome.ID), outcome.Applied,
 		outcome.Reason.String(), int64(outcome.At), int64(outcome.Needed))
 	if err != nil {
 		return fmt.Errorf("record action of farm %s: %w", id, err)
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrAlreadyApplied
 	}
 
 	return nil
