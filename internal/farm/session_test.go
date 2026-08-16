@@ -116,3 +116,75 @@ func TestAReadWithNoTimePassedDoesNotWriteTheState(t *testing.T) {
 		t.Errorf("%d leituras sem tempo passar gravaram %d vezes", 5, store.saves-after)
 	}
 }
+
+func TestActingDoesNotPushTheFarmClockAheadOfRealTime(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	epoch := time.Unix(0, 0).UTC()
+	store := &memoryStore{
+		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
+		actions: map[sim.ActionID]bool{},
+	}
+
+	frozen := epoch.Add(time.Hour)
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	player := store.farm.PlayerID
+
+	for i := range 50 {
+		if _, err := sessions.Act(context.Background(), player,
+			sim.Action{ID: sim.ActionID(i + 1), Kind: sim.ActionFeed, Tank: 1}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if drift := store.farm.State.Tick - farm.TickAt(epoch, frozen); drift != 0 {
+		t.Errorf("50 acoes instantaneas adiantaram o relogio da fazenda em %d ticks", drift)
+	}
+}
+
+func TestAnActionWithNoTimePassingIsStillPersisted(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	epoch := time.Unix(0, 0).UTC()
+	store := &memoryStore{
+		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
+		actions: map[sim.ActionID]bool{},
+	}
+
+	frozen := epoch.Add(time.Hour)
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	player := store.farm.PlayerID
+
+	if _, err := sessions.Sync(context.Background(), player); err != nil {
+		t.Fatal(err)
+	}
+
+	before := store.farm.State.Tanks[0].FeedStock
+	saves := store.saves
+
+	snap, actErr := sessions.Act(context.Background(), player,
+		sim.Action{ID: 1, Kind: sim.ActionBuyFeed, Tank: 1, Amount: 50})
+	if actErr != nil {
+		t.Fatal(actErr)
+	}
+	if !snap.Outcome.Applied {
+		t.Fatalf("a compra foi recusada: %v", snap.Outcome.Reason)
+	}
+
+	if store.saves == saves {
+		t.Error("a acao foi aplicada e nao foi gravada: o relogio nao andou e a guarda descartou tudo")
+	}
+	if store.farm.State.Tanks[0].FeedStock <= before {
+		t.Errorf("a racao comprada nao sobreviveu: %d, antes %d", store.farm.State.Tanks[0].FeedStock, before)
+	}
+}

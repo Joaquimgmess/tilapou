@@ -45,6 +45,10 @@ func Advance(in Input) (Output, error) {
 	truncated := false
 	tick := state.Tick
 
+	var overdue []Action
+	overdue, pending = actionsDue(pending, tick)
+	outcomes = applyDue(&state, in.Balance, overdue, tick, sink, outcomes)
+
 	for tick < in.Until {
 		cost := int64(state.TankCount)
 		if cost == 0 {
@@ -60,20 +64,7 @@ func Advance(in Input) (Output, error) {
 
 		var due []Action
 		due, pending = actionsDue(pending, tick)
-		for _, a := range due {
-			reason, needed := apply(&state, in.Balance, a, tick, sink)
-			if reason != RejectNone {
-				sink.emit(Event{
-					Kind:   EventActionRejected,
-					From:   tick,
-					To:     tick,
-					Tank:   a.Tank,
-					Batch:  a.Batch,
-					Reason: reason,
-				})
-			}
-			outcomes = append(outcomes, Outcome{ID: a.ID, At: tick, Applied: reason == RejectNone, Reason: reason, Needed: needed})
-		}
+		outcomes = applyDue(&state, in.Balance, due, tick, sink, outcomes)
 
 		step(&state, in.Balance, tick, sink)
 		closeWindows(&state, tick, sink)
@@ -115,6 +106,25 @@ func actionsAreSorted(actions []Action) bool {
 	}
 
 	return true
+}
+
+func applyDue(state *State, b *Balance, due []Action, tick Tick, sink *eventSink, outcomes []Outcome) []Outcome {
+	for _, a := range due {
+		reason, needed := apply(state, b, a, tick, sink)
+		if reason != RejectNone {
+			sink.emit(Event{
+				Kind:   EventActionRejected,
+				From:   tick,
+				To:     tick,
+				Tank:   a.Tank,
+				Batch:  a.Batch,
+				Reason: reason,
+			})
+		}
+		outcomes = append(outcomes, Outcome{ID: a.ID, At: tick, Applied: reason == RejectNone, Reason: reason, Needed: needed})
+	}
+
+	return outcomes
 }
 
 func actionsDue(actions []Action, tick Tick) (due, rest []Action) {

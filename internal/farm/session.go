@@ -73,8 +73,7 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 	var actions []sim.Action
 	if action != nil {
 		scheduled := *action
-		scheduled.At = now + 1
-		now = scheduled.At
+		scheduled.At = now
 		actions = append(actions, scheduled)
 	}
 
@@ -83,10 +82,10 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 		return Snapshot{}, err
 	}
 
-	advanced := out.State.Tick != f.State.Tick
+	changed := out.State.Tick != f.State.Tick || len(out.Outcomes) > 0
 	f.State = out.State
 
-	if advanced {
+	if changed {
 		if err := s.store.Save(ctx, f, out.Events); err != nil {
 			return Snapshot{}, err
 		}
