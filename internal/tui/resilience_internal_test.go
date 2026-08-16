@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	tea "charm.land/bubbletea/v2"
+
+	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
 var (
@@ -174,5 +176,22 @@ func TestABlockedLoanSaysWhyItIsBlocked(t *testing.T) {
 	}
 	if !strings.Contains(item.hint, "credito") {
 		t.Errorf("a dica nao diz que o limite de credito acabou: %q", item.hint)
+	}
+}
+
+func TestEveryRejectReasonHasAMessage(t *testing.T) {
+	t.Parallel()
+
+	reasons := []string{
+		"no_such_tank", "no_such_batch", "not_enough_cash", "not_enough_feed", "tank_full",
+		"farm_full", "bad_amount", "too_dense", "already_owned", "not_enough_lifetime",
+		"credit_limit", "no_debt", "nothing_sick", "not_broke", "unknown_kind",
+	}
+
+	for _, reason := range reasons {
+		got := explain(&client.Outcome{Reason: reason}, 0)
+		if strings.Contains(got, reason) {
+			t.Errorf("o motivo %q chega cru na tela: %q", reason, got)
+		}
 	}
 }

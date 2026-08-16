@@ -130,6 +130,7 @@ type SnapshotView struct {
 	Series      SeriesView   `json:"series"`
 	InterestDay int64        `json:"interest_per_day_cents"`
 	RunwayDays  int64        `json:"runway_days"`
+	Broke       bool         `json:"broke"`
 	Events      []EventView  `json:"events"`
 	LastOutcome *OutcomeView `json:"last_outcome,omitempty"`
 }
@@ -140,11 +141,11 @@ type snapshotOutput struct {
 
 type actionBody struct {
 	Key      uint64 `doc:"Chave de idempotencia da acao"   json:"key"`
-	Kind     string `doc:"Acao a executar"                 enum:"feed,buy_feed,aerate,harvest,stock,buy_tank,buy_upgrade,treat,prestige,borrow,repay" json:"kind"`
+	Kind     string `doc:"Acao a executar"                 enum:"feed,buy_feed,aerate,harvest,stock,buy_tank,buy_upgrade,treat,prestige,restart,borrow,repay" json:"kind"`
 	Tank     uint32 `doc:"Tanque alvo"                     json:"tank_id,omitempty"`
 	Batch    uint32 `doc:"Lote alvo"                       json:"batch_id,omitempty"`
-	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"                                 json:"tank_kind,omitempty"`
-	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                                             json:"auto,omitempty"`
+	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"                                         json:"tank_kind,omitempty"`
+	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                                                     json:"auto,omitempty"`
 	Amount   int64  `doc:"Quantidade, quando a acao pedir" json:"amount,omitempty"`
 }
 
@@ -161,6 +162,7 @@ var actionKindByName = map[string]sim.ActionKind{
 	"harvest":     sim.ActionHarvest,
 	"buy_upgrade": sim.ActionBuyUpgrade,
 	"prestige":    sim.ActionPrestige,
+	"restart":     sim.ActionRestart,
 	"borrow":      sim.ActionBorrow,
 	"repay":       sim.ActionRepay,
 	"treat":       sim.ActionTreat,
@@ -270,7 +272,7 @@ func needsTank(kind sim.ActionKind) bool {
 	case sim.ActionFeed, sim.ActionBuyFeed, sim.ActionAerate, sim.ActionHarvest,
 		sim.ActionStock, sim.ActionBuyUpgrade, sim.ActionTreat:
 		return true
-	case sim.ActionBuyTank, sim.ActionPrestige, sim.ActionBorrow, sim.ActionRepay, sim.ActionUnknown:
+	case sim.ActionBuyTank, sim.ActionPrestige, sim.ActionRestart, sim.ActionBorrow, sim.ActionRepay, sim.ActionUnknown:
 		return false
 	}
 
@@ -297,6 +299,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		Series:      seriesOf(state, b),
 		InterestDay: int64(state.Debt) * int64(b.Credit.DailyRatePPM) / ppmUnit,
 		RunwayDays:  runwayDays(state, b),
+		Broke:       state.Broke(b),
 		Prices: PriceView{
 			FeedKgCents:     int64(market.FeedKg),
 			FingerlingCents: int64(b.Economy.FingerlingPrice),

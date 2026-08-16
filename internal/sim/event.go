@@ -17,6 +17,7 @@ const (
 	EventActionRejected
 	EventUpgradeBought
 	EventPrestiged
+	EventRestarted
 	EventBorrowed
 	EventRepaid
 	EventDisease
@@ -38,6 +39,7 @@ var eventKindNames = [eventKindCount]string{
 	EventActionRejected:   "action_rejected",
 	EventUpgradeBought:    "upgrade_bought",
 	EventPrestiged:        "prestiged",
+	EventRestarted:        "restarted",
 	EventBorrowed:         "borrowed",
 	EventRepaid:           "repaid",
 	EventDisease:          "disease",

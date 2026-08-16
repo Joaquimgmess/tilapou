@@ -16,6 +16,7 @@ const (
 	ActionHarvest
 	ActionBuyUpgrade
 	ActionPrestige
+	ActionRestart
 	ActionBorrow
 	ActionRepay
 	ActionTreat
@@ -39,6 +40,7 @@ const (
 	RejectNotEnoughLifetime
 	RejectCreditLimit
 	RejectNoDebt
+	RejectNotBroke
 	RejectNothingSick
 	rejectReasonCount
 )
@@ -58,6 +60,7 @@ var rejectReasonNames = [rejectReasonCount]string{
 	RejectNotEnoughLifetime: "not_enough_lifetime",
 	RejectCreditLimit:       "credit_limit",
 	RejectNoDebt:            "no_debt",
+	RejectNotBroke:          "not_broke",
 	RejectNothingSick:       "nothing_sick",
 }
 

@@ -43,6 +43,7 @@ type Model struct {
 	message    string
 	selected   int
 	confirming bool
+	restarting bool
 	menu       *menu
 	client     *client.Client
 	snapshot   client.Snapshot
@@ -216,20 +217,26 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 
 	case "p":
 		return m.askPrestige()
+
+	case "b":
+		return m.askRestart()
 	}
 
 	return m, nil
 }
 
 func (m Model) onConfirm(key string) (tea.Model, tea.Cmd) {
-	m.confirming = false
-	m = m.say("tilapada cancelada")
+	restarting := m.restarting
+	next := m.clearPrompt()
 
 	if key != "y" && key != "s" {
-		return m, nil
+		return next.say("cancelado"), nil
+	}
+	if restarting {
+		return next.act(client.Action{Kind: "restart"}, "recomecando do zero")
 	}
 
-	return m.act(client.Action{Kind: "prestige"}, "tilapando: vendendo tudo e recomecando")
+	return next.act(client.Action{Kind: "prestige"}, "tilapando: vendendo tudo e recomecando")
 }
 
 func (m Model) askPrestige() (tea.Model, tea.Cmd) {
@@ -239,6 +246,23 @@ func (m Model) askPrestige() (tea.Model, tea.Cmd) {
 
 	m = m.say("Tilapar zera tanques, caixa e automacoes. Confirma? [s/n]")
 	m.confirming = true
+
+	return m, nil
+}
+
+func (m Model) clearPrompt() Model {
+	m.confirming, m.restarting = false, false
+
+	return m
+}
+
+func (m Model) askRestart() (tea.Model, tea.Cmd) {
+	if !m.snapshot.Broke {
+		return m.say("So da para recomecar quando a fazenda quebra de vez"), nil
+	}
+
+	m = m.say("Recomecar zera a divida e devolve o lote inicial, sem ganhar prestigio. Confirma? [s/n]")
+	m.confirming, m.restarting = true, true
 
 	return m, nil
 }

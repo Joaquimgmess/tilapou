@@ -62,4 +62,5 @@ custava.
 | `credit_limit` | o empréstimo passa do limite de crédito |
 | `no_debt` | não há dívida para pagar |
 | `nothing_sick` | não há doença nesse tanque para tratar |
+| `not_broke` | recomeçar só vale quando a fazenda quebra de vez |
 | `unknown_kind` | ação ou tipo desconhecido |

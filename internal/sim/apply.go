@@ -16,6 +16,8 @@ func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReas
 		return applyHarvest(s, b, a, at, sink), 0
 	case ActionBuyUpgrade:
 		return applyBuyUpgrade(s, b, a, at, sink)
+	case ActionRestart:
+		return restart(s, b, at, sink), 0
 	case ActionPrestige:
 		return prestige(s, b, at, sink), 0
 	case ActionBorrow:

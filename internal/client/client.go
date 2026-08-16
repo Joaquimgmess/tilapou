@@ -131,6 +131,7 @@ type Snapshot struct {
 	Series      Series   `json:"series"`
 	InterestDay int64    `json:"interest_per_day_cents"`
 	RunwayDays  int64    `json:"runway_days"`
+	Broke       bool     `json:"broke"`
 	Events      []Event  `json:"events"`
 	LastOutcome *Outcome `json:"last_outcome,omitempty"`
 }

@@ -184,6 +184,10 @@ linters:
         text: "G704:"
         linters:
           - gosec
+      - path: internal/tui/guidance\.go
+        text: "G101:"
+        linters:
+          - gosec
       - path: internal/tui/(live|progression)_internal_test\.go
         linters:
           - paralleltest

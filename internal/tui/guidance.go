@@ -26,6 +26,7 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 	}
 
 	checks := []func(client.Snapshot) (advice, bool){
+		broke,
 		suffocating,
 		sickBatch,
 		outOfFeed,
@@ -83,6 +84,14 @@ func underStocked(s client.Snapshot) (advice, bool) {
 	}
 
 	return advice{}, false
+}
+
+func broke(s client.Snapshot) (advice, bool) {
+	if !s.Broke {
+		return advice{}, false
+	}
+
+	return advice{"A fazenda quebrou: sem peixe, sem caixa e sem credito. Recomece do zero com [b]", true}, true
 }
 
 func suffocating(s client.Snapshot) (advice, bool) {
@@ -213,6 +222,10 @@ func affords(s client.Snapshot, t *client.Tank, index int) bool {
 }
 
 var rejectMessages = map[string]string{
+	"not_broke":           "a fazenda ainda tem como se virar",
+	"credit_limit":        "o emprestimo passa do limite de credito: pague o que deve antes",
+	"no_debt":             "nao ha divida para pagar",
+	"nothing_sick":        "nao ha doenca nesse tanque",
 	"no_such_tank":        "esse tanque nao existe",
 	"no_such_batch":       "nao ha lote nesse tanque",
 	"not_enough_feed":     "sem racao no tanque: compre com [c]",
