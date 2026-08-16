@@ -183,9 +183,10 @@ const (
 	LoanNoCredit
 	LoanNoRoom
 	LoanNoNeed
+	loanBlockCount
 )
 
-var loanBlockNames = map[LoanBlock]string{
+var loanBlockNames = [loanBlockCount]string{
 	LoanOpen:     "open",
 	LoanNoCredit: "no_credit",
 	LoanNoRoom:   "no_room",
@@ -193,11 +194,11 @@ var loanBlockNames = map[LoanBlock]string{
 }
 
 func (l LoanBlock) String() string {
-	if name, ok := loanBlockNames[l]; ok {
-		return name
+	if l >= loanBlockCount {
+		return invalidName
 	}
 
-	return "unknown"
+	return loanBlockNames[l]
 }
 
 func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) (Coins, LoanBlock) {
