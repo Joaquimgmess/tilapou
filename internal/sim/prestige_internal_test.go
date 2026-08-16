@@ -96,3 +96,23 @@ func TestAHealthyFarmCannotStartOver(t *testing.T) {
 		t.Errorf("recusa saiu como %v, queria not_broke", out.Outcomes[0].Reason)
 	}
 }
+
+func TestTilaparNaoPerdoaADivida(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Debt, s.DebtCarry = 1_500_000, 77
+	s.LifetimeEarned = Coins(b.Progression.PrestigeDivisor) * 400
+
+	if reason := prestige(&s, b, 10, &eventSink{}); reason != RejectNone {
+		t.Fatalf("tilapada recusada: %v", reason)
+	}
+
+	if s.Debt != 1_500_000 || s.DebtCarry != 77 {
+		t.Errorf("a tilapada perdoou a divida: %d com carry %d, queria 1500000 e 77", s.Debt, s.DebtCarry)
+	}
+	if s.Prestige == 0 {
+		t.Error("a tilapada nao deu prestigio")
+	}
+}

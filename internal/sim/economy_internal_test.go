@@ -222,6 +222,8 @@ func TestCrowdingRaisesDiseaseRisk(t *testing.T) {
 func TestHarvestMovesTheWholeCostOfWhatWasSold(t *testing.T) {
 	t.Parallel()
 
+	b := testBalance(t)
+
 	for _, tc := range []struct {
 		name  string
 		fish  FishCount
@@ -232,16 +234,21 @@ func TestHarvestMovesTheWholeCostOfWhatWasSold(t *testing.T) {
 		{"meia despesca leva metade", 1_000, 500, 50_000},
 		{"um decimo leva um decimo", 1_000, 100, 10_000},
 	} {
-		batch := Batch{Fish: tc.fish, Cost: 100_000, MassGained: 1, FeedEaten: 1}
 		s := NewState(1, 0, 0)
+		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+		s.StockTank(id, tc.fish, 400*MicrogramsPerGram, 100_000)
 
-		closeCycle(&s, &batch, tc.sold, Micrograms(tc.sold)*MicrogramsPerKilogram, 0)
+		tank := s.tank(id)
+		sell(&s, b, tank, &tank.Batches[0], tc.sold, 1, &eventSink{})
 
 		if s.LastCycle.Cost != tc.share {
 			t.Errorf("%s: o ciclo levou %d centavos, queria %d", tc.name, s.LastCycle.Cost, tc.share)
 		}
-		if left := Coins(100_000) - tc.share; batch.Cost != left {
-			t.Errorf("%s: sobrou %d no lote, queria %d", tc.name, batch.Cost, left)
+		if left := Coins(100_000) - tc.share; tank.Batches[0].Cost != left {
+			t.Errorf("%s: sobrou %d no lote, queria %d", tc.name, tank.Batches[0].Cost, left)
 		}
 	}
 }

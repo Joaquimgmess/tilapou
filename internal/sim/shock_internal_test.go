@@ -5,35 +5,64 @@ import "testing"
 func TestDeathOnTheOutbreakTickIsNotDecidedByTheOutbreakRoll(t *testing.T) {
 	t.Parallel()
 
-	const (
-		fish     = FishCount(1_000)
-		risk     = PPM(90_000)
-		deathPPM = 41
-		rounds   = 4_000
-	)
+	b := testBalance(t)
+	b.Shock.CheckEvery = 1
 
-	outbreaks, deaths := 0, 0
-	for i := range rounds {
-		seed := Seed(i + 1)
-		if !seed.Chance(RollKey{Tick: 7, Tank: 1, Batch: 1, Purpose: PurposeDisease}, risk) {
+	for i := range b.Shock.DiseaseCount {
+		b.Shock.Diseases[i].OutbreakPPM = UnitPPM / 10
+	}
+
+	var day Tick
+	for day = range Tick(365) {
+		if _, _, ok := diseaseFor(b, seasonalTemp(b, day*TicksPerDay, 0)); ok {
+			break
+		}
+	}
+
+	outbreaks, sameTickDeaths := 0, 0
+
+	for seed := range 2_000 {
+		s := NewState(Seed(seed+1), 0, day*TicksPerDay)
+		s.Cash = 1 << 40
+
+		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+		s.StockTank(id, 1_000, 200*MicrogramsPerGram, 0)
+		s.SeedOxygen(b)
+		s.tank(id).grant(AutoFeeder)
+
+		out, err := Advance(Input{State: s, Until: s.Tick + 1, Balance: b})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		opened := false
+		for _, e := range out.Events {
+			if e.Kind == EventDisease {
+				opened = true
+			}
+		}
+		if !opened {
 			continue
 		}
-		outbreaks++
 
-		batch := Batch{ID: 1, Fish: fish, MeanMass: MicrogramsPerGram, Sick: 3}
-		if killFish(&batch, deathPPM, seed, RollKey{Tick: 7, Tank: 1, Batch: 1, Purpose: PurposeDiseaseDeath}) > 0 {
-			deaths++
+		outbreaks++
+		if out.State.Tanks[0].Accrual.DiseaseDeaths > 0 {
+			sameTickDeaths++
 		}
 	}
 
-	if outbreaks == 0 {
-		t.Fatal("nenhum surto no cenario")
+	if outbreaks < 100 {
+		t.Fatalf("so %d surtos em 2000 sementes: o cenario nao exercita a doenca", outbreaks)
 	}
 
-	got := deaths * 100 / outbreaks
-	want := int(int64(fish) * deathPPM / int64(UnitPPM) * 100)
-	if got > want+10 {
-		t.Errorf("morte extra em %d%% dos surtos, esperado perto de %d%%: o sorteio da morte esta reusando o do surto",
-			got, want+4)
+	rate := sameTickDeaths * 100 / outbreaks
+	want := int(int64(b.Shock.Diseases[0].DeathPPM) * 100 / int64(UnitPPM))
+
+	if rate > want+10 {
+		t.Errorf("morreu peixe em %d%% dos ticks de surto, a taxa manda perto de %d%%: o sorteio da morte esta lendo a mesma chave do surto",
+			rate, want)
 	}
 }

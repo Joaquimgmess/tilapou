@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -18,8 +17,6 @@ import (
 
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
-
-var plainFrame = regexp.MustCompile("\x1b\\[[0-9;]*m")
 
 const (
 	qaWidth  = 120
@@ -73,11 +70,11 @@ func TestQASession(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(addr, 10*time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).Init())
+	d.run(d.model.(Model).fetch())
 
 	qaPlay(t, d, os.Getenv("QA_SCRIPT"))
 
-	fmt.Fprintf(os.Stdout, "\n%s\n", plainFrame.ReplaceAllString(d.model.(Model).render(), ""))
+	fmt.Fprintf(os.Stdout, "\n%s\n", plain(d.model.(Model).render()))
 }
 
 func qaPlay(t *testing.T, d *driver, script string) {
@@ -90,18 +87,16 @@ func qaPlay(t *testing.T, d *driver, script string) {
 		}
 
 		if days, ok := strings.CutPrefix(step, "d"); ok {
-			n, err := strconv.Atoi(days)
-			if err != nil {
-				t.Fatalf("passo %q: %v", step, err)
-			}
-			qaJumpDays(t, n)
-			d.press("r")
+			if n, err := strconv.Atoi(days); err == nil {
+				qaJumpDays(t, n)
+				d.press("r")
 
-			continue
+				continue
+			}
 		}
 
 		if step == "show" {
-			fmt.Fprintf(os.Stdout, "\n%s\n", plainFrame.ReplaceAllString(d.model.(Model).render(), ""))
+			fmt.Fprintf(os.Stdout, "\n%s\n", plain(d.model.(Model).render()))
 
 			continue
 		}
@@ -109,7 +104,10 @@ func qaPlay(t *testing.T, d *driver, script string) {
 		var cmd tea.Cmd
 		d.model, cmd = d.model.Update(qaKey(step))
 		d.run(cmd)
-		d.press("r")
+
+		if !d.model.(Model).confirming {
+			d.press("r")
+		}
 	}
 }
 
@@ -132,7 +130,7 @@ func TestQAHarnessActuallySendsTheAction(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).Init())
+	d.run(d.model.(Model).fetch())
 
 	qaPlay(t, d, "f,c,h")
 
@@ -140,5 +138,28 @@ func TestQAHarnessActuallySendsTheAction(t *testing.T) {
 		if !slices.Contains(posted, want) {
 			t.Errorf("o script mandou a tecla mas o daemon nao recebeu %q; recebeu %v", want, posted)
 		}
+	}
+}
+
+func TestQAScriptHandlesArrowsAndPrompts(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		snap := sizedSnapshot()
+		snap.PrestigeNow = 3
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.run(d.model.(Model).fetch())
+
+	qaPlay(t, d, "down,up,left,right")
+
+	qaPlay(t, d, "tab,p")
+	if !d.model.(Model).confirming {
+		t.Error("o refresh automatico cancelou o prompt antes do proximo passo do script")
 	}
 }
