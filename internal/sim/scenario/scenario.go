@@ -2,6 +2,7 @@ package scenario
 
 import (
 	"fmt"
+	"maps"
 	"slices"
 	"strings"
 
@@ -133,19 +134,9 @@ func (r Result) Render() string {
 	}
 
 	fmt.Fprint(&b, "\neventos\n")
-	for _, kind := range slices.Sorted(maps(r.Totals)) {
+	for _, kind := range slices.Sorted(maps.Keys(r.Totals)) {
 		fmt.Fprintf(&b, "%-20s %6d\n", kind, r.Totals[kind])
 	}
 
 	return b.String()
-}
-
-func maps(m map[string]int64) func(func(string) bool) {
-	return func(yield func(string) bool) {
-		for k := range m {
-			if !yield(k) {
-				return
-			}
-		}
-	}
 }
