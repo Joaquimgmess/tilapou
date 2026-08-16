@@ -10,7 +10,3 @@ var (
 	ErrMissingTankKind = errors.New("farm: buy_tank precisa do campo tank_kind")
 	ErrMissingTank     = errors.New("farm: essa acao precisa do campo tank_id")
 )
-
-func isNotFound(err error) bool {
-	return errors.Is(err, ErrNotFound)
-}

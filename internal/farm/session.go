@@ -2,6 +2,7 @@ package farm
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"sync"
 	"time"
@@ -114,7 +115,7 @@ func (s *Sessions) ensure(ctx context.Context, playerID uuid.UUID) (Farm, error)
 	if err == nil {
 		return f, nil
 	}
-	if !isNotFound(err) {
+	if !errors.Is(err, ErrNotFound) {
 		return Farm{}, err
 	}
 
