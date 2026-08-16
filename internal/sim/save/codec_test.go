@@ -1,6 +1,8 @@
 package save_test
 
 import (
+	"encoding/json"
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -125,5 +127,29 @@ func TestSampleTouchesEveryFieldSoTheRoundTripCanSeeThem(t *testing.T) {
 	if len(zeroed) > 0 {
 		t.Errorf("o round trip e cego para %d campos porque o sample() os deixa zerados:\n  %s",
 			len(zeroed), strings.Join(zeroed, "\n  "))
+	}
+}
+
+func TestDecodeRefusesATankKindOutsideTheEnum(t *testing.T) {
+	t.Parallel()
+
+	raw, err := save.Encode(sample())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var doc map[string]any
+	if unmarshalErr := json.Unmarshal(raw, &doc); unmarshalErr != nil {
+		t.Fatal(unmarshalErr)
+	}
+	doc["tanks"].([]any)[0].(map[string]any)["kind"] = 99
+
+	poisoned, err := json.Marshal(doc)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, decodeErr := save.Decode(poisoned); !errors.Is(decodeErr, save.ErrUnknownKind) {
+		t.Errorf("um save com kind 99 passou com err=%v: a simulacao indexa b.Tanks por esse valor e entra em panic", decodeErr)
 	}
 }

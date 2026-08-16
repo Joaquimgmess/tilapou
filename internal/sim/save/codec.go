@@ -12,6 +12,7 @@ var (
 	ErrUnknownVersion = errors.New("save: unknown state version")
 	ErrTooManyTanks   = errors.New("save: more tanks than the state can hold")
 	ErrTooManyBatches = errors.New("save: more batches than a tank can hold")
+	ErrUnknownKind    = errors.New("save: tank kind outside the enum")
 )
 
 type document struct {
@@ -206,6 +207,9 @@ func Decode(raw []byte) (sim.State, error) {
 		tank := &doc.Tanks[i]
 		if len(tank.Batches) > len(state.Tanks[i].Batches) {
 			return sim.State{}, ErrTooManyBatches
+		}
+		if !sim.TankKind(tank.Kind).Known() {
+			return sim.State{}, fmt.Errorf("%w: %d", ErrUnknownKind, tank.Kind)
 		}
 
 		state.Tanks[i] = sim.Tank{

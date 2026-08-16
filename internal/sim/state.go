@@ -81,6 +81,10 @@ func (t *Tank) Biomass() Micrograms {
 	return total
 }
 
+func (k TankKind) Known() bool {
+	return k < tankKindCount
+}
+
 func (t *Tank) Capacity(b *Balance) int64 {
 	return b.Tanks[t.Kind].MaxDensityPerM3 * int64(t.Litres) / litresPerCubicMetre
 }
