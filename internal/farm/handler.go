@@ -42,6 +42,7 @@ type TankView struct {
 	BreakEven     int64         `json:"break_even_fish"`
 	CostPerFish   int64         `json:"stock_cost_per_fish_cents"`
 	LoanAdvice    int64         `json:"loan_advice_cents"`
+	LoanBlock     string        `json:"loan_block"`
 	ServedFor     int64         `json:"served_for_ticks"`
 	Upgrades      []UpgradeView `json:"upgrades"`
 }
@@ -334,6 +335,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		fish, cost := state.StockAdvice(b, tank.ID)
 		advice, perFish := int64(fish), int64(cost)
 		plan := p.at(b, tank.Kind, state.Tick, state.Zone)
+		loan, block := state.LoanAdvice(b, tank.ID, plan.BreakEven)
 		tv := TankView{
 			ID:          uint32(tank.ID),
 			Kind:        tankKindNames[tank.Kind],
@@ -347,7 +349,8 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			MaxBatches:  sim.MaxBatchesPerTank,
 			CostPerFish: perFish,
 			BreakEven:   int64(plan.BreakEven),
-			LoanAdvice:  int64(state.LoanAdvice(b, tank.ID, plan.BreakEven)),
+			LoanAdvice:  int64(loan),
+			LoanBlock:   block.String(),
 			ServedFor:   int64(tank.ServedUntil - state.Tick),
 			Upgrades:    upgradesOf(tank, b),
 		}

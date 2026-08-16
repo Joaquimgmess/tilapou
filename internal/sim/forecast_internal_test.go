@@ -152,3 +152,54 @@ func TestForecastReportsFeedEatenApartFromCost(t *testing.T) {
 			out.Cost, eaten)
 	}
 }
+
+func TestLoanAdviceSaysWhyItOffersNothing(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	for _, tc := range []struct {
+		name  string
+		setup func(*State) TankID
+		block LoanBlock
+	}{
+		{"lotes cheios nao aceitam financiamento", func(s *State) TankID {
+			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			for range MaxBatchesPerTank {
+				s.StockTank(id, 10, b.Growth.FingerlingMass, 0)
+			}
+
+			return id
+		}, LoanNoRoom},
+		{"tanque no limite de densidade nao aceita financiamento", func(s *State) TankID {
+			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			s.StockTank(id, 5_000, b.Growth.FingerlingMass, 0)
+
+			return id
+		}, LoanNoRoom},
+		{"caixa que ja cobre o alvo dispensa emprestimo", func(s *State) TankID {
+			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			s.StockTank(id, 100, b.Growth.FingerlingMass, 0)
+
+			return id
+		}, LoanNoNeed},
+		{"credito estourado", func(s *State) TankID {
+			s.Debt = b.Credit.MaxPrincipal
+			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+
+			return id
+		}, LoanNoCredit},
+	} {
+		s := NewState(1, 0, 0)
+		s.Cash = 1 << 40
+		id := tc.setup(&s)
+
+		loan, block := s.LoanAdvice(b, id, 968)
+		if block != tc.block {
+			t.Errorf("%s: motivo %v, queria %v", tc.name, block, tc.block)
+		}
+		if loan != 0 {
+			t.Errorf("%s: ofereceu %d centavos mesmo bloqueado", tc.name, loan)
+		}
+	}
+}

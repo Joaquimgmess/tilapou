@@ -166,6 +166,7 @@ func TestABlockedLoanSaysWhyItIsBlocked(t *testing.T) {
 	snap := sizedSnapshot()
 	tank := &snap.Tanks[0]
 	tank.BreakEven, tank.StockAdvice, tank.LoanAdvice = int64(tank.Fish)+500, 0, 0
+	tank.LoanBlock = "no_credit"
 
 	item := creditItems(snap, *tank)[0]
 	if item.enabled {
@@ -193,5 +194,21 @@ func TestEveryRejectReasonHasAMessage(t *testing.T) {
 		if strings.Contains(got, reason) {
 			t.Errorf("o motivo %q chega cru na tela: %q", reason, got)
 		}
+	}
+}
+
+func TestABlockedLoanNeverBlamesDebtThatDoesNotExist(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	tank := &snap.Tanks[0]
+	snap.Debt, tank.LoanAdvice, tank.LoanBlock = 0, 0, "no_room"
+
+	hint := creditItems(snap, *tank)[0].hint
+	if strings.Contains(hint, "deve") || strings.Contains(hint, "credito") {
+		t.Errorf("sem divida e sem espaco no tanque, a dica culpa o credito: %q", hint)
+	}
+	if !strings.Contains(hint, "nao aceita mais peixe") {
+		t.Errorf("a dica nao diz o motivo real: %q", hint)
 	}
 }

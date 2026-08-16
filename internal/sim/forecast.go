@@ -176,20 +176,47 @@ func feedToRaise(b *Balance, at Tick) Coins {
 	return Coins(mulDivCeil(feed, int64(MarketAt(b, at).FeedKg), int64(MicrogramsPerKilogram)))
 }
 
-func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) Coins {
+type LoanBlock uint8
+
+const (
+	LoanOpen LoanBlock = iota
+	LoanNoCredit
+	LoanNoRoom
+	LoanNoNeed
+)
+
+var loanBlockNames = map[LoanBlock]string{
+	LoanOpen:     "open",
+	LoanNoCredit: "no_credit",
+	LoanNoRoom:   "no_room",
+	LoanNoNeed:   "no_need",
+}
+
+func (l LoanBlock) String() string {
+	if name, ok := loanBlockNames[l]; ok {
+		return name
+	}
+
+	return "unknown"
+}
+
+func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) (Coins, LoanBlock) {
 	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
 	if room <= 0 {
-		return 0
+		return 0, LoanNoCredit
 	}
 
 	t := s.tank(tank)
 	if t == nil {
-		return room
+		return room, LoanOpen
+	}
+	if t.BatchCount >= MaxBatchesPerTank || t.Capacity(b)-int64(t.Fish()) <= 0 {
+		return 0, LoanNoRoom
 	}
 
 	fish, perFish := s.StockAdvice(b, tank)
 	if perFish <= 0 {
-		return room
+		return room, LoanOpen
 	}
 
 	goal := int64(breakEven)
@@ -199,8 +226,8 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) Coins {
 
 	short := goal - int64(t.Fish()) - int64(fish)
 	if short <= 0 {
-		return 0
+		return 0, LoanNoNeed
 	}
 
-	return min(Coins(mulDivCeil(int64(perFish), short, 1)), room)
+	return min(Coins(mulDivCeil(int64(perFish), short, 1)), room), LoanOpen
 }
