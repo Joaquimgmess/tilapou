@@ -15,6 +15,7 @@ import (
 type memoryStore struct {
 	farm    farm.Farm
 	actions map[sim.ActionID]bool
+	saves   int
 }
 
 func (m *memoryStore) ByPlayer(context.Context, uuid.UUID) (farm.Farm, error) {
@@ -30,6 +31,7 @@ func (m *memoryStore) Insert(_ context.Context, f farm.Farm) error {
 func (m *memoryStore) Save(_ context.Context, f farm.Farm, _ []sim.Event) error {
 	m.farm = f
 	m.farm.Revision++
+	m.saves++
 
 	return nil
 }
@@ -78,5 +80,39 @@ func TestAnActionLandsAtTheCurrentTickNotTheStaleOne(t *testing.T) {
 	served := store.farm.State.Tanks[0].ServedUntil - store.farm.State.Tick
 	if served <= 0 {
 		t.Errorf("o trato foi servido %d ticks no passado: a acao caiu no tick velho", -served)
+	}
+}
+
+func TestAReadWithNoTimePassedDoesNotWriteTheState(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	epoch := time.Unix(0, 0).UTC()
+	store := &memoryStore{
+		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
+		actions: map[sim.ActionID]bool{},
+	}
+
+	frozen := epoch.Add(time.Hour)
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	player := store.farm.PlayerID
+
+	if _, err := sessions.Sync(context.Background(), player); err != nil {
+		t.Fatal(err)
+	}
+	after := store.saves
+
+	for range 5 {
+		if _, err := sessions.Sync(context.Background(), player); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if store.saves != after {
+		t.Errorf("%d leituras sem tempo passar gravaram %d vezes", 5, store.saves-after)
 	}
 }

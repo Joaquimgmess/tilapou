@@ -83,11 +83,15 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 		return Snapshot{}, err
 	}
 
+	advanced := out.State.Tick != f.State.Tick
 	f.State = out.State
-	if err := s.store.Save(ctx, f, out.Events); err != nil {
-		return Snapshot{}, err
+
+	if advanced {
+		if err := s.store.Save(ctx, f, out.Events); err != nil {
+			return Snapshot{}, err
+		}
+		f.Revision++
 	}
-	f.Revision++
 
 	var outcome *sim.Outcome
 	if len(out.Outcomes) > 0 {
