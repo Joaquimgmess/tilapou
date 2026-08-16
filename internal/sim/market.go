@@ -20,7 +20,6 @@ type MarketBalance struct {
 }
 
 type Market struct {
-	Tick     Tick
 	FishKg   Coins
 	FeedKg   Coins
 	RatioPPM PPM
