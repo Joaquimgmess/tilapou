@@ -160,13 +160,6 @@ var autoKindByName = map[string]sim.AutoKind{
 	"contrato":  sim.AutoContract,
 }
 
-var tankKindByName = map[string]sim.TankKind{
-	"viveiro_escavado": sim.TankEarthPond,
-	"tanque_rede":      sim.TankNetCage,
-	"bioflocos":        sim.TankBiofloc,
-	"recirculacao":     sim.TankRecirculation,
-}
-
 func Load() (sim.Balance, error) {
 	raw, err := files.ReadFile("balance.toml")
 	if err != nil {
@@ -322,7 +315,7 @@ func convert(f file) (sim.Balance, error) {
 	}
 
 	for _, row := range f.Tanques {
-		kind, ok := tankKindByName[row.Tipo]
+		kind, ok := sim.TankKindNamed(row.Tipo)
 		if !ok {
 			return sim.Balance{}, fmt.Errorf("%w: %q", ErrUnknownTankKind, row.Tipo)
 		}

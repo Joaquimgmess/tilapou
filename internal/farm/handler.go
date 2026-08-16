@@ -180,20 +180,6 @@ var autoKindByName = map[string]sim.AutoKind{
 	"contrato":  sim.AutoContract,
 }
 
-var tankKindByName = map[string]sim.TankKind{
-	"viveiro_escavado": sim.TankEarthPond,
-	"tanque_rede":      sim.TankNetCage,
-	"bioflocos":        sim.TankBiofloc,
-	"recirculacao":     sim.TankRecirculation,
-}
-
-var tankKindNames = map[sim.TankKind]string{
-	sim.TankEarthPond:     "viveiro_escavado",
-	sim.TankNetCage:       "tanque_rede",
-	sim.TankBiofloc:       "bioflocos",
-	sim.TankRecirculation: "recirculacao",
-}
-
 func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.Balance) {
 	p := newPlans()
 
@@ -257,7 +243,7 @@ func actionOf(body actionBody) (sim.Action, error) {
 	}
 
 	if kind == sim.ActionBuyTank {
-		tankKind, ok := tankKindByName[body.TankKind]
+		tankKind, ok := sim.TankKindNamed(body.TankKind)
 		if !ok {
 			return sim.Action{}, ErrMissingTankKind
 		}
@@ -341,7 +327,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		loan, block := state.LoanAdvice(b, tank.ID, plan.BreakEven)
 		tv := TankView{
 			ID:          uint32(tank.ID),
-			Kind:        tankKindNames[tank.Kind],
+			Kind:        tank.Kind.String(),
 			Fish:        int32(tank.Fish()),
 			FeedKg:      int64(tank.FeedStock / sim.MicrogramsPerKilogram),
 			OxygenUgL:   int32(tank.Oxygen),

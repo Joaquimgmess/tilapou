@@ -14,6 +14,33 @@ const (
 	tankKindCount
 )
 
+var tankKindNames = [...]string{
+	TankEarthPond:     "viveiro_escavado",
+	TankNetCage:       "tanque_rede",
+	TankBiofloc:       "bioflocos",
+	TankRecirculation: "recirculacao",
+}
+
+func TankKindNamed(name string) (TankKind, bool) {
+	for kind, known := range tankKindNames {
+		if known == name {
+			return TankKind(kind), true
+		}
+	}
+
+	return TankEarthPond, false
+}
+
+var _ [len(tankKindNames) - int(tankKindCount)]struct{}
+
+func (k TankKind) String() string {
+	if k >= tankKindCount {
+		return invalidName
+	}
+
+	return tankKindNames[k]
+}
+
 const (
 	maxTanks          = 64
 	MaxBatchesPerTank = 4
