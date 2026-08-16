@@ -31,12 +31,7 @@ func (m Model) View() tea.View {
 		return tea.NewView("ate mais, piscicultor\n")
 	}
 
-	content := m.view
-	if content == "" {
-		content = m.render()
-	}
-
-	view := tea.NewView(content)
+	view := tea.NewView(m.render())
 	view.AltScreen = true
 	view.WindowTitle = "tilapou"
 

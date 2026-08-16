@@ -201,7 +201,6 @@ func (m Model) interact() (updated Model, target string) {
 func (m Model) move(dx, dy int, facing byte) Model {
 	if m.menu != nil {
 		m.menu.move(dy)
-		m.view = ""
 
 		return m
 	}
@@ -212,7 +211,6 @@ func (m Model) move(dx, dy int, facing byte) Model {
 		m.you.y += dy
 	}
 	m.message = ""
-	m.view = ""
 
 	return m
 }

@@ -52,7 +52,6 @@ type Model struct {
 	width      int
 	height     int
 	quitting   bool
-	view       string
 	messageAt  int
 	staleTicks int
 }
@@ -77,14 +76,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-		m.view = ""
 
 		return m, nil
 
 	case tickMsg:
 		m.frame++
 		m.staleTicks++
-		m.view = ""
 
 		if m.message != "" && !m.confirming && m.frame-m.messageAt >= messageTicks {
 			m.message = ""
@@ -103,7 +100,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) onSnapshot(msg snapshotMsg) Model {
-	m.err, m.view = msg.err, ""
+	m.err = msg.err
 	if msg.err != nil {
 		return m
 	}
@@ -121,7 +118,7 @@ func (m Model) onSnapshot(msg snapshotMsg) Model {
 }
 
 func (m Model) say(text string) Model {
-	m.message, m.messageAt, m.view = text, m.frame, ""
+	m.message, m.messageAt = text, m.frame
 
 	return m
 }
@@ -185,7 +182,7 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 		return m, m.fetch()
 
 	case "tab":
-		m.mode, m.view = m.otherMode(), ""
+		m.mode = m.otherMode()
 
 		return m, nil
 
@@ -287,7 +284,7 @@ func (m Model) openShed() (tea.Model, tea.Cmd) {
 	if !ok {
 		return m, nil
 	}
-	m.menu, m.message, m.view = shedMenu(m.snapshot, tank), "", ""
+	m.menu, m.message = shedMenu(m.snapshot, tank), ""
 
 	return m, nil
 }
@@ -298,7 +295,7 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		m.menu, m.message, m.view = tankMenu(m.snapshot, tank), "", ""
+		m.menu, m.message = tankMenu(m.snapshot, tank), ""
 
 		return m, nil
 	}
@@ -324,7 +321,6 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 	}
 
 	updated.message = ""
-	updated.view = ""
 
 	return updated, nil
 }
@@ -333,25 +329,21 @@ func (m Model) onMenuKey(key string) (tea.Model, tea.Cmd) {
 	switch key {
 	case "j":
 		m.menu.move(1)
-		m.view = ""
 
 		return m, nil
 
 	case "k":
 		m.menu.move(-1)
-		m.view = ""
 
 		return m, nil
 
 	case "x", "esc", "q":
 		m.menu = nil
-		m.view = ""
 
 		return m, nil
 
 	case "z", "enter":
 		item, ok := m.menu.current()
-		m.view = ""
 
 		if !ok {
 			return m, nil
@@ -459,7 +451,6 @@ func (m Model) selectDelta(delta int) Model {
 	}
 
 	m.selected = (m.selected + delta + len(m.snapshot.Tanks)) % len(m.snapshot.Tanks)
-	m.view = ""
 
 	return m
 }
