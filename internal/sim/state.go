@@ -40,6 +40,7 @@ type Batch struct {
 	FeedEaten       Micrograms
 	MassGained      Micrograms
 	Cost            Coins
+	CostCarry       int64
 	Sick            int32
 	HypoxiaTicks    int32
 	StarvationTicks int32
@@ -65,6 +66,7 @@ type Tank struct {
 	Oxygen       MicrogramsPerLiter
 	Aerating     bool
 	FeedCarry    int64
+	FeedUnitCost Coins
 	UpkeepCarry  int64
 	CarrierUntil Tick
 	Accrual      Accrual
@@ -200,13 +202,13 @@ func (s *State) StockTank(id TankID, fish FishCount, mass Micrograms, cost Coins
 	return true
 }
 
-func (s *State) LoadFeed(id TankID, mass Micrograms) bool {
+func (s *State) LoadFeed(id TankID, mass Micrograms, unitCost Coins) bool {
 	t := s.tank(id)
 	if t == nil {
 		return false
 	}
 
-	t.FeedStock = Micrograms(addSat(int64(t.FeedStock), int64(mass)))
+	loadFeed(t, mass, Coins(mulDivFloor(int64(mass), int64(unitCost), int64(MicrogramsPerKilogram))))
 
 	return true
 }

@@ -62,6 +62,14 @@ func TestABrokeFarmCanStartOverAndKeepsItsLifetime(t *testing.T) {
 	if after.Prestige != s.Prestige {
 		t.Errorf("recomecar quebrado nao pode dar prestigio: %d", after.Prestige)
 	}
+
+	lote := after.Tanks[0].Batches[0]
+	if lote.Cost <= 0 {
+		t.Error("o lote devolvido pelo recomeco nasceu de graca: a margem vai mostrar a venda inteira como lucro")
+	}
+	if after.Tanks[0].FeedUnitCost <= 0 {
+		t.Error("a racao devolvida pelo recomeco nasceu de graca")
+	}
 }
 
 func TestAHealthyFarmCannotStartOver(t *testing.T) {

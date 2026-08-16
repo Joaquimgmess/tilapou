@@ -71,8 +71,7 @@ func keepManaged(s *State, b *Balance, tank TankID) {
 	kilos := int64(missing) / int64(MicrogramsPerKilogram)
 	price := Coins(mulDivCeil(int64(MarketAt(b, s.Tick).FeedKg), kilos, 1))
 
-	t.FeedStock = forecastFeedTopUp
-	spread(t, price)
+	loadFeed(t, missing, price)
 }
 
 func closeForecast(s *State, b *Balance, batch *Batch, spent Coins, ate Micrograms, days int64, reached bool) Forecast {

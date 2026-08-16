@@ -32,7 +32,7 @@ func stock(state *sim.State, kind sim.TankKind, litres sim.Litres, fish sim.Fish
 	}
 
 	state.StockTank(id, fish, mass, 0)
-	state.LoadFeed(id, sim.Micrograms(feedKg)*sim.MicrogramsPerKilogram)
+	state.LoadFeed(id, sim.Micrograms(feedKg)*sim.MicrogramsPerKilogram, 0)
 }
 
 func feedEvery(hours, days int64) []sim.Action {

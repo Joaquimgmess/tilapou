@@ -2,6 +2,14 @@ package sim
 
 const prestigeScale = 10
 
+func RaisingCost(b *Balance, fish FishCount, mass Micrograms, at Tick) Coins {
+	fingerlings := int64(b.Economy.FingerlingPrice) * int64(fish)
+	gained := subSat(int64(mass), int64(b.Growth.FingerlingMass)) * int64(fish)
+	feed := mulDivFloor(gained, int64(b.Ration.TargetFCRPPM), int64(UnitPPM))
+
+	return Coins(addSat(fingerlings, mulDivFloor(feed, int64(MarketAt(b, at).FeedKg), int64(MicrogramsPerKilogram))))
+}
+
 func PrestigePointsFor(lifetime Coins, divisor int64) uint32 {
 	if divisor <= 0 || lifetime <= 0 {
 		return 0
@@ -73,8 +81,10 @@ func rebuild(s *State, b *Balance, at Tick, prestige uint32) {
 	if ok {
 		target := kept.tank(tank)
 		target.addBatch(kept.NextBatchID, b.Progression.RestartFish, b.Growth.FingerlingMass, at)
+		target.Batches[0].Cost = RaisingCost(b, b.Progression.RestartFish, b.Growth.FingerlingMass, at)
 		kept.NextBatchID++
-		target.FeedStock = b.Progression.RestartFeed
+		loadFeed(target, b.Progression.RestartFeed,
+			Coins(mulDivFloor(int64(b.Progression.RestartFeed), int64(MarketAt(b, at).FeedKg), int64(MicrogramsPerKilogram))))
 	}
 
 	*s = kept

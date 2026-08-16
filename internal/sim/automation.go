@@ -104,8 +104,7 @@ func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
 
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
 	mass := Micrograms(kilos) * MicrogramsPerKilogram
-	t.FeedStock = Micrograms(addSat(int64(t.FeedStock), int64(mass)))
-	spread(t, price)
+	loadFeed(t, mass, price)
 
 	sink.emit(Event{Kind: EventFeedBought, From: tick, To: tick, Tank: t.ID, Mass: mass, Cash: price})
 }

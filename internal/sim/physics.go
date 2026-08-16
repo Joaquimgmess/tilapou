@@ -79,6 +79,8 @@ func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) Microgr
 
 	t.FeedStock = Micrograms(subSat(int64(t.FeedStock), eaten))
 	batch.FeedEaten = Micrograms(addSat(int64(batch.FeedEaten), eaten))
+	batch.Cost = Coins(addSat(int64(batch.Cost),
+		carryTake(eaten*int64(t.FeedUnitCost), int64(MicrogramsPerKilogram), &batch.CostCarry)))
 	t.Accrual.FeedEaten = Micrograms(addSat(int64(t.Accrual.FeedEaten), eaten))
 
 	forGrowth := subSat(eaten, maintenance)

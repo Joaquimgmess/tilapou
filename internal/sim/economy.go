@@ -45,6 +45,15 @@ func chargeUpkeep(s *State, b *Balance, t *Tank) {
 	spread(t, Coins(due))
 }
 
+func loadFeed(t *Tank, mass Micrograms, price Coins) {
+	value := mulDivFloor(int64(t.FeedStock), int64(t.FeedUnitCost), int64(MicrogramsPerKilogram)) + int64(price)
+	t.FeedStock = Micrograms(addSat(int64(t.FeedStock), int64(mass)))
+
+	if t.FeedStock > 0 {
+		t.FeedUnitCost = Coins(mulDivFloor(value, int64(MicrogramsPerKilogram), int64(t.FeedStock)))
+	}
+}
+
 func spread(t *Tank, amount Coins) {
 	if amount <= 0 || t.BatchCount == 0 {
 		return

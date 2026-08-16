@@ -44,7 +44,7 @@ func runToHarvest(t *testing.T, b *Balance, fish int64) Coins {
 	return best
 }
 
-func TestBreakEvenStockBracketsTheSimulatedCrossing(t *testing.T) {
+func TestBreakEvenStockLandsWithinTenFishOfTheCrossing(t *testing.T) {
 	t.Parallel()
 
 	b := testBalance(t)
@@ -56,19 +56,14 @@ func TestBreakEvenStockBracketsTheSimulatedCrossing(t *testing.T) {
 
 	estimate := int64(plan.BreakEven)
 
-	const (
-		clearlyBelow = 600
-		clearlyAbove = 1_300
-	)
+	const slack = 10
 
-	if margin := runToHarvest(t, b, clearlyBelow); margin >= 0 {
-		t.Errorf("%d peixes fechou no azul com %d centavos, esse patamar tinha que dar prejuizo", clearlyBelow, margin)
+	if margin := runToHarvest(t, b, estimate-slack); margin >= 0 {
+		t.Errorf("%d peixes, %d abaixo da estimativa, ja fechou no azul com %d centavos",
+			estimate-slack, slack, margin)
 	}
-	if margin := runToHarvest(t, b, clearlyAbove); margin <= 0 {
-		t.Errorf("%d peixes fechou no vermelho com %d centavos, esse patamar tinha que dar lucro", clearlyAbove, margin)
-	}
-	if estimate <= clearlyBelow || estimate >= clearlyAbove {
-		t.Errorf("a estimativa de %d peixes caiu fora da faixa [%d, %d] onde o cruzamento acontece",
-			estimate, clearlyBelow, clearlyAbove)
+	if margin := runToHarvest(t, b, estimate+slack); margin <= 0 {
+		t.Errorf("%d peixes, %d acima da estimativa, ainda fechou no vermelho com %d centavos",
+			estimate+slack, slack, margin)
 	}
 }

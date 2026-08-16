@@ -54,6 +54,7 @@ type tankDocument struct {
 	Oxygen       int32           `json:"oxygen"`
 	Aerating     bool            `json:"aerating"`
 	FeedCarry    int64           `json:"feed_carry"`
+	FeedUnitCost int64           `json:"feed_unit_cost,omitempty"`
 	UpkeepCarry  int64           `json:"upkeep_carry"`
 	CarrierUntil int64           `json:"carrier_until"`
 	Accrual      accrualDocument `json:"accrual"`
@@ -78,6 +79,7 @@ type batchDocument struct {
 	FeedEaten       int64  `json:"feed_eaten"`
 	MassGained      int64  `json:"mass_gained"`
 	Cost            int64  `json:"cost"`
+	CostCarry       int64  `json:"cost_carry,omitempty"`
 	Sick            int32  `json:"sick"`
 	HypoxiaTicks    int32  `json:"hypoxia_ticks"`
 	StarvationTicks int32  `json:"starvation_ticks"`
@@ -123,6 +125,7 @@ func Encode(s sim.State) ([]byte, error) {
 			Oxygen:       int32(t.Oxygen),
 			Aerating:     t.Aerating,
 			FeedCarry:    t.FeedCarry,
+			FeedUnitCost: int64(t.FeedUnitCost),
 			UpkeepCarry:  t.UpkeepCarry,
 			CarrierUntil: int64(t.CarrierUntil),
 			Accrual: accrualDocument{
@@ -147,6 +150,7 @@ func Encode(s sim.State) ([]byte, error) {
 				FeedEaten:       int64(batch.FeedEaten),
 				MassGained:      int64(batch.MassGained),
 				Cost:            int64(batch.Cost),
+				CostCarry:       batch.CostCarry,
 				Sick:            batch.Sick,
 				HypoxiaTicks:    batch.HypoxiaTicks,
 				StarvationTicks: batch.StarvationTicks,
@@ -214,6 +218,7 @@ func Decode(raw []byte) (sim.State, error) {
 			Oxygen:       sim.MicrogramsPerLiter(tank.Oxygen),
 			Aerating:     tank.Aerating,
 			FeedCarry:    tank.FeedCarry,
+			FeedUnitCost: sim.Coins(tank.FeedUnitCost),
 			UpkeepCarry:  tank.UpkeepCarry,
 			CarrierUntil: sim.Tick(tank.CarrierUntil),
 			Accrual: sim.Accrual{
@@ -239,6 +244,7 @@ func Decode(raw []byte) (sim.State, error) {
 				FeedEaten:       sim.Micrograms(batch.FeedEaten),
 				MassGained:      sim.Micrograms(batch.MassGained),
 				Cost:            sim.Coins(batch.Cost),
+				CostCarry:       batch.CostCarry,
 				Sick:            batch.Sick,
 				HypoxiaTicks:    batch.HypoxiaTicks,
 				StarvationTicks: batch.StarvationTicks,

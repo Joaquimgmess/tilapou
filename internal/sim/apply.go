@@ -111,8 +111,7 @@ func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) (Rej
 	}
 
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
-	t.FeedStock = Micrograms(addSat(int64(t.FeedStock), int64(mass)))
-	spread(t, price)
+	loadFeed(t, mass, price)
 
 	sink.emit(Event{Kind: EventFeedBought, From: at, To: at, Tank: t.ID, Mass: mass, Cash: price})
 

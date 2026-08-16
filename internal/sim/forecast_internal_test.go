@@ -135,7 +135,7 @@ func TestForecastReportsFeedEatenApartFromCost(t *testing.T) {
 	s := stockedFarm(t, 500)
 	s.Cash = 10_000_000
 	s.Tanks[0].Aerating = true
-	s.LoadFeed(s.Tanks[0].ID, 5_000*MicrogramsPerKilogram)
+	s.LoadFeed(s.Tanks[0].ID, 5_000*MicrogramsPerKilogram, MarketAt(b, s.Tick).FeedKg)
 
 	batch := s.Tanks[0].Batches[0]
 	out := s.Forecast(b, s.Tanks[0].ID, batch.ID, batch.MeanMass+50*MicrogramsPerGram)
@@ -147,11 +147,8 @@ func TestForecastReportsFeedEatenApartFromCost(t *testing.T) {
 	price := MarketAt(b, s.Tick).FeedKg
 	eaten := Coins(mulDivFloor(int64(out.FeedEaten), int64(price), int64(MicrogramsPerKilogram)))
 
-	if out.Cost >= eaten {
-		t.Errorf("comendo do estoque ja pago, o gasto do periodo (%d) tinha que ficar abaixo do valor da racao comida (%d)",
+	if out.Cost <= eaten {
+		t.Errorf("o gasto do periodo (%d) tem que cobrir a racao comida (%d) mais manutencao e energia",
 			out.Cost, eaten)
-	}
-	if out.Cost <= 0 {
-		t.Error("manutencao e energia deveriam aparecer no gasto mesmo sem comprar racao")
 	}
 }

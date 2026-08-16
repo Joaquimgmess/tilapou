@@ -22,7 +22,7 @@ func sample() sim.State {
 
 	id, _ := s.AddTank(sim.TankNetCage, 6_000)
 	s.StockTank(id, 900, 250*sim.MicrogramsPerGram, 5_000)
-	s.LoadFeed(id, 300*sim.MicrogramsPerKilogram)
+	s.LoadFeed(id, 300*sim.MicrogramsPerKilogram, 317)
 
 	return s
 }
