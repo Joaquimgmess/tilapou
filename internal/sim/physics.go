@@ -40,7 +40,11 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 				continue
 			}
 
-			eaten := feedAndGrow(t, batch, b, tempMult, feeding, s.prestigeBonus(b), t.Owns(AutoTechnician))
+			var eaten Micrograms
+			if feeding {
+				eaten = feedAndGrow(t, batch, b, tempMult, s.prestigeBonus(b))
+			}
+
 			killByHypoxia(t, batch, b, oxygen, tick, s.Seed)
 			killByDisease(s, b, t, batch, tick)
 			killByStarvation(t, batch, b, eaten, tick, s.Seed)
@@ -54,16 +58,12 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 	}
 }
 
-func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult PPM, feeding bool, bonus PPM, technician bool) Micrograms {
-	if !feeding {
-		return 0
-	}
-
+func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) Micrograms {
 	maintenance := carryTake(
 		mulDivFloor(int64(batch.Biomass()), int64(b.Ration.MaintenancePPM), int64(UnitPPM)),
 		int64(TicksPerDay), &t.FeedCarry)
 
-	delta := growthDelta(batch, b, tempMult, bonus, technician)
+	delta := growthDelta(batch, b, tempMult, bonus, t.Owns(AutoTechnician))
 	gain := gainFor(batch, delta)
 
 	wanted := addSat(maintenance, mulDivCeil(int64(gain), int64(b.Ration.TargetFCRPPM), int64(UnitPPM)))
