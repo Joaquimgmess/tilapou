@@ -493,8 +493,8 @@ func toHTTPError(err error) error {
 	switch {
 	case errors.Is(err, ErrNotFound):
 		return huma.Error404NotFound("fazenda nao encontrada")
-	case errors.Is(err, ErrUnknownAction), errors.Is(err, ErrBadAmount),
-		errors.Is(err, ErrMissingAuto), errors.Is(err, ErrMissingTankKind), errors.Is(err, ErrMissingTank):
+	case errors.Is(err, ErrUnknownAction), errors.Is(err, ErrMissingAuto),
+		errors.Is(err, ErrMissingTankKind), errors.Is(err, ErrMissingTank):
 		return huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, ErrStaleRevision):
 		return huma.Error409Conflict("a fazenda mudou durante a escrita, tente de novo")
