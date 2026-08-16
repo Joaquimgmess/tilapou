@@ -3,11 +3,13 @@ package farm
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 
+	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
@@ -203,7 +205,7 @@ func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.B
 	}, func(ctx context.Context, _ *struct{}) (*snapshotOutput, error) {
 		snap, err := sessions.Sync(ctx, player)
 		if err != nil {
-			return nil, toHTTPError(err)
+			return nil, reportError(ctx, "get-farm", err)
 		}
 
 		return &snapshotOutput{Body: viewOf(snap, b, p)}, nil
@@ -219,12 +221,12 @@ func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.B
 	}, func(ctx context.Context, in *actionInput) (*snapshotOutput, error) {
 		action, err := actionOf(in.Body)
 		if err != nil {
-			return nil, toHTTPError(err)
+			return nil, reportError(ctx, in.Body.Kind, err)
 		}
 
 		snap, err := sessions.Act(ctx, player, action)
 		if err != nil {
-			return nil, toHTTPError(err)
+			return nil, reportError(ctx, in.Body.Kind, err)
 		}
 
 		return &snapshotOutput{Body: viewOf(snap, b, p)}, nil
@@ -495,16 +497,27 @@ func upgradesOf(tank *sim.Tank, b *sim.Balance) []UpgradeView {
 	return views
 }
 
-func toHTTPError(err error) error {
+func reportError(ctx context.Context, operation string, err error) error {
+	if known, converted := toHTTPError(err); known {
+		return converted
+	}
+
+	logging.FromContext(ctx).ErrorContext(ctx, "farm request failed",
+		slog.String("operation", operation), slog.Any("error", err))
+
+	return huma.Error500InternalServerError("erro interno")
+}
+
+func toHTTPError(err error) (known bool, converted error) {
 	switch {
 	case errors.Is(err, ErrNotFound):
-		return huma.Error404NotFound("fazenda nao encontrada")
+		return true, huma.Error404NotFound("fazenda nao encontrada")
 	case errors.Is(err, ErrUnknownAction), errors.Is(err, ErrMissingAuto),
 		errors.Is(err, ErrMissingTankKind), errors.Is(err, ErrMissingTank):
-		return huma.Error422UnprocessableEntity(err.Error())
+		return true, huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, ErrStaleRevision):
-		return huma.Error409Conflict("a fazenda mudou durante a escrita, tente de novo")
+		return true, huma.Error409Conflict("a fazenda mudou durante a escrita, tente de novo")
 	default:
-		return err
+		return false, err
 	}
 }
