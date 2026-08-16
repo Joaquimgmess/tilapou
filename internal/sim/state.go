@@ -31,6 +31,10 @@ func TankKindNamed(name string) (TankKind, bool) {
 	return TankEarthPond, false
 }
 
+func TankKindNames() []string {
+	return tankKindNames[:]
+}
+
 var _ [len(tankKindNames) - int(tankKindCount)]struct{}
 
 func (k TankKind) String() string {

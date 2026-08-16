@@ -102,6 +102,35 @@ func TestARacaoPorDiaVemDaMassaComidaENaoDeDinheiro(t *testing.T) {
 	}
 }
 
+func TestTodoTipoDeTanqueSaiNaViewComNomeELotacao(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, name := range sim.TankKindNames() {
+		kind, ok := sim.TankKindNamed(name)
+		if !ok {
+			t.Fatalf("%q nao volta para nenhum tipo de tanque", name)
+		}
+
+		s := sim.NewState(1, 0, 0)
+		if _, ok := s.AddTank(kind, b.Tanks[kind].Litres); !ok {
+			t.Fatalf("%s: sem tanque", name)
+		}
+
+		tank := viewOf(Snapshot{Farm: Farm{State: s}, Projection: sim.Project(&s)}, &b, newPlans()).Tanks[0]
+		if tank.Kind != name {
+			t.Errorf("o tanque %s saiu como %q na API", name, tank.Kind)
+		}
+		if tank.Capacity <= 0 {
+			t.Errorf("o tanque %s saiu sem lotacao: falta a linha dele no balance.toml", name)
+		}
+	}
+}
+
 func TestActionOfMapeiaCadaNomeParaOSeuKind(t *testing.T) {
 	t.Parallel()
 

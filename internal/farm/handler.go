@@ -143,14 +143,27 @@ type snapshotOutput struct {
 	Body SnapshotView
 }
 
+type tankKindName string
+
+func (tankKindName) Schema(huma.Registry) *huma.Schema {
+	names := sim.TankKindNames()
+	allowed := make([]any, len(names))
+
+	for i, name := range names {
+		allowed[i] = name
+	}
+
+	return &huma.Schema{Type: "string", Description: "Tipo de tanque a comprar", Enum: allowed}
+}
+
 type actionBody struct {
-	Key      uint64 `doc:"Chave de idempotencia da acao"   json:"key"`
-	Kind     string `doc:"Acao a executar"                 enum:"feed,buy_feed,aerate,harvest,stock,buy_tank,buy_upgrade,treat,prestige,restart,borrow,repay" json:"kind"`
-	Tank     uint32 `doc:"Tanque alvo"                     json:"tank_id,omitempty"`
-	Batch    uint32 `doc:"Lote alvo"                       json:"batch_id,omitempty"`
-	TankKind string `doc:"Tipo de tanque a comprar"        enum:"viveiro_escavado,tanque_rede,bioflocos,recirculacao"                                         json:"tank_kind,omitempty"`
-	Auto     string `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                                                     json:"auto,omitempty"`
-	Amount   int64  `doc:"Quantidade, quando a acao pedir" json:"amount,omitempty"`
+	Key      uint64       `doc:"Chave de idempotencia da acao"   json:"key"`
+	Kind     string       `doc:"Acao a executar"                 enum:"feed,buy_feed,aerate,harvest,stock,buy_tank,buy_upgrade,treat,prestige,restart,borrow,repay" json:"kind"`
+	Tank     uint32       `doc:"Tanque alvo"                     json:"tank_id,omitempty"`
+	Batch    uint32       `doc:"Lote alvo"                       json:"batch_id,omitempty"`
+	TankKind tankKindName `json:"tank_kind,omitempty"`
+	Auto     string       `doc:"Automacao a comprar"             enum:"comedouro,aerador,peao,tecnico,contrato"                                                     json:"auto,omitempty"`
+	Amount   int64        `doc:"Quantidade, quando a acao pedir" json:"amount,omitempty"`
 }
 
 type actionInput struct {
@@ -243,7 +256,7 @@ func actionOf(body actionBody) (sim.Action, error) {
 	}
 
 	if kind == sim.ActionBuyTank {
-		tankKind, ok := sim.TankKindNamed(body.TankKind)
+		tankKind, ok := sim.TankKindNamed(string(body.TankKind))
 		if !ok {
 			return sim.Action{}, ErrMissingTankKind
 		}
