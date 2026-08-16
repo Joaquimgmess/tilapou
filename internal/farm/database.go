@@ -168,19 +168,35 @@ func insertOutcome(ctx context.Context, tx pgx.Tx, id ID, outcome *sim.Outcome) 
 	return nil
 }
 
+const eventsKept = 500
+
 func insertEvents(ctx context.Context, tx pgx.Tx, id ID, events []sim.Event) error {
+	if len(events) > eventsKept {
+		events = events[len(events)-eventsKept:]
+	}
+	if len(events) == 0 {
+		return nil
+	}
+
 	const insert = `
 		INSERT INTO farm_events (farm_id, seq, kind, from_tick, to_tick, tank_id, fish, mass_ug, cash_cents, reason)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		ON CONFLICT (farm_id, seq) DO NOTHING`
 
+	batch := &pgx.Batch{}
 	for _, e := range events {
-		_, err := tx.Exec(ctx, insert,
-			id, int64(e.Seq), e.Kind.String(), int64(e.From), int64(e.To),
+		batch.Queue(insert, id, int64(e.Seq), e.Kind.String(), int64(e.From), int64(e.To),
 			int64(e.Tank), int64(e.Fish), int64(e.Mass), int64(e.Cash), e.Reason.String())
-		if err != nil {
-			return fmt.Errorf("insert event %d of farm %s: %w", e.Seq, id, err)
-		}
+	}
+
+	if err := tx.SendBatch(ctx, batch).Close(); err != nil {
+		return fmt.Errorf("insert %d events of farm %s: %w", len(events), id, err)
+	}
+
+	const prune = `DELETE FROM farm_events WHERE farm_id = $1 AND seq < $2`
+
+	if _, err := tx.Exec(ctx, prune, id, int64(events[len(events)-1].Seq)-eventsKept); err != nil {
+		return fmt.Errorf("prune events of farm %s: %w", id, err)
 	}
 
 	return nil
