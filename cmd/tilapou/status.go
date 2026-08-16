@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
@@ -30,10 +31,13 @@ func runStatus(args []string) error {
 	defer cancel()
 
 	snapshot, err := client.New(*addr, statusTimeout).Snapshot(ctx)
-	if err != nil {
+	if errors.Is(err, client.ErrDaemonUnreachable) {
 		fmt.Fprintln(os.Stdout, "tilapou offline")
 
 		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("lendo o estado da fazenda: %w", err)
 	}
 
 	var line strings.Builder
