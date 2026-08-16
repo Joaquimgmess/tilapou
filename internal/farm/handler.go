@@ -361,7 +361,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			tv.DensityMilli = int64(tank.Biomass()) / (litresPerCubicMetre * int64(tank.Litres))
 		}
 		if tank.BatchCount > 0 {
-			fillBatch(&tv, state, b, tank, &tank.Batches[0])
+			fillBatch(&tv, state, b, tank, &tank.Batches[0], p)
 		}
 		view.Tanks = append(view.Tanks, tv)
 	}
@@ -383,7 +383,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 	return view
 }
 
-func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch) {
+func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, p *plans) {
 	tv.MeanGrams = batch.MeanMass.Grams()
 	tv.BatchFish = int32(batch.Fish)
 	tv.BatchID = uint32(batch.ID)
@@ -403,7 +403,13 @@ func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, b
 		tv.CostPerKg = tv.CostCents / kilos
 	}
 
-	tv.Decision = decisionFor(state, b, tank, batch, tv)
+	tv.Decision = p.decision(batchKey{
+		tank:  tank.ID,
+		batch: batch.ID,
+		fish:  batch.Fish,
+		grams: batch.MeanMass.Grams(),
+		day:   int64(state.Tick / sim.TicksPerDay),
+	}, func() DecisionView { return decisionFor(state, b, tank, batch, tv) })
 }
 
 func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, tv *TankView) DecisionView {
