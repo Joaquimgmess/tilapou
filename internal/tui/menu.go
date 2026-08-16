@@ -186,11 +186,11 @@ func treatItem(t client.Tank) menuItem {
 }
 
 func loanHint(t client.Tank) string {
+	if t.LoanAdvice <= 0 {
+		return "sem espaco no limite de credito: pague o que deve antes"
+	}
 	if short := t.BreakEven - int64(t.Fish) - t.StockAdvice; short > 0 {
 		return fmt.Sprintf("cobre os %d peixes que faltam para o tanque %d pagar a manutencao", short, t.ID)
-	}
-	if t.LoanAdvice <= 0 {
-		return "sem espaco no limite de credito"
 	}
 
 	return fmt.Sprintf("cobre o que falta para encher o tanque %d", t.ID)

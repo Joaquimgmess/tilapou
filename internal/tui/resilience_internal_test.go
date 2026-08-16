@@ -157,3 +157,22 @@ func TestJAndKMoveTheMenuCursor(t *testing.T) {
 		t.Errorf("k nao voltou o cursor: %d", back.(Model).menu.cursor)
 	}
 }
+
+func TestABlockedLoanSaysWhyItIsBlocked(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	tank := &snap.Tanks[0]
+	tank.BreakEven, tank.StockAdvice, tank.LoanAdvice = int64(tank.Fish)+500, 0, 0
+
+	item := creditItems(snap, *tank)[0]
+	if item.enabled {
+		t.Fatal("sem espaco no credito o item tinha que estar desabilitado")
+	}
+	if strings.Contains(item.hint, "cobre") {
+		t.Errorf("o item esta bloqueado mas a dica explica para que ele serviria: %q", item.hint)
+	}
+	if !strings.Contains(item.hint, "credito") {
+		t.Errorf("a dica nao diz que o limite de credito acabou: %q", item.hint)
+	}
+}
