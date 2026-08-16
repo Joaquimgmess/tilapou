@@ -291,3 +291,42 @@ func TestFeederStopsWhenBroke(t *testing.T) {
 		t.Error("comprou racao sem ter dinheiro")
 	}
 }
+
+func TestOAeradorSeDesligaEmVezDeEndividar(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	for _, tc := range []struct {
+		name    string
+		cash    Coins
+		wantOn  bool
+		wantDue bool
+	}{
+		{"com caixa o aerador segue ligado e cobra", b.Economy.AeratorCostTick * 100, true, false},
+		{"sem caixa ele se desliga", b.Economy.AeratorCostTick - 1, false, false},
+	} {
+		s := NewState(1, 0, 0)
+		s.Cash = tc.cash
+
+		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+		s.StockTank(id, 100, 200*MicrogramsPerGram, 0)
+		s.SeedOxygen(b)
+		s.tank(id).Aerating = true
+
+		out, err := Advance(Input{State: s, Until: s.Tick + 1, Balance: b})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if on := out.State.Tanks[0].Aerating; on != tc.wantOn {
+			t.Errorf("%s: aerador ligado=%v, queria %v", tc.name, on, tc.wantOn)
+		}
+		if due := out.State.Debt > 0; due != tc.wantDue {
+			t.Errorf("%s: divida=%d, o aerador nunca pode endividar", tc.name, out.State.Debt)
+		}
+	}
+}
