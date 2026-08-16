@@ -43,10 +43,9 @@ func prestige(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
 		target.FeedStock = b.Progression.RestartFeed
 	}
 
-	gained := earned - s.Prestige
 	*s = kept
 
-	sink.emit(Event{Kind: EventPrestiged, From: at, To: at, Fish: FishCount(gained)})
+	sink.emit(Event{Kind: EventPrestiged, From: at, To: at})
 
 	return RejectNone
 }

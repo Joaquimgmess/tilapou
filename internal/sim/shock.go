@@ -35,7 +35,7 @@ func rollDisease(s *State, b *Balance, t *Tank, temp MilliCelsius, tick Tick, si
 		return
 	}
 
-	spec, index, ok := diseaseFor(b, temp)
+	spec, _, ok := diseaseFor(b, temp)
 	if !ok {
 		return
 	}
@@ -58,7 +58,6 @@ func rollDisease(s *State, b *Balance, t *Tank, temp MilliCelsius, tick Tick, si
 			To:    tick + Tick(spec.Ticks),
 			Tank:  t.ID,
 			Batch: batch.ID,
-			Fish:  FishCount(index),
 		})
 	}
 }

@@ -193,7 +193,7 @@ func applyBuyUpgrade(s *State, b *Balance, a Action, at Tick, sink *eventSink) (
 	s.Cash = Coins(subSat(int64(s.Cash), int64(price)))
 	t.grant(a.Auto)
 
-	sink.emit(Event{Kind: EventUpgradeBought, From: at, To: at, Tank: t.ID, Cash: price, Fish: FishCount(a.Auto)})
+	sink.emit(Event{Kind: EventUpgradeBought, From: at, To: at, Tank: t.ID, Cash: price})
 
 	return RejectNone, 0
 }
