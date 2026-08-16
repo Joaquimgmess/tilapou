@@ -97,12 +97,12 @@ type Decision struct {
 	HoldDays       int64 `json:"hold_days"`
 	HoldCents      int64 `json:"hold_cents"`
 	HoldMargin     int64 `json:"hold_margin_cents"`
-	HoldFeedCents  int64 `json:"hold_feed_cents"`
+	HoldCostCents  int64 `json:"hold_cost_cents"`
 	HoldReached    bool  `json:"hold_reached"`
 	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
 	GainPerDayMg   int64 `json:"gain_per_day_mg"`
 	FeedPerDayG    int64 `json:"feed_per_day_grams"`
-	FeedCostPerDay int64 `json:"feed_cost_per_day_cents"`
+	CostPerDay     int64 `json:"cost_per_day_cents"`
 	DaysOfFeed     int64 `json:"days_of_feed"`
 }
 

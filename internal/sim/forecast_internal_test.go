@@ -23,7 +23,7 @@ func TestForecastReachesTheTargetAndPricesIt(t *testing.T) {
 	if got.MeanMass < 600*MicrogramsPerGram {
 		t.Errorf("peso final = %d g, queria pelo menos 600", got.MeanMass.Grams())
 	}
-	if got.FeedCost <= 0 {
+	if got.Cost <= 0 {
 		t.Error("engordar ate 600 g nao custou racao nenhuma")
 	}
 }
@@ -97,7 +97,7 @@ func TestForecastAssumesTheFarmKeepsBeingManaged(t *testing.T) {
 	if got.Fish < 450 {
 		t.Errorf("sobraram %d de 500 peixes na previsao: ela nao esta assumindo manejo", got.Fish)
 	}
-	if got.FeedCost <= 0 {
+	if got.Cost <= 0 {
 		t.Error("a previsao alimentou de graca: a racao precisa entrar no custo")
 	}
 }
@@ -125,5 +125,33 @@ func TestStockAdviceRefusesATankWithNoRoomForAnotherBatch(t *testing.T) {
 	if fish, _ := s.StockAdvice(b, id); fish != 0 {
 		t.Errorf("com %d lotes o tanque nao aceita povoar, mas a sugestao foi de %d alevinos",
 			tank.BatchCount, fish)
+	}
+}
+
+func TestForecastReportsFeedEatenApartFromCost(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 500)
+	s.Cash = 10_000_000
+	s.Tanks[0].Aerating = true
+	s.LoadFeed(s.Tanks[0].ID, 5_000*MicrogramsPerKilogram)
+
+	batch := s.Tanks[0].Batches[0]
+	out := s.Forecast(b, s.Tanks[0].ID, batch.ID, batch.MeanMass+50*MicrogramsPerGram)
+
+	if out.FeedEaten <= 0 {
+		t.Fatal("a previsao nao diz quanta racao o lote come")
+	}
+
+	price := MarketAt(b, s.Tick).FeedKg
+	eaten := Coins(mulDivFloor(int64(out.FeedEaten), int64(price), int64(MicrogramsPerKilogram)))
+
+	if out.Cost >= eaten {
+		t.Errorf("comendo do estoque ja pago, o gasto do periodo (%d) tinha que ficar abaixo do valor da racao comida (%d)",
+			out.Cost, eaten)
+	}
+	if out.Cost <= 0 {
+		t.Error("manutencao e energia deveriam aparecer no gasto mesmo sem comprar racao")
 	}
 }

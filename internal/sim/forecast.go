@@ -11,7 +11,8 @@ type Forecast struct {
 	Days       int64
 	MeanMass   Micrograms
 	Fish       FishCount
-	FeedCost   Coins
+	Cost       Coins
+	FeedEaten  Micrograms
 	Value      Coins
 	Margin     Coins
 	PricePerKg Coins
@@ -24,7 +25,7 @@ func (s *State) Forecast(b *Balance, tank TankID, batch BatchID, target Microgra
 		return Forecast{}
 	}
 
-	spent := found.Cost
+	spent, ate := found.Cost, found.FeedEaten
 	from := s.Tick
 
 	for day := range int64(forecastCapDays) {
@@ -41,7 +42,7 @@ func (s *State) Forecast(b *Balance, tank TankID, batch BatchID, target Microgra
 			break
 		}
 		if current.MeanMass >= target {
-			return closeForecast(&start, b, current, spent, day+1, true)
+			return closeForecast(&start, b, current, spent, ate, day+1, true)
 		}
 	}
 
@@ -50,7 +51,7 @@ func (s *State) Forecast(b *Balance, tank TankID, batch BatchID, target Microgra
 		return Forecast{}
 	}
 
-	return closeForecast(&start, b, current, spent, forecastCapDays, false)
+	return closeForecast(&start, b, current, spent, ate, forecastCapDays, false)
 }
 
 func keepManaged(s *State, b *Balance, tank TankID) {
@@ -74,7 +75,7 @@ func keepManaged(s *State, b *Balance, tank TankID) {
 	spread(t, price)
 }
 
-func closeForecast(s *State, b *Balance, batch *Batch, spent Coins, days int64, reached bool) Forecast {
+func closeForecast(s *State, b *Balance, batch *Batch, spent Coins, ate Micrograms, days int64, reached bool) Forecast {
 	price := b.PriceFor(batch.MeanMass, s.Tick)
 	value := Coins(mulDivFloor(int64(price), int64(batch.Biomass()), int64(MicrogramsPerKilogram)))
 
@@ -83,7 +84,8 @@ func closeForecast(s *State, b *Balance, batch *Batch, spent Coins, days int64, 
 		Days:       days,
 		MeanMass:   batch.MeanMass,
 		Fish:       batch.Fish,
-		FeedCost:   Coins(subSat(int64(batch.Cost), int64(spent))),
+		Cost:       Coins(subSat(int64(batch.Cost), int64(spent))),
+		FeedEaten:  Micrograms(subSat(int64(batch.FeedEaten), int64(ate))),
 		Value:      value,
 		Margin:     Coins(subSat(int64(value), int64(batch.Cost))),
 		PricePerKg: price,

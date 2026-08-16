@@ -96,12 +96,12 @@ type DecisionView struct {
 	HoldDays       int64 `json:"hold_days"`
 	HoldCents      int64 `json:"hold_cents"`
 	HoldMargin     int64 `json:"hold_margin_cents"`
-	HoldFeedCents  int64 `json:"hold_feed_cents"`
+	HoldCostCents  int64 `json:"hold_cost_cents"`
 	HoldReached    bool  `json:"hold_reached"`
 	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
 	GainPerDayMg   int64 `json:"gain_per_day_mg"`
 	FeedPerDayG    int64 `json:"feed_per_day_grams"`
-	FeedCostPerDay int64 `json:"feed_cost_per_day_cents"`
+	CostPerDay     int64 `json:"cost_per_day_cents"`
 	DaysOfFeed     int64 `json:"days_of_feed"`
 }
 
@@ -408,10 +408,8 @@ func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 	ahead := state.Forecast(b, tank.ID, batch.ID, batch.MeanMass+sim.MicrogramsPerGram)
 	if ahead.Days > 0 {
 		view.GainPerDayMg = int64(ahead.MeanMass-batch.MeanMass) / ahead.Days / microsPerMilli
-		view.FeedCostPerDay = int64(ahead.FeedCost) / ahead.Days
-		if daily := int64(ahead.FeedCost) / ahead.Days; daily > 0 && b.Market.FeedBasePerKg > 0 {
-			view.FeedPerDayG = daily * gramsPerKilo / int64(sim.MarketAt(b, state.Tick).FeedKg)
-		}
+		view.CostPerDay = int64(ahead.Cost) / ahead.Days
+		view.FeedPerDayG = int64(ahead.FeedEaten) / ahead.Days / microsPerMilli / microsPerMilli
 	}
 	if view.FeedPerDayG > 0 {
 		view.DaysOfFeed = feedKg * gramsPerKilo / view.FeedPerDayG
@@ -427,7 +425,7 @@ func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 	view.HoldDays = hold.Days
 	view.HoldCents = int64(hold.Value)
 	view.HoldMargin = int64(hold.Margin)
-	view.HoldFeedCents = int64(hold.FeedCost)
+	view.HoldCostCents = int64(hold.Cost)
 	view.HoldReached = hold.Reached
 
 	return view

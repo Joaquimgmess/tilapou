@@ -27,9 +27,9 @@ func sizedSnapshot() client.Snapshot {
 				CostPerKg: 674, ClassPPM: 720_000, NextClassG: 600, NextClassGain: 220_000,
 				Decision: client.Decision{
 					SellNowCents: 414_936, SellNowMargin: 21_336, HoldToGrams: 600, HoldDays: 62,
-					HoldCents: 994_800, HoldMargin: 167_440, HoldFeedCents: 574_560, HoldReached: true,
+					HoldCents: 994_800, HoldMargin: 167_440, HoldCostCents: 574_560, HoldReached: true,
 					BreakEvenPerKg: 674, GainPerDayMg: 2_800, FeedPerDayG: 17_100,
-					FeedCostPerDay: 5_472, DaysOfFeed: 4,
+					CostPerDay: 5_472, DaysOfFeed: 4,
 				},
 				Upgrades: []client.Upgrade{{Kind: "comedouro", CostCents: 80_000}},
 			},

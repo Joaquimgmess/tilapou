@@ -212,8 +212,9 @@ func (m Model) renderDecision() string {
 		fmt.Sprintf("%s %s/kg (classe %s)   %s %s g/d",
 			labelStyle.Render("preco"), coins(tank.PriceKgCents), percent(tank.ClassPPM),
 			labelStyle.Render("ganho"), grams(d.GainPerDayMg)),
-		fmt.Sprintf("%s %s kg/d por %s   %s %s/kg",
-			labelStyle.Render("racao"), kilos(d.FeedPerDayG), coins(d.FeedCostPerDay),
+		fmt.Sprintf("%s %s kg/d   %s %s/d   %s %s/kg",
+			labelStyle.Render("racao"), kilos(d.FeedPerDayG),
+			labelStyle.Render("gasto"), coins(d.CostPerDay),
 			labelStyle.Render("custo"), coins(tank.CostPerKg)),
 		"",
 		fmt.Sprintf("  vender agora    %12s  %s", coins(d.SellNowCents), signedCoins(d.SellNowMargin)),
@@ -227,8 +228,8 @@ func (m Model) renderDecision() string {
 		lines = append(lines,
 			fmt.Sprintf("  segurar %4d g  %12s  %s%s",
 				d.HoldToGrams, coins(d.HoldCents), signedCoins(d.HoldMargin), better),
-			dimStyle.Render(fmt.Sprintf("    %d dias, ja descontados %s de racao",
-				d.HoldDays, coins(d.HoldFeedCents))))
+			dimStyle.Render(fmt.Sprintf("    %d dias, ja descontados %s de gasto",
+				d.HoldDays, coins(d.HoldCostCents))))
 	}
 
 	return strings.Join(append(lines, renderBreakEven(tank), renderStocking(tank)), "\n")
