@@ -45,7 +45,7 @@ const (
 	rejectReasonCount
 )
 
-var rejectReasonNames = [rejectReasonCount]string{
+var rejectReasonNames = [...]string{
 	RejectNone:              "none",
 	RejectUnknownKind:       "unknown_kind",
 	RejectNoSuchTank:        "no_such_tank",
@@ -73,6 +73,8 @@ func RejectReasonNamed(name string) (RejectReason, bool) {
 
 	return RejectNone, false
 }
+
+var _ [len(rejectReasonNames) - int(rejectReasonCount)]struct{}
 
 func (r RejectReason) String() string {
 	if r >= rejectReasonCount {

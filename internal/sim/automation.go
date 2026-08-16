@@ -11,13 +11,15 @@ const (
 	autoKindCount
 )
 
-var autoKindNames = [autoKindCount]string{
+var autoKindNames = [...]string{
 	AutoFeeder:     "comedouro",
 	AutoAerator:    "aerador",
 	AutoHarvester:  "peao",
 	AutoTechnician: "tecnico",
 	AutoContract:   "contrato",
 }
+
+var _ [len(autoKindNames) - int(autoKindCount)]struct{}
 
 func (k AutoKind) String() string {
 	if k >= autoKindCount {

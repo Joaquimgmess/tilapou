@@ -26,7 +26,7 @@ const (
 	eventKindCount
 )
 
-var eventKindNames = [eventKindCount]string{
+var eventKindNames = [...]string{
 	EventUnknown:          "unknown",
 	EventGrowth:           "growth",
 	EventHypoxiaDeaths:    "hypoxia_deaths",
@@ -46,6 +46,8 @@ var eventKindNames = [eventKindCount]string{
 	EventDiseaseDeaths:    "disease_deaths",
 	EventTreated:          "treated",
 }
+
+var _ [len(eventKindNames) - int(eventKindCount)]struct{}
 
 func (k EventKind) String() string {
 	if k >= eventKindCount {

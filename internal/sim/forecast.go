@@ -198,12 +198,14 @@ const (
 	loanBlockCount
 )
 
-var loanBlockNames = [loanBlockCount]string{
+var loanBlockNames = [...]string{
 	LoanOpen:     "open",
 	LoanNoCredit: "no_credit",
 	LoanNoRoom:   "no_room",
 	LoanNoNeed:   "no_need",
 }
+
+var _ [len(loanBlockNames) - int(loanBlockCount)]struct{}
 
 func (l LoanBlock) String() string {
 	if l >= loanBlockCount {
