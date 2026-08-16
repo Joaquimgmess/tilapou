@@ -153,7 +153,7 @@ func harvestItem(t client.Tank) menuItem {
 }
 
 func thinItem(t client.Tank) menuItem {
-	count := int64(t.Fish) * thinPercent / fullPercent
+	count := int64(t.BatchFish) * thinPercent / fullPercent
 	revenue := count * t.MeanGrams * t.PriceKgCents / gramsPerKg
 
 	item := menuItem{

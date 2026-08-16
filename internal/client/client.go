@@ -19,6 +19,7 @@ type Tank struct {
 	ID            uint32    `json:"id"`
 	Kind          string    `json:"kind"`
 	Fish          int32     `json:"fish"`
+	BatchFish     int32     `json:"batch_fish"`
 	MeanGrams     int64     `json:"mean_grams"`
 	FeedKg        int64     `json:"feed_kg"`
 	OxygenUgL     int32     `json:"oxygen_ugl"`

@@ -146,7 +146,7 @@ func (m Model) renderBatches() string {
 
 		if wide {
 			row = fmt.Sprintf("%-7s %6d %4d g %11s %11s %12s  %s",
-				fmt.Sprintf("T%d-L%d", t.ID, t.BatchID), t.Fish, t.MeanGrams,
+				fmt.Sprintf("T%d-L%d", t.ID, t.BatchID), t.BatchFish, t.MeanGrams,
 				coins(t.ValueCents), signedPlain(t.MarginCents), nextClass(t), state)
 		}
 

@@ -19,6 +19,7 @@ type TankView struct {
 	ID           uint32 `json:"id"`
 	Kind         string `json:"kind"`
 	Fish         int32  `json:"fish"`
+	BatchFish    int32  `json:"batch_fish"`
 	MeanGrams    int64  `json:"mean_grams"`
 	FeedKg       int64  `json:"feed_kg"`
 	OxygenUgL    int32  `json:"oxygen_ugl"`
@@ -384,6 +385,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 
 func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch) {
 	tv.MeanGrams = batch.MeanMass.Grams()
+	tv.BatchFish = int32(batch.Fish)
 	tv.BatchID = uint32(batch.ID)
 	tv.Ready = batch.MeanMass >= b.Growth.HarvestMass
 	tv.PriceKgCents = int64(b.PriceFor(batch.MeanMass, state.Tick))

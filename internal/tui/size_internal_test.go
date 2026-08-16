@@ -20,7 +20,7 @@ func sizedSnapshot() client.Snapshot {
 		},
 		Tanks: []client.Tank{
 			{
-				ID: 1, Kind: "viveiro_escavado", Fish: 2_000, MeanGrams: 306, FeedKg: 180,
+				ID: 1, Kind: "viveiro_escavado", Fish: 2_000, BatchFish: 2_000, MeanGrams: 306, FeedKg: 180,
 				OxygenUgL: 5_400, DensityMilli: 600, BatchID: 3, Capacity: 5_000, ServedFor: 240,
 				BreakEven: 967, StockAdvice: 1_240, CostPerFish: 599,
 				PriceKgCents: 678, ValueCents: 414_936, CostCents: 393_600, MarginCents: 21_336,
@@ -34,7 +34,7 @@ func sizedSnapshot() client.Snapshot {
 				Upgrades: []client.Upgrade{{Kind: "comedouro", CostCents: 80_000}},
 			},
 			{
-				ID: 2, Kind: "tanque_rede", Fish: 1_400, MeanGrams: 612, FeedKg: 0,
+				ID: 2, Kind: "tanque_rede", Fish: 1_400, BatchFish: 1_400, MeanGrams: 612, FeedKg: 0,
 				OxygenUgL: 1_900, BatchID: 4, Capacity: 960, PriceKgCents: 829,
 				BreakEven: 1_820, StockAdvice: 0, CostPerFish: 599,
 				ValueCents: 754_120, MarginCents: 298_004, ClassPPM: 880_000, NextClassG: 900,
