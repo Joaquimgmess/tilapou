@@ -212,3 +212,20 @@ func TestABlockedLoanNeverBlamesDebtThatDoesNotExist(t *testing.T) {
 		t.Errorf("a dica nao diz o motivo real: %q", hint)
 	}
 }
+
+func TestThinHintQuotesThePriceTheSaleActuallyPays(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	tank := snap.Tanks[0]
+	tank.PriceKgCents = snap.Prices.FishKgCents * 72 / 100
+
+	hint := thinItem(tank).hint
+	count := int64(tank.Fish) * thinPercent / fullPercent
+	paid := coins(count * tank.MeanGrams * tank.PriceKgCents / gramsPerKg)
+
+	if !strings.Contains(hint, paid) {
+		t.Errorf("a dica promete outro valor: %q, a venda paga %s (classe de %d g)",
+			hint, paid, tank.MeanGrams)
+	}
+}

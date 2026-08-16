@@ -54,7 +54,7 @@ func tankMenu(s client.Snapshot, t client.Tank) *menu {
 		buyFeedItem(s, t),
 		aeratorItem(t),
 		harvestItem(t),
-		thinItem(s, t),
+		thinItem(t),
 		treatItem(t),
 		stockItem(s, t),
 	)
@@ -152,9 +152,9 @@ func harvestItem(t client.Tank) menuItem {
 	return item
 }
 
-func thinItem(s client.Snapshot, t client.Tank) menuItem {
+func thinItem(t client.Tank) menuItem {
 	count := int64(t.Fish) * thinPercent / fullPercent
-	revenue := count * t.MeanGrams * s.Prices.FishKgCents / gramsPerKg
+	revenue := count * t.MeanGrams * t.PriceKgCents / gramsPerKg
 
 	item := menuItem{
 		label:   fmt.Sprintf("Ralear %d%% do lote", thinPercent),
