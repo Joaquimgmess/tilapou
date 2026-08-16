@@ -2,6 +2,7 @@ package tui
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -19,19 +20,41 @@ import (
 )
 
 const (
-	qaWidth  = 120
-	qaHeight = 40
-	keyEnter = "enter"
+	qaWidth       = 120
+	qaHeight      = 40
+	keyEnter      = "enter"
+	ownerDatabase = "tilapou"
 )
+
+var (
+	errNoQADatabase  = errors.New("QA_DATABASE nao esta definida")
+	errOwnerDatabase = errors.New("QA_DATABASE aponta para o banco do dono")
+)
+
+func qaDatabase(name string) error {
+	if name == "" {
+		return errNoQADatabase
+	}
+	if name == ownerDatabase {
+		return errOwnerDatabase
+	}
+
+	return nil
+}
 
 func qaJumpDays(t *testing.T, days int) {
 	t.Helper()
+
+	name := os.Getenv("QA_DATABASE")
+	if err := qaDatabase(name); err != nil {
+		t.Fatalf("pular dias escreve no banco: %v (QA_DATABASE=%q)", err, name)
+	}
 
 	query := "UPDATE farms SET epoch = epoch - interval '" +
 		strconv.Itoa(days*24*60) + " seconds'"
 
 	cmd := exec.CommandContext(t.Context(), "docker", "compose", "exec", "-T", "postgres",
-		"psql", "-U", "tilapou", "-d", os.Getenv("QA_DATABASE"), "-c", query)
+		"psql", "-U", "tilapou", "-d", name, "-c", query)
 	cmd.Dir = "../.."
 
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -161,5 +184,23 @@ func TestQAScriptHandlesArrowsAndPrompts(t *testing.T) {
 	qaPlay(t, d, "tab,p")
 	if !d.model.(Model).confirming {
 		t.Error("o refresh automatico cancelou o prompt antes do proximo passo do script")
+	}
+}
+
+func TestPularDiasSoAceitaBancoDeTeste(t *testing.T) {
+	t.Parallel()
+
+	for _, tc := range []struct {
+		name string
+		db   string
+		ok   bool
+	}{
+		{"banco de teste passa", "tilapou_qa", true},
+		{"sem variavel definida nao passa", "", false},
+		{"o banco do dono nunca passa", ownerDatabase, false},
+	} {
+		if err := qaDatabase(tc.db); (err == nil) != tc.ok {
+			t.Errorf("%s: qaDatabase(%q) = %v", tc.name, tc.db, err)
+		}
 	}
 }
