@@ -2,6 +2,8 @@ package scenario
 
 import "github.com/Joaquimgmess/tilapou/internal/sim"
 
+const ticksPerHour = sim.Tick(60)
+
 // All builds the catalog scenarios from scratch on every call.
 func All() []Scenario {
 	return []Scenario{
@@ -27,23 +29,37 @@ func ByName(name string) (Scenario, bool) {
 	return Scenario{}, false
 }
 
-func stock(state *sim.State, kind sim.TankKind, litres sim.Litres, fish sim.FishCount, mass sim.Micrograms, feedKg int64) {
-	id, ok := state.AddTank(kind, litres)
+type pond struct {
+	kind   sim.TankKind
+	litres sim.Litres
+	fish   sim.FishCount
+	mass   sim.Micrograms
+	feedKg int64
+}
+
+func stock(state *sim.State, p pond) {
+	id, ok := state.AddTank(p.kind, p.litres)
 	if !ok {
 		return
 	}
 
-	state.StockTank(id, fish, mass, 0)
-	state.LoadFeed(id, sim.Micrograms(feedKg)*sim.MicrogramsPerKilogram, 0)
+	state.StockTank(id, p.fish, p.mass, 0)
+	state.LoadFeed(id, sim.Micrograms(p.feedKg)*sim.MicrogramsPerKilogram, 0)
 }
 
-func feedEvery(hours, days int64) []sim.Action {
-	var (
-		actions []sim.Action
-		id      sim.ActionID
-	)
+type schedule struct {
+	everyHours int64
+	forDays    int64
+}
 
-	for tick := sim.Tick(1); tick <= sim.Tick(days)*sim.TicksPerDay; tick += sim.Tick(hours) * 60 {
+func feedEvery(s schedule) []sim.Action {
+	last := sim.Tick(s.forDays) * sim.TicksPerDay
+	step := sim.Tick(s.everyHours) * ticksPerHour
+
+	actions := make([]sim.Action, 0, last/step+1)
+
+	var id sim.ActionID
+	for tick := sim.Tick(1); tick <= last; tick += step {
 		id++
 		actions = append(actions, sim.Action{ID: id, Kind: sim.ActionFeed, At: tick, Tank: 1})
 	}
@@ -59,9 +75,9 @@ func heranca() Scenario {
 		Days: 90,
 		Cash: 500_000,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 3_000)
+			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 3_000})
 		},
-		Actions: feedEvery(6, 90),
+		Actions: feedEvery(schedule{everyHours: 6, forDays: 90}),
 	}
 }
 
@@ -73,9 +89,9 @@ func comedouroSeca() Scenario {
 		Days: 60,
 		Cash: 500_000,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 40)
+			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 40})
 		},
-		Actions: feedEvery(6, 60),
+		Actions: feedEvery(schedule{everyHours: 6, forDays: 60}),
 	}
 }
 
@@ -87,7 +103,7 @@ func densidadeContraOxigenio() Scenario {
 		Days: 5,
 		Cash: 500_000,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankEarthPond, 1_000_000, 12_000, 600*sim.MicrogramsPerGram, 5_000)
+			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 12_000, mass: 600 * sim.MicrogramsPerGram, feedKg: 5_000})
 		},
 	}
 }
@@ -100,7 +116,7 @@ func aeradorSalva() Scenario {
 		Days: 5,
 		Cash: 500_000,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankEarthPond, 1_000_000, 12_000, 600*sim.MicrogramsPerGram, 5_000)
+			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 12_000, mass: 600 * sim.MicrogramsPerGram, feedKg: 5_000})
 		},
 		Actions: []sim.Action{
 			{ID: 1, Kind: sim.ActionAerate, At: 1, Tank: 1, Amount: 1},
@@ -116,9 +132,9 @@ func tanqueRede() Scenario {
 		Days: 30,
 		Cash: 500_000,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankNetCage, 6_000, 900, 300*sim.MicrogramsPerGram, 2_000)
+			stock(s, pond{kind: sim.TankNetCage, litres: 6_000, fish: 900, mass: 300 * sim.MicrogramsPerGram, feedKg: 2_000})
 		},
-		Actions: feedEvery(6, 30),
+		Actions: feedEvery(schedule{everyHours: 6, forDays: 30}),
 	}
 }
 
@@ -130,7 +146,7 @@ func semTrato() Scenario {
 		Days: 20,
 		Cash: 500_000,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 3_000)
+			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 3_000})
 		},
 	}
 }
@@ -143,7 +159,7 @@ func comedouroAutomatico() Scenario {
 		Days: 45,
 		Cash: 5_000_000,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankEarthPond, 1_000_000, 2_000, 300*sim.MicrogramsPerGram, 20)
+			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 20})
 		},
 		Actions: []sim.Action{
 			{ID: 1, Kind: sim.ActionBuyUpgrade, At: 1, Tank: 1, Auto: sim.AutoFeeder},
@@ -159,7 +175,7 @@ func acaoRejeitadaNoCatchUp() Scenario {
 		Days: 3,
 		Cash: 100,
 		Setup: func(s *sim.State) {
-			stock(s, sim.TankEarthPond, 1_000_000, 500, 200*sim.MicrogramsPerGram, 100)
+			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 500, mass: 200 * sim.MicrogramsPerGram, feedKg: 100})
 		},
 		Actions: []sim.Action{
 			{ID: 7, Kind: sim.ActionBuyTank, At: 2 * sim.TicksPerDay, TankKind: sim.TankRecirculation},
