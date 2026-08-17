@@ -50,11 +50,7 @@ func TestTuiNeverReachesTheSimulationOrTheDatabase(t *testing.T) {
 	}
 
 	for _, pkg := range []string{module + "/internal/tui", module + "/internal/tui/..."} {
-		out, err := exec.CommandContext(t.Context(), "go", "list", "-deps", pkg).Output()
-		if err != nil {
-			continue
-		}
-		for dep := range strings.FieldsSeq(string(out)) {
+		for _, dep := range deps(t, pkg) {
 			if slices.Contains(forbidden, dep) {
 				t.Errorf("%s depende de %q: a TUI desenha, nao calcula nem persiste", pkg, dep)
 			}
