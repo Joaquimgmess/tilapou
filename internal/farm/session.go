@@ -85,6 +85,8 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 		return Snapshot{}, err
 	}
 
+	pending := action
+
 	var replayed *sim.Outcome
 	if action != nil {
 		stored, applied, appliedErr := s.store.AppliedOutcome(ctx, f.ID, action.ID)
@@ -92,15 +94,15 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 			return Snapshot{}, appliedErr
 		}
 		if applied {
-			action, replayed = nil, &stored
+			pending, replayed = nil, &stored
 		}
 	}
 
 	now := max(TickAt(f.Epoch, s.clock()), f.State.Tick)
 
 	var actions []sim.Action
-	if action != nil {
-		scheduled := *action
+	if pending != nil {
+		scheduled := *pending
 		scheduled.At = now
 		actions = append(actions, scheduled)
 	}
