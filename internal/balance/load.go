@@ -152,14 +152,6 @@ type automacaoRow struct {
 	CustoCentavos int64  `toml:"custo_centavos"`
 }
 
-var autoKindByName = map[string]sim.AutoKind{
-	"comedouro": sim.AutoFeeder,
-	"aerador":   sim.AutoAerator,
-	"peao":      sim.AutoHarvester,
-	"tecnico":   sim.AutoTechnician,
-	"contrato":  sim.AutoContract,
-}
-
 func Load() (sim.Balance, error) {
 	raw, err := files.ReadFile("balance.toml")
 	if err != nil {
@@ -307,7 +299,7 @@ func convert(f file) (sim.Balance, error) {
 	}
 
 	for _, row := range f.Automacao {
-		kind, ok := autoKindByName[row.Nome]
+		kind, ok := sim.AutoKindNamed(row.Nome)
 		if !ok {
 			return sim.Balance{}, fmt.Errorf("%w: %q", ErrUnknownAutomation, row.Nome)
 		}

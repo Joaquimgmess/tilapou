@@ -170,29 +170,6 @@ type actionInput struct {
 	Body actionBody
 }
 
-var actionKindByName = map[string]sim.ActionKind{
-	"feed":        sim.ActionFeed,
-	"buy_tank":    sim.ActionBuyTank,
-	"stock":       sim.ActionStock,
-	"buy_feed":    sim.ActionBuyFeed,
-	"aerate":      sim.ActionAerate,
-	"harvest":     sim.ActionHarvest,
-	"buy_upgrade": sim.ActionBuyUpgrade,
-	"prestige":    sim.ActionPrestige,
-	"restart":     sim.ActionRestart,
-	"borrow":      sim.ActionBorrow,
-	"repay":       sim.ActionRepay,
-	"treat":       sim.ActionTreat,
-}
-
-var autoKindByName = map[string]sim.AutoKind{
-	"comedouro": sim.AutoFeeder,
-	"aerador":   sim.AutoAerator,
-	"peao":      sim.AutoHarvester,
-	"tecnico":   sim.AutoTechnician,
-	"contrato":  sim.AutoContract,
-}
-
 func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.Balance) {
 	p := newPlans()
 
@@ -234,7 +211,7 @@ func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.B
 }
 
 func actionOf(body actionBody) (sim.Action, error) {
-	kind, ok := actionKindByName[body.Kind]
+	kind, ok := sim.ActionKindNamed(body.Kind)
 	if !ok {
 		return sim.Action{}, ErrUnknownAction
 	}
@@ -248,7 +225,7 @@ func actionOf(body actionBody) (sim.Action, error) {
 	}
 
 	if kind == sim.ActionBuyUpgrade {
-		auto, ok := autoKindByName[body.Auto]
+		auto, ok := sim.AutoKindNamed(body.Auto)
 		if !ok {
 			return sim.Action{}, ErrMissingAuto
 		}

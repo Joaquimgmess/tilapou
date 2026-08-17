@@ -142,9 +142,9 @@ func TestActionOfMapeiaCadaNomeParaOSeuKind(t *testing.T) {
 		"borrow": sim.ActionBorrow, "repay": sim.ActionRepay,
 	}
 
-	if len(esperado) != len(actionKindByName) {
+	if nomes := sim.ActionKindNames(); len(esperado) != len(nomes) {
 		t.Fatalf("o enum tem %d nomes e o teste conhece %d: alguem acrescentou acao sem cobrir",
-			len(actionKindByName), len(esperado))
+			len(nomes), len(esperado))
 	}
 
 	for name, want := range esperado {

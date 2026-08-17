@@ -23,6 +23,46 @@ const (
 	actionKindCount
 )
 
+var actionKindNames = [...]string{
+	ActionUnknown:    "unknown",
+	ActionBuyTank:    "buy_tank",
+	ActionStock:      "stock",
+	ActionBuyFeed:    "buy_feed",
+	ActionFeed:       "feed",
+	ActionAerate:     "aerate",
+	ActionHarvest:    "harvest",
+	ActionBuyUpgrade: "buy_upgrade",
+	ActionPrestige:   "prestige",
+	ActionRestart:    "restart",
+	ActionBorrow:     "borrow",
+	ActionRepay:      "repay",
+	ActionTreat:      "treat",
+}
+
+var _ [len(actionKindNames) - int(actionKindCount)]struct{}
+
+func ActionKindNamed(name string) (ActionKind, bool) {
+	for kind, known := range actionKindNames {
+		if known == name && ActionKind(kind) != ActionUnknown {
+			return ActionKind(kind), true
+		}
+	}
+
+	return ActionUnknown, false
+}
+
+func ActionKindNames() []string {
+	return append([]string(nil), actionKindNames[ActionUnknown+1:]...)
+}
+
+func (k ActionKind) String() string {
+	if k >= actionKindCount {
+		return invalidName
+	}
+
+	return actionKindNames[k]
+}
+
 type RejectReason uint8
 
 const (

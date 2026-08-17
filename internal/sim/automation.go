@@ -21,6 +21,16 @@ var autoKindNames = [...]string{
 
 var _ [len(autoKindNames) - int(autoKindCount)]struct{}
 
+func AutoKindNamed(name string) (AutoKind, bool) {
+	for kind, known := range autoKindNames {
+		if known == name {
+			return AutoKind(kind), true
+		}
+	}
+
+	return AutoFeeder, false
+}
+
 func (k AutoKind) String() string {
 	if k >= autoKindCount {
 		return invalidName
