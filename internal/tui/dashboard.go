@@ -380,7 +380,7 @@ func signedCoins(cents int64) string {
 }
 
 func percent(ppm int64) string {
-	return strconv.FormatInt(ppm/10_000, 10) + "%"
+	return strconv.FormatInt(ppm/ppmPerCentesimal, 10) + "%"
 }
 
 func grams(milligrams int64) string {
