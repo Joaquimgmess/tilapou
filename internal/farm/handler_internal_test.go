@@ -1,6 +1,7 @@
 package farm
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/Joaquimgmess/tilapou/internal/balance"
@@ -162,12 +163,61 @@ func TestActionOfMapeiaCadaNomeParaOSeuKind(t *testing.T) {
 	}
 }
 
-func TestActionsQueNaoSaoDeTanqueNaoExigemTanque(t *testing.T) {
+func TestNeedsTankSeparaAsAcoesDeTanqueDasDemais(t *testing.T) {
 	t.Parallel()
 
-	for _, kind := range []sim.ActionKind{sim.ActionPrestige, sim.ActionRestart, sim.ActionBorrow, sim.ActionRepay} {
+	comTanque := []sim.ActionKind{
+		sim.ActionFeed, sim.ActionBuyFeed, sim.ActionAerate, sim.ActionHarvest,
+		sim.ActionStock, sim.ActionBuyUpgrade, sim.ActionTreat,
+	}
+	semTanque := []sim.ActionKind{
+		sim.ActionBuyTank, sim.ActionPrestige, sim.ActionRestart,
+		sim.ActionBorrow, sim.ActionRepay, sim.ActionUnknown,
+	}
+
+	if total := len(comTanque) + len(semTanque); total != len(sim.ActionKindNames())+1 {
+		t.Fatalf("o enum tem %d acoes mais ActionUnknown e o teste conhece %d: alguem acrescentou acao sem cobrir",
+			len(sim.ActionKindNames()), total)
+	}
+
+	for _, kind := range comTanque {
+		if !needsTank(kind) {
+			t.Errorf("%v age sobre um tanque, mas needsTank aceita sem tank_id", kind)
+		}
+	}
+	for _, kind := range semTanque {
 		if needsTank(kind) {
 			t.Errorf("%v nao age sobre um tanque, mas needsTank pede um", kind)
 		}
+	}
+}
+
+func TestActionOfRecusaCampoObrigatorioFaltando(t *testing.T) {
+	t.Parallel()
+
+	casos := map[string]struct {
+		body actionBody
+		want error
+	}{
+		"kind desconhecido":         {actionBody{Kind: "voar"}, ErrUnknownAction},
+		"kind vazio":                {actionBody{}, ErrUnknownAction},
+		"unknown nao e acao":        {actionBody{Kind: "unknown"}, ErrUnknownAction},
+		"feed sem tanque":           {actionBody{Kind: "feed"}, ErrMissingTank},
+		"harvest sem tanque":        {actionBody{Kind: "harvest"}, ErrMissingTank},
+		"stock sem tanque":          {actionBody{Kind: "stock"}, ErrMissingTank},
+		"buy_upgrade sem auto":      {actionBody{Kind: "buy_upgrade", Tank: 1}, ErrMissingAuto},
+		"buy_upgrade auto invalido": {actionBody{Kind: "buy_upgrade", Tank: 1, Auto: "trator"}, ErrMissingAuto},
+		"buy_tank sem kind":         {actionBody{Kind: "buy_tank"}, ErrMissingTankKind},
+		"buy_tank kind invalido":    {actionBody{Kind: "buy_tank", TankKind: "aquario"}, ErrMissingTankKind},
+	}
+
+	for name, tc := range casos {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			if _, err := actionOf(tc.body); !errors.Is(err, tc.want) {
+				t.Errorf("actionOf devolveu %v, queria %v", err, tc.want)
+			}
+		})
 	}
 }
