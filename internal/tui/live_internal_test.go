@@ -58,13 +58,13 @@ func (d *driver) press(key string) {
 
 	msg := tea.KeyPressMsg{Code: code, Text: key}
 	switch key {
-	case "up":
+	case keyUp:
 		msg = tea.KeyPressMsg{Code: tea.KeyUp}
-	case "down":
+	case keyDown:
 		msg = tea.KeyPressMsg{Code: tea.KeyDown}
-	case "left":
+	case keyLeft:
 		msg = tea.KeyPressMsg{Code: tea.KeyLeft}
-	case "right":
+	case keyRight:
 		msg = tea.KeyPressMsg{Code: tea.KeyRight}
 	}
 

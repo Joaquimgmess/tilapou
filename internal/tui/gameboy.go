@@ -2,7 +2,6 @@ package tui
 
 import (
 	"fmt"
-	"strconv"
 	"strings"
 
 	"charm.land/lipgloss/v2"
@@ -185,27 +184,36 @@ func (m Model) renderGameBoyKeys() string {
 	return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despescar  tab numeros  q sai")
 }
 
-func (m Model) interact() (updated Model, target string) {
+type targetKind uint8
+
+// What the avatar has in front of it.
+const (
+	targetNone targetKind = iota
+	targetTank
+	targetShed
+)
+
+func (m Model) target() (index int, kind targetKind) {
 	x, y := m.you.ahead()
 
-	if index, ok := m.farm.pondAt(x, y); ok && index < len(m.snapshot.Tanks) {
-		return m, "tank:" + strconv.Itoa(index)
+	if pond, ok := m.farm.pondAt(x, y); ok && pond < len(m.snapshot.Tanks) {
+		return pond, targetTank
 	}
 	if x == shedX && y == shedY {
-		return m, "shed"
+		return 0, targetShed
 	}
 
-	return m, ""
+	return 0, targetNone
 }
 
-func (m Model) move(dx, dy int, facing byte) Model {
+func (m Model) move(dx, dy int, look facing) Model {
 	if m.menu != nil {
 		m.menu.move(dy)
 
 		return m
 	}
 
-	m.you.facing = facing
+	m.you.facing = look
 	if !m.farm.blocked(m.you.x+dx, m.you.y+dy) {
 		m.you.x += dx
 		m.you.y += dy

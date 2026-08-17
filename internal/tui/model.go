@@ -130,20 +130,38 @@ func (m Model) say(text string) Model {
 	return m
 }
 
-var movements = map[string]struct {
+type movement struct {
 	dx, dy int
-	facing byte
-}{
-	"up":    {0, -1, 'u'},
-	"down":  {0, 1, 'd'},
-	"left":  {-1, 0, 'l'},
-	"right": {1, 0, 'r'},
+	facing facing
+}
+
+// Arrow keys, as bubbletea names them.
+const (
+	keyUp    = "up"
+	keyDown  = "down"
+	keyLeft  = "left"
+	keyRight = "right"
+)
+
+func movementFor(key string) (movement, bool) {
+	switch key {
+	case keyUp:
+		return movement{dx: 0, dy: -1, facing: facingUp}, true
+	case keyDown:
+		return movement{dx: 0, dy: 1, facing: facingDown}, true
+	case keyLeft:
+		return movement{dx: -1, dy: 0, facing: facingLeft}, true
+	case keyRight:
+		return movement{dx: 1, dy: 0, facing: facingRight}, true
+	}
+
+	return movement{}, false
 }
 
 func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
-	if move, ok := movements[key]; ok {
+	if move, ok := movementFor(key); ok {
 		if m.mode == ModeGameBoy || m.menu != nil {
 			return m.move(move.dx, move.dy, move.facing), nil
 		}
@@ -307,29 +325,26 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	updated, target := m.interact()
-	tank, ok := updated.tank()
+	index, kind := m.target()
+
+	tank, ok := m.tank()
 	if !ok {
-		return updated, nil
+		return m, nil
 	}
 
-	switch {
-	case target == "shed":
-		updated.menu = shedMenu(updated.snapshot, tank)
-	case strings.HasPrefix(target, "tank:"):
-		index, err := strconv.Atoi(strings.TrimPrefix(target, "tank:"))
-		if err == nil && index < len(updated.snapshot.Tanks) {
-			updated.selected = index
-			tank = updated.snapshot.Tanks[index]
-		}
-		updated.menu = tankMenu(updated.snapshot, tank)
-	default:
-		return updated, nil
+	switch kind {
+	case targetShed:
+		m.menu = shedMenu(m.snapshot, tank)
+	case targetTank:
+		m.selected = index
+		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[index])
+	case targetNone:
+		return m, nil
 	}
 
-	updated.message = ""
+	m.message = ""
 
-	return updated, nil
+	return m, nil
 }
 
 func (m Model) onMenuKey(key string) (tea.Model, tea.Cmd) {

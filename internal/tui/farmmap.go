@@ -104,34 +104,48 @@ func (farmMap) pondAt(x, y int) (index int, found bool) {
 	return 0, false
 }
 
+type facing uint8
+
+// Directions the avatar can look at.
+const (
+	facingDown facing = iota
+	facingUp
+	facingLeft
+	facingRight
+)
+
 type avatar struct {
 	x, y   int
-	facing byte
+	facing facing
 }
 
 func newAvatar() avatar {
-	return avatar{x: 1, y: mapRows - pathRowFromBottom, facing: 'd'}
+	return avatar{x: 1, y: mapRows - pathRowFromBottom, facing: facingDown}
 }
 
 func (a avatar) sprite() gb.Sprite {
 	switch a.facing {
-	case 'u':
+	case facingUp:
 		return gb.PlayerUp
-	case 'l', 'r':
+	case facingLeft, facingRight:
 		return gb.PlayerSide
-	default:
+	case facingDown:
 		return gb.PlayerDown
 	}
+
+	return gb.PlayerDown
 }
 
 func (a avatar) ahead() (x, y int) {
 	switch a.facing {
-	case 'u':
+	case facingUp:
 		return a.x, a.y - 1
-	case 'd':
+	case facingDown:
 		return a.x, a.y + 1
-	case 'l':
+	case facingLeft:
 		return a.x - 1, a.y
+	case facingRight:
+		return a.x + 1, a.y
 	}
 
 	return a.x + 1, a.y
