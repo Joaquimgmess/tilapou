@@ -29,11 +29,10 @@ func TestSeasonReachesBothDiseaseBands(t *testing.T) {
 	var summer, winter bool
 	for day := range int64(365) {
 		temp := seasonalTemp(b, Tick(day)*TicksPerDay, 0)
-		if _, index, ok := diseaseFor(b, temp); ok {
-			switch index {
-			case 0:
+		if spec, ok := diseaseFor(b, temp); ok {
+			if spec.MinTemp > 0 {
 				summer = true
-			case 1:
+			} else {
 				winter = true
 			}
 		}

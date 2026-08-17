@@ -21,15 +21,15 @@ type ShockBalance struct {
 	CarrierRiskPPM PPM
 }
 
-func diseaseFor(b *Balance, temp MilliCelsius) (DiseaseSpec, int32, bool) {
+func diseaseFor(b *Balance, temp MilliCelsius) (DiseaseSpec, bool) {
 	for i := range b.Shock.DiseaseCount {
 		spec := b.Shock.Diseases[i]
 		if temp >= spec.MinTemp && temp <= spec.MaxTemp && spec.OutbreakPPM > 0 {
-			return spec, i, true
+			return spec, true
 		}
 	}
 
-	return DiseaseSpec{}, 0, false
+	return DiseaseSpec{}, false
 }
 
 func rollDisease(s *State, b *Balance, t *Tank, temp MilliCelsius, tick Tick, sink *eventSink) {
@@ -37,7 +37,7 @@ func rollDisease(s *State, b *Balance, t *Tank, temp MilliCelsius, tick Tick, si
 		return
 	}
 
-	spec, _, ok := diseaseFor(b, temp)
+	spec, ok := diseaseFor(b, temp)
 	if !ok {
 		return
 	}
@@ -123,7 +123,7 @@ func killByDisease(s *State, b *Balance, t *Tank, batch *Batch, tick Tick) {
 
 	batch.Sick--
 
-	spec, _, ok := diseaseFor(b, seasonalTemp(b, tick, s.Zone))
+	spec, ok := diseaseFor(b, seasonalTemp(b, tick, s.Zone))
 	if !ok {
 		return
 	}

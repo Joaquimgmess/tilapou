@@ -14,7 +14,7 @@ func TestDeathOnTheOutbreakTickIsNotDecidedByTheOutbreakRoll(t *testing.T) {
 
 	var day Tick
 	for day = range Tick(365) {
-		if _, _, ok := diseaseFor(b, seasonalTemp(b, day*TicksPerDay, 0)); ok {
+		if _, ok := diseaseFor(b, seasonalTemp(b, day*TicksPerDay, 0)); ok {
 			break
 		}
 	}
