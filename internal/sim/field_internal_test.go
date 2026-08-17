@@ -20,7 +20,7 @@ func raise(t *testing.T, b *Balance, from Micrograms, days int64, fish FishCount
 	t.Helper()
 
 	s := NewState(1, 0, 0)
-	id, _ := s.addTank(TankEarthPond, 1_000_000)
+	id, _ := s.AddTank(TankEarthPond, 1_000_000)
 	tank := s.tank(id)
 	tank.addBatch(1, fish, from, 0)
 	tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
@@ -110,7 +110,7 @@ func TestHypoxiaOnlyKillsWhenDensityIsHigh(t *testing.T) {
 			s := stockedFarm(t, 4)
 			s.Tanks[0].Batches[0].Fish = tt.fish
 			s.Tanks[0].Batches[0].MeanMass = 600 * MicrogramsPerGram
-			s.Tanks[0].Batches[0].MassRoot = massRootOf(600 * MicrogramsPerGram)
+			s.Tanks[0].Batches[0].MassRoot = MassRootOf(600 * MicrogramsPerGram)
 			s.Tanks[0].FeedStock = 100_000 * MicrogramsPerKilogram
 			s.Tanks[0].ServedUntil = Tick(maxInt32)
 
@@ -137,7 +137,7 @@ func TestAeratorSavesTheOvercrowdedTank(t *testing.T) {
 		s := stockedFarm(t, 4)
 		s.Tanks[0].Batches[0].Fish = 9_000
 		s.Tanks[0].Batches[0].MeanMass = 600 * MicrogramsPerGram
-		s.Tanks[0].Batches[0].MassRoot = massRootOf(600 * MicrogramsPerGram)
+		s.Tanks[0].Batches[0].MassRoot = MassRootOf(600 * MicrogramsPerGram)
 		s.Tanks[0].FeedStock = 100_000 * MicrogramsPerKilogram
 		s.Tanks[0].ServedUntil = Tick(maxInt32)
 		s.Tanks[0].Aerating = aerating
@@ -162,7 +162,7 @@ func TestFeedConversionStaysInTheMeasuredRange(t *testing.T) {
 	b := isothermalBalance(t, 28)
 
 	s := NewState(1, 0, 0)
-	id, _ := s.addTank(TankEarthPond, 1_000_000)
+	id, _ := s.AddTank(TankEarthPond, 1_000_000)
 	tank := s.tank(id)
 	tank.addBatch(1, 1_000, 30*MicrogramsPerGram, 0)
 	tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
@@ -192,7 +192,7 @@ func TestFeedConversionWorsensInTheCold(t *testing.T) {
 		b := isothermalBalance(t, celsius)
 
 		s := NewState(1, 0, 0)
-		id, _ := s.addTank(TankEarthPond, 1_000_000)
+		id, _ := s.AddTank(TankEarthPond, 1_000_000)
 		tank := s.tank(id)
 		tank.addBatch(1, 1_000, 100*MicrogramsPerGram, 0)
 		tank.FeedStock = 10_000_000 * MicrogramsPerKilogram

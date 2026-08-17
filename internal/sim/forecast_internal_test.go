@@ -50,7 +50,7 @@ func TestHoldingToTheNextClassBeatsSellingNowWhenFeedIsCheap(t *testing.T) {
 	s := stockedFarm(t, 63)
 	s.Tanks[0].Batches[0].Fish = 500
 	s.Tanks[0].Batches[0].MeanMass = 380 * MicrogramsPerGram
-	s.Tanks[0].Batches[0].MassRoot = massRootOf(380 * MicrogramsPerGram)
+	s.Tanks[0].Batches[0].MassRoot = MassRootOf(380 * MicrogramsPerGram)
 	s.Tanks[0].FeedStock = 100_000 * MicrogramsPerKilogram
 	s.Tanks[0].ServedUntil = Tick(maxInt32)
 	s.Cash = 10_000_000

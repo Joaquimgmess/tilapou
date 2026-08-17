@@ -7,7 +7,8 @@ const (
 	rootCubeUnit = rootScale * rootScale * rootScale
 )
 
-func massRootOf(mass Micrograms) int64 {
+// MassRootOf returns the cube root of the mass in thousandths.
+func MassRootOf(mass Micrograms) int64 {
 	return icbrt(mulDivFloor(int64(mass), rootCubeUnit, 1))
 }
 
@@ -17,7 +18,7 @@ func massFromRoot(root int64) Micrograms {
 
 func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 	accrueInterest(s, b)
-	temp := temperatureAt(b, tick, s.Zone)
+	temp := TemperatureAt(b, tick, s.Zone)
 	tempMult := b.TempMultiplier(temp)
 
 	for i := range s.TankCount {
@@ -117,7 +118,7 @@ func growthDelta(batch *Batch, b *Balance, tempMult, bonus PPM, technician bool)
 	}
 
 	if batch.MassRoot <= 0 {
-		batch.MassRoot = massRootOf(batch.MeanMass)
+		batch.MassRoot = MassRootOf(batch.MeanMass)
 	}
 
 	dailyRoot := mulDivFloor(int64(b.Growth.ReferenceTemp)/1000*int64(b.Growth.TGCPPM), 1, 10)
@@ -226,9 +227,4 @@ func killFish(batch *Batch, ratePPM int64, seed Seed, key RollKey) FishCount {
 	batch.Fish -= deaths
 
 	return deaths
-}
-
-// MassRootOf returns the cube root of the mass in thousandths.
-func MassRootOf(mass Micrograms) int64 {
-	return massRootOf(mass)
 }

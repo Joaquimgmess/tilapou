@@ -239,17 +239,12 @@ func (t *Tank) addBatch(id BatchID, fish FishCount, mass Micrograms, at Tick) bo
 		ID:        id,
 		Fish:      fish,
 		MeanMass:  mass,
-		MassRoot:  massRootOf(mass),
+		MassRoot:  MassRootOf(mass),
 		StockedAt: at,
 	}
 	t.BatchCount++
 
 	return true
-}
-
-// AddTank returns false, changing nothing, if the farm is already at the tank cap.
-func (s *State) AddTank(kind TankKind, litres Litres) (TankID, bool) {
-	return s.addTank(kind, litres)
 }
 
 // StockTank takes mass in micrograms and cost in cents, checking neither density nor
@@ -281,17 +276,8 @@ func (s *State) LoadFeed(id TankID, mass Micrograms, unitCost Coins) bool {
 	return true
 }
 
-func (s *State) tank(id TankID) *Tank {
-	for i := range s.TankCount {
-		if s.Tanks[i].ID == id {
-			return &s.Tanks[i]
-		}
-	}
-
-	return nil
-}
-
-func (s *State) addTank(kind TankKind, litres Litres) (TankID, bool) {
+// AddTank returns false, changing nothing, if the farm is already at the tank cap.
+func (s *State) AddTank(kind TankKind, litres Litres) (TankID, bool) {
 	if s.TankCount >= maxTanks {
 		return 0, false
 	}
@@ -302,4 +288,14 @@ func (s *State) addTank(kind TankKind, litres Litres) (TankID, bool) {
 	s.NextTankID++
 
 	return id, true
+}
+
+func (s *State) tank(id TankID) *Tank {
+	for i := range s.TankCount {
+		if s.Tanks[i].ID == id {
+			return &s.Tanks[i]
+		}
+	}
+
+	return nil
 }

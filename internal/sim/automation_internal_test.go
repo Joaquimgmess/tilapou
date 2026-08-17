@@ -41,7 +41,7 @@ func TestAeratorAutomationTurnsOnWhenOxygenDrops(t *testing.T) {
 	s := stockedFarm(t, 22)
 	s.Tanks[0].Batches[0].Fish = 9_000
 	s.Tanks[0].Batches[0].MeanMass = 600 * MicrogramsPerGram
-	s.Tanks[0].Batches[0].MassRoot = massRootOf(600 * MicrogramsPerGram)
+	s.Tanks[0].Batches[0].MassRoot = MassRootOf(600 * MicrogramsPerGram)
 	s.Tanks[0].FeedStock = 50_000 * MicrogramsPerKilogram
 	s.Tanks[0].grant(AutoAerator)
 
@@ -61,7 +61,7 @@ func TestHarvesterSellsWhenTheBatchIsReady(t *testing.T) {
 	b := testBalance(t)
 	s := stockedFarm(t, 23)
 	s.Tanks[0].Batches[0].MeanMass = b.Growth.HarvestMass
-	s.Tanks[0].Batches[0].MassRoot = massRootOf(b.Growth.HarvestMass)
+	s.Tanks[0].Batches[0].MassRoot = MassRootOf(b.Growth.HarvestMass)
 	s.Tanks[0].grant(AutoHarvester)
 
 	before := s.Cash

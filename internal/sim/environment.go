@@ -5,7 +5,8 @@ const (
 	hoursPerDay  = 24
 )
 
-func temperatureAt(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
+// TemperatureAt returns the water temperature in thousandths of a degree Celsius.
+func TemperatureAt(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
 	phase := tick.At(zone)
 	swing := int64(b.Water.DailyTempSwing)
 	shape := triangular(int64(phase.Hour), int64(b.Water.TempPeakHour))
@@ -66,11 +67,6 @@ func triangular(hour, peak int64) int64 {
 	}
 
 	return int64(UnitPPM) - mulDivFloor(int64(UnitPPM), distance, halfDayHours)
-}
-
-// TemperatureAt returns the water temperature in thousandths of a degree Celsius.
-func TemperatureAt(b *Balance, tick Tick, zone ZoneOffset) MilliCelsius {
-	return temperatureAt(b, tick, zone)
 }
 
 // SeedOxygen writes the equilibrium oxygen of the current tick, in micrograms per litre.
