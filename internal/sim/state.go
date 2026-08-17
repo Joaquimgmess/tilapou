@@ -32,7 +32,7 @@ func TankKindNamed(name string) (TankKind, bool) {
 }
 
 func TankKindNames() []string {
-	return tankKindNames[:]
+	return append([]string(nil), tankKindNames[:]...)
 }
 
 var _ [len(tankKindNames) - int(tankKindCount)]struct{}
