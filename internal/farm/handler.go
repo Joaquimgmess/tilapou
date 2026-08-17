@@ -13,6 +13,13 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
+const (
+	seriesPoints   = 21
+	microsPerMilli = 1_000
+	gramsPerKilo   = 1_000
+	ppmUnit        = 1_000_000
+)
+
 // TankView is the tank in the API: money in cents, weight in grams, oxygen in
 // micrograms per litre, density in thousandths of kg/m3 and ratios in PPM.
 type TankView struct {
@@ -463,13 +470,6 @@ func seriesOf(state *sim.State, b *sim.Balance) SeriesView {
 
 	return view
 }
-
-const (
-	seriesPoints   = 21
-	microsPerMilli = 1_000
-	gramsPerKilo   = 1_000
-	ppmUnit        = 1_000_000
-)
 
 func runwayDays(state *sim.State, b *sim.Balance) int64 {
 	daily := int64(state.Debt) * int64(b.Credit.DailyRatePPM) / ppmUnit
