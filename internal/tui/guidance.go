@@ -221,21 +221,39 @@ func affords(s client.Snapshot, t *client.Tank, index int) bool {
 	return s.CashCents >= t.Upgrades[index].CostCents
 }
 
-var rejectMessages = map[string]string{
-	"not_broke":           "a fazenda ainda tem como se virar",
-	"credit_limit":        "o emprestimo passa do limite de credito: pague o que deve antes",
-	"no_debt":             "nao ha divida para pagar",
-	"nothing_sick":        "nao ha doenca nesse tanque",
-	"no_such_tank":        "esse tanque nao existe",
-	"no_such_batch":       "nao ha lote nesse tanque",
-	"not_enough_feed":     "sem racao no tanque: compre com [c]",
-	"tank_full":           "o tanque ja tem lotes demais",
-	"farm_full":           "a fazenda nao cabe mais tanques",
-	"bad_amount":          "quantidade invalida",
-	"too_dense":           "densidade estourada: esse tanque nao suporta tanto peixe",
-	"already_owned":       "esse tanque ja tem essa automacao",
-	"not_enough_lifetime": "ainda nao da para tilapar: fature mais primeiro",
-	"unknown_kind":        "acao desconhecida",
+func rejectMessage(reason string) (string, bool) {
+	switch reason {
+	case "not_broke":
+		return "a fazenda ainda tem como se virar", true
+	case "credit_limit":
+		return "o emprestimo passa do limite de credito: pague o que deve antes", true
+	case "no_debt":
+		return "nao ha divida para pagar", true
+	case "nothing_sick":
+		return "nao ha doenca nesse tanque", true
+	case "no_such_tank":
+		return "esse tanque nao existe", true
+	case "no_such_batch":
+		return "nao ha lote nesse tanque", true
+	case "not_enough_feed":
+		return "sem racao no tanque: compre com [c]", true
+	case "tank_full":
+		return "o tanque ja tem lotes demais", true
+	case "farm_full":
+		return "a fazenda nao cabe mais tanques", true
+	case "bad_amount":
+		return "quantidade invalida", true
+	case "too_dense":
+		return "densidade estourada: esse tanque nao suporta tanto peixe", true
+	case "already_owned":
+		return "esse tanque ja tem essa automacao", true
+	case "not_enough_lifetime":
+		return "ainda nao da para tilapar: fature mais primeiro", true
+	case "unknown_kind":
+		return "acao desconhecida", true
+	}
+
+	return "", false
 }
 
 func explain(outcome *client.Outcome, cash int64) string {
@@ -252,7 +270,7 @@ func explain(outcome *client.Outcome, cash int64) string {
 		return "Sem grana para isso"
 	}
 
-	if message, ok := rejectMessages[outcome.Reason]; ok {
+	if message, ok := rejectMessage(outcome.Reason); ok {
 		return "Nao deu: " + message
 	}
 

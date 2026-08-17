@@ -25,7 +25,7 @@ const (
 	sparkFloor  = 2
 )
 
-var sparkLevels = []rune("▁▂▃▄▅▆▇█")
+const sparkLevels = "▁▂▃▄▅▆▇█"
 
 func (m Model) renderDashboard() string {
 	if m.width > 0 && (m.width < minWidth || m.height < minHeight) {
@@ -339,14 +339,16 @@ func sparkline(values []int64) string {
 	}
 
 	span := high - low
+	levels := []rune(sparkLevels)
+
 	var out strings.Builder
 
 	for _, v := range values {
 		level := 0
 		if span > 0 {
-			level = int((v - low) * int64(len(sparkLevels)-1) / span)
+			level = int((v - low) * int64(len(levels)-1) / span)
 		}
-		_, _ = out.WriteRune(sparkLevels[level])
+		_, _ = out.WriteRune(levels[level])
 	}
 
 	return out.String()
