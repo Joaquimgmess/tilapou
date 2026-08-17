@@ -161,9 +161,13 @@ func Load() (sim.Balance, error) {
 		return sim.Balance{}, fmt.Errorf("reading embedded balance: %w", err)
 	}
 
+	return parse(string(raw))
+}
+
+func parse(raw string) (sim.Balance, error) {
 	var f file
 
-	meta, err := toml.Decode(string(raw), &f)
+	meta, err := toml.Decode(raw, &f)
 	if err != nil {
 		return sim.Balance{}, fmt.Errorf("parsing balance: %w", err)
 	}
