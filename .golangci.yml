@@ -119,6 +119,14 @@ linters:
         - anual
         - automatico
         - automatica
+        - parametros
+        - independente
+        - correspondente
+        - temperaturas
+        - devolvendo
+        - calcular
+        - intervalos
+        - respondendo
     nakedret:
       max-func-lines: 0
     revive:
