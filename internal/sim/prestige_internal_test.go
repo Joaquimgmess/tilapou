@@ -116,3 +116,15 @@ func TestTilaparNaoPerdoaADivida(t *testing.T) {
 		t.Error("a tilapada nao deu prestigio")
 	}
 }
+
+func TestFazendaComCreditoLivreNaoEstaQuebrada(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := brokeFarm(t, b)
+	s.Debt = 0
+
+	if s.Broke(b) {
+		t.Fatal("com o limite de credito inteiro livre a fazenda ainda tem como se virar")
+	}
+}

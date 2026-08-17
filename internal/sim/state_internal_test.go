@@ -19,3 +19,20 @@ func TestTodoTankKindTemNomeQueVoltaParaOMesmoTipo(t *testing.T) {
 		}
 	}
 }
+
+func TestOSegundoTanqueDoMesmoTipoCustaMais(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	base := b.Tanks[TankEarthPond].BaseCost
+
+	first := ladderCost(base, 0, b.Progression.CostFactorPPM)
+	second := ladderCost(base, 1, b.Progression.CostFactorPPM)
+
+	if first != base {
+		t.Fatalf("o primeiro tanque custa %d, queria o preco de tabela %d", first, base)
+	}
+	if second <= first {
+		t.Fatalf("o segundo tanque custa %d, queria mais do que o primeiro (%d)", second, first)
+	}
+}

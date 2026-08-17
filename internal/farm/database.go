@@ -184,10 +184,16 @@ func insertOutcome(ctx context.Context, tx pgx.Tx, id ID, outcome *sim.Outcome) 
 
 const eventsKept = 500
 
-func insertEvents(ctx context.Context, tx pgx.Tx, id ID, events []sim.Event) error {
+func lastEvents(events []sim.Event) []sim.Event {
 	if len(events) > eventsKept {
-		events = events[len(events)-eventsKept:]
+		return events[len(events)-eventsKept:]
 	}
+
+	return events
+}
+
+func insertEvents(ctx context.Context, tx pgx.Tx, id ID, events []sim.Event) error {
+	events = lastEvents(events)
 	if len(events) == 0 {
 		return nil
 	}

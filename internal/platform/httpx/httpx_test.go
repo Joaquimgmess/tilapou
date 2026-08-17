@@ -45,6 +45,14 @@ func newServer(t *testing.T, ready func(ctx context.Context) error) http.Handler
 		return out, nil
 	})
 
+	huma.Register(api, huma.Operation{
+		OperationID: "ping",
+		Method:      http.MethodPost,
+		Path:        "/ping",
+	}, func(_ context.Context, _ *struct{}) (*struct{}, error) {
+		return &struct{}{}, nil
+	})
+
 	return router
 }
 
@@ -90,6 +98,18 @@ func TestRejectsNonJSONContentType(t *testing.T) {
 
 	if got := do(t, handler, req).Code; got != http.StatusUnsupportedMediaType {
 		t.Errorf("status = %d, want %d", got, http.StatusUnsupportedMediaType)
+	}
+}
+
+func TestOMiddlewareRecusaOContentTypeMesmoSemBodyDeclarado(t *testing.T) {
+	t.Parallel()
+
+	handler := newServer(t, func(context.Context) error { return nil })
+	req := httptest.NewRequestWithContext(context.Background(), http.MethodPost, "/v1/ping", strings.NewReader("x=1"))
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	if got := do(t, handler, req).Code; got != http.StatusUnsupportedMediaType {
+		t.Errorf("status = %d, want %d: quem recusa aqui e o middleware, nao o huma", got, http.StatusUnsupportedMediaType)
 	}
 }
 
