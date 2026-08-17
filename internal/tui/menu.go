@@ -12,8 +12,6 @@ const (
 	thinPercent    = 30
 	shedTitle      = "GALPAO"
 	fullPercent    = 100
-	defaultLoan    = 500_000
-	loanStep       = 100_000
 )
 
 type menuItem struct {

@@ -26,10 +26,8 @@ type PPM int32
 
 // PPM scales and the conversion between tick and day.
 const (
-	OnePPM         PPM = 1
-	UnitPPM        PPM = 1_000_000
-	TicksPerDay        = Tick(24 * 60)
-	MinutesPerTick     = 1
+	UnitPPM     PPM = 1_000_000
+	TicksPerDay     = Tick(24 * 60)
 )
 
 // Mass conversion factors.

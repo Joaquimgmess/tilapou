@@ -7,14 +7,13 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
-// Formatting conversion factors; UnitPPMValue is one unit in parts per million.
+// Formatting conversion factors; unitPPMValue is one unit in parts per million.
 const (
 	minutesPerHour   = 60
 	hoursPerDay      = 24
-	milliPerUnit     = 1000
 	centsPerCoin     = 100
 	gramsPerKg       = 1000
-	UnitPPMValue     = 1_000_000
+	unitPPMValue     = 1_000_000
 	ppmPerCentesimal = 10_000
 )
 
@@ -57,7 +56,7 @@ func (m Model) render() string {
 }
 
 func ratio(ppm int64) string {
-	return fmt.Sprintf("%d,%02d", ppm/UnitPPMValue, (ppm%UnitPPMValue)/ppmPerCentesimal)
+	return fmt.Sprintf("%d,%02d", ppm/unitPPMValue, (ppm%unitPPMValue)/ppmPerCentesimal)
 }
 
 func coins(cents int64) string {
