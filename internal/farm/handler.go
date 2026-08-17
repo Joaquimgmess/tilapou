@@ -398,14 +398,26 @@ func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, b
 		fish:  batch.Fish,
 		grams: batch.MeanMass.Grams(),
 		day:   int64(state.Tick / sim.TicksPerDay),
-	}, func() DecisionView { return decisionFor(state, b, tank, batch, tv) })
+	}, func() DecisionView {
+		return decisionFor(state, b, tank, batch, sellNow{
+			valueCents:  tv.ValueCents,
+			marginCents: tv.MarginCents,
+			costPerKg:   tv.CostPerKg,
+		})
+	})
 }
 
-func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, tv *TankView) DecisionView {
+type sellNow struct {
+	valueCents  int64
+	marginCents int64
+	costPerKg   int64
+}
+
+func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, now sellNow) DecisionView {
 	view := DecisionView{
-		SellNowCents:   tv.ValueCents,
-		SellNowMargin:  tv.MarginCents,
-		BreakEvenPerKg: tv.CostPerKg,
+		SellNowCents:   now.valueCents,
+		SellNowMargin:  now.marginCents,
+		BreakEvenPerKg: now.costPerKg,
 	}
 
 	feedKg := int64(tank.FeedStock) / int64(sim.MicrogramsPerKilogram)
