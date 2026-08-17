@@ -46,6 +46,11 @@ func TankKindNames() []string {
 
 var _ [len(tankKindNames) - int(tankKindCount)]struct{}
 
+// Known reports whether the value is inside the enum.
+func (k TankKind) Known() bool {
+	return k < tankKindCount
+}
+
 // String returns "invalid" outside the enum.
 func (k TankKind) String() string {
 	if k >= tankKindCount {
@@ -130,11 +135,6 @@ func (t *Tank) Biomass() Micrograms {
 	}
 
 	return total
-}
-
-// Known reports whether the value is inside the enum.
-func (k TankKind) Known() bool {
-	return k < tankKindCount
 }
 
 // Capacity returns how many fish fit in the tank, by the maximum density of its kind.
