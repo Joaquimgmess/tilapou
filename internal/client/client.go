@@ -1,7 +1,7 @@
 // Package client is the HTTP transport for the tilapou daemon.
 //
-// The types are DTOs mirroring the JSON contract; units live in the tag
-// suffixes (_cents, _grams, _ppm) and the TC-suffixed fields are in cents.
+// The types are DTOs mirroring the JSON contract; units live in the field and tag
+// suffixes: Cents for money, Grams for weight, PPM for ratios.
 package client
 
 import (
@@ -25,50 +25,50 @@ var (
 
 // Tank is the state of a tank in the snapshot.
 type Tank struct {
-	ID            uint32    `json:"id"`
-	Kind          string    `json:"kind"`
-	Fish          int32     `json:"fish"`
-	BatchFish     int32     `json:"batch_fish"`
-	MeanGrams     int64     `json:"mean_grams"`
-	FeedKg        int64     `json:"feed_kg"`
-	OxygenUgL     int32     `json:"oxygen_ugl"`
-	Aerating      bool      `json:"aerating"`
-	DensityMilli  int64     `json:"density_milli_kg_m3"`
-	Ready         bool      `json:"ready_to_harvest"`
-	BatchID       uint32    `json:"batch_id"`
-	PriceKgCents  int64     `json:"price_kg_cents"`
-	ValueCents    int64     `json:"value_cents"`
-	CostCents     int64     `json:"cost_cents"`
-	MarginCents   int64     `json:"margin_cents"`
-	CostPerKg     int64     `json:"cost_per_kg_cents"`
-	ClassPPM      int64     `json:"class_ppm"`
-	NextClassGain int64     `json:"next_class_gain_ppm"`
-	Decision      Decision  `json:"decision"`
-	NextClassG    int64     `json:"next_class_grams"`
-	Sick          bool      `json:"sick"`
-	Capacity      int64     `json:"capacity_fish"`
-	StockAdvice   int64     `json:"stock_advice_fish"`
-	Batches       int32     `json:"batch_count"`
-	MaxBatches    int32     `json:"max_batches"`
-	BreakEven     int64     `json:"break_even_fish"`
-	CostPerFish   int64     `json:"stock_cost_per_fish_cents"`
-	LoanAdvice    int64     `json:"loan_advice_cents"`
-	LoanBlock     string    `json:"loan_block"`
-	ServedFor     int64     `json:"served_for_ticks"`
-	Upgrades      []Upgrade `json:"upgrades"`
+	ID             uint32    `json:"id"`
+	Kind           string    `json:"kind"`
+	Fish           int32     `json:"fish"`
+	BatchFish      int32     `json:"batch_fish"`
+	MeanGrams      int64     `json:"mean_grams"`
+	FeedKg         int64     `json:"feed_kg"`
+	OxygenUgL      int32     `json:"oxygen_ugl"`
+	Aerating       bool      `json:"aerating"`
+	DensityMilli   int64     `json:"density_milli_kg_m3"`
+	Ready          bool      `json:"ready_to_harvest"`
+	BatchID        uint32    `json:"batch_id"`
+	PriceKgCents   int64     `json:"price_kg_cents"`
+	ValueCents     int64     `json:"value_cents"`
+	CostCents      int64     `json:"cost_cents"`
+	MarginCents    int64     `json:"margin_cents"`
+	CostPerKg      int64     `json:"cost_per_kg_cents"`
+	ClassPPM       int64     `json:"class_ppm"`
+	NextClassGain  int64     `json:"next_class_gain_ppm"`
+	Decision       Decision  `json:"decision"`
+	NextClassGrams int64     `json:"next_class_grams"`
+	Sick           bool      `json:"sick"`
+	Capacity       int64     `json:"capacity_fish"`
+	StockAdvice    int64     `json:"stock_advice_fish"`
+	Batches        int32     `json:"batch_count"`
+	MaxBatches     int32     `json:"max_batches"`
+	BreakEven      int64     `json:"break_even_fish"`
+	CostPerFish    int64     `json:"stock_cost_per_fish_cents"`
+	LoanAdvice     int64     `json:"loan_advice_cents"`
+	LoanBlock      string    `json:"loan_block"`
+	ServedFor      int64     `json:"served_for_ticks"`
+	Upgrades       []Upgrade `json:"upgrades"`
 }
 
 // Event is one event from the farm history.
 type Event struct {
-	Seq    uint64 `json:"seq"`
-	Kind   string `json:"kind"`
-	From   int64  `json:"from_tick"`
-	To     int64  `json:"to_tick"`
-	Tank   uint32 `json:"tank_id"`
-	Fish   int32  `json:"fish"`
-	MassG  int64  `json:"mass_grams"`
-	CashTC int64  `json:"cash_cents"`
-	Reason string `json:"reason"`
+	Seq       uint64 `json:"seq"`
+	Kind      string `json:"kind"`
+	From      int64  `json:"from_tick"`
+	To        int64  `json:"to_tick"`
+	Tank      uint32 `json:"tank_id"`
+	Fish      int32  `json:"fish"`
+	MassGrams int64  `json:"mass_grams"`
+	CashCents int64  `json:"cash_cents"`
+	Reason    string `json:"reason"`
 }
 
 // Upgrade is a tank improvement.
@@ -96,14 +96,14 @@ type Prices struct {
 
 // Cycle summarizes the last closed production cycle.
 type Cycle struct {
-	Fish       int32 `json:"fish"`
-	MassG      int64 `json:"mass_grams"`
-	RevenueTC  int64 `json:"revenue_cents"`
-	CostTC     int64 `json:"cost_cents"`
-	MarginTC   int64 `json:"margin_cents"`
-	CostPerKg  int64 `json:"cost_per_kg_cents"`
-	PricePerKg int64 `json:"price_per_kg_cents"`
-	FCRPPM     int64 `json:"fcr_ppm"`
+	Fish         int32 `json:"fish"`
+	MassGrams    int64 `json:"mass_grams"`
+	RevenueCents int64 `json:"revenue_cents"`
+	CostCents    int64 `json:"cost_cents"`
+	MarginCents  int64 `json:"margin_cents"`
+	CostPerKg    int64 `json:"cost_per_kg_cents"`
+	PricePerKg   int64 `json:"price_per_kg_cents"`
+	FCRPPM       int64 `json:"fcr_ppm"`
 }
 
 // Decision is the recommendation to sell now or hold.
@@ -132,27 +132,27 @@ type Series struct {
 
 // Snapshot is the farm state returned by every API call.
 type Snapshot struct {
-	FarmID      string   `json:"farm_id"`
-	Name        string   `json:"name"`
-	Tick        int64    `json:"tick"`
-	Hour        int32    `json:"hour"`
-	TempMilliC  int32    `json:"temp_milli_c"`
-	CashCents   int64    `json:"cash_cents"`
-	LifetimeTC  int64    `json:"lifetime_cents"`
-	BiomassG    int64    `json:"biomass_grams"`
-	Fish        int32    `json:"fish"`
-	Prestige    uint32   `json:"prestige"`
-	Tanks       []Tank   `json:"tanks"`
-	PrestigeNow uint32   `json:"prestige_available"`
-	Prices      Prices   `json:"prices"`
-	Debt        int64    `json:"debt_cents"`
-	LastCycle   Cycle    `json:"last_cycle"`
-	Series      Series   `json:"series"`
-	InterestDay int64    `json:"interest_per_day_cents"`
-	RunwayDays  int64    `json:"runway_days"`
-	Broke       bool     `json:"broke"`
-	Events      []Event  `json:"events"`
-	LastOutcome *Outcome `json:"last_outcome,omitempty"`
+	FarmID        string   `json:"farm_id"`
+	Name          string   `json:"name"`
+	Tick          int64    `json:"tick"`
+	Hour          int32    `json:"hour"`
+	TempMilliC    int32    `json:"temp_milli_c"`
+	CashCents     int64    `json:"cash_cents"`
+	LifetimeCents int64    `json:"lifetime_cents"`
+	BiomassGrams  int64    `json:"biomass_grams"`
+	Fish          int32    `json:"fish"`
+	Prestige      uint32   `json:"prestige"`
+	Tanks         []Tank   `json:"tanks"`
+	PrestigeNow   uint32   `json:"prestige_available"`
+	Prices        Prices   `json:"prices"`
+	Debt          int64    `json:"debt_cents"`
+	LastCycle     Cycle    `json:"last_cycle"`
+	Series        Series   `json:"series"`
+	InterestDay   int64    `json:"interest_per_day_cents"`
+	RunwayDays    int64    `json:"runway_days"`
+	Broke         bool     `json:"broke"`
+	Events        []Event  `json:"events"`
+	LastOutcome   *Outcome `json:"last_outcome,omitempty"`
 }
 
 // Action is the command sent to the daemon; Key is the idempotency key.

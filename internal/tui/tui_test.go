@@ -36,14 +36,14 @@ func fakeDaemon(t *testing.T, snapshot client.Snapshot) *httptest.Server {
 
 func sampleSnapshot() client.Snapshot {
 	return client.Snapshot{
-		FarmID:     "f0000000-0000-0000-0000-000000000001",
-		Name:       "Tilapou",
-		Tick:       4_321,
-		Hour:       4,
-		TempMilliC: 26_500,
-		CashCents:  123_456,
-		BiomassG:   612_000,
-		Fish:       2_000,
+		FarmID:       "f0000000-0000-0000-0000-000000000001",
+		Name:         "Tilapou",
+		Tick:         4_321,
+		Hour:         4,
+		TempMilliC:   26_500,
+		CashCents:    123_456,
+		BiomassGrams: 612_000,
+		Fish:         2_000,
 		Tanks: []client.Tank{{
 			ID: 1, Kind: "viveiro_escavado", Fish: 2_000, MeanGrams: 306,
 			FeedKg: 180, OxygenUgL: 1_900, DensityMilli: 600, BatchID: 1,
@@ -58,7 +58,7 @@ func sampleSnapshot() client.Snapshot {
 		}},
 		Events: []client.Event{
 			{Seq: 2, Kind: "hypoxia_deaths", Tank: 1, Fish: 47},
-			{Seq: 1, Kind: "feed_bought", Tank: 1, MassG: 100_000, CashTC: 32_000},
+			{Seq: 1, Kind: "feed_bought", Tank: 1, MassGrams: 100_000, CashCents: 32_000},
 		},
 	}
 }

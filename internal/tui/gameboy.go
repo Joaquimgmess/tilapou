@@ -168,8 +168,8 @@ func tankAdvice(t client.Tank) string {
 	}
 
 	next := ""
-	if t.NextClassG > 0 && t.NextClassG > t.MeanGrams {
-		next = fmt.Sprintf("   proxima classe em %d g", t.NextClassG)
+	if t.NextClassGrams > 0 && t.NextClassGrams > t.MeanGrams {
+		next = fmt.Sprintf("   proxima classe em %d g", t.NextClassGrams)
 	}
 
 	return fmt.Sprintf("%s/kg agora   racao %d kg   trato por %s%s",

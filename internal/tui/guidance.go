@@ -56,9 +56,9 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 	if s.Prices.RatioPPM < s.Prices.ViablePPM {
 		return "Racao cara demais para o preco do peixe: segure a despesca e evite povoar agora", false
 	}
-	if tank.NextClassG > tank.MeanGrams {
+	if tank.NextClassGrams > tank.MeanGrams {
 		return fmt.Sprintf("Segurar ate %d g sobe o preco por quilo (esta em %d g)",
-			tank.NextClassG, tank.MeanGrams), false
+			tank.NextClassGrams, tank.MeanGrams), false
 	}
 
 	return fmt.Sprintf("Engorde ate 800 g (esta em %d g) e sirva o trato antes de acabar", tank.MeanGrams), false

@@ -173,11 +173,11 @@ func (m Model) decorateRow(index int, row string, alert bool) string {
 }
 
 func nextClass(t *client.Tank) string {
-	if t.NextClassG <= t.MeanGrams {
+	if t.NextClassGrams <= t.MeanGrams {
 		return "no topo"
 	}
 
-	return fmt.Sprintf("%d g +%s", t.NextClassG, percent(t.NextClassGain))
+	return fmt.Sprintf("%d g +%s", t.NextClassGrams, percent(t.NextClassGain))
 }
 
 func tankState(t *client.Tank) (label string, alert bool) {
@@ -293,9 +293,9 @@ func (m Model) renderMarket() string {
 	if cycle.Fish > 0 {
 		lines = append(lines, "",
 			labelStyle.Render("ULTIMO CICLO"),
-			fmt.Sprintf("%d peixes, %d kg", cycle.Fish, cycle.MassG/gramsPerKg),
+			fmt.Sprintf("%d peixes, %d kg", cycle.Fish, cycle.MassGrams/gramsPerKg),
 			fmt.Sprintf("custo %s/kg  venda %s/kg", coins(cycle.CostPerKg), coins(cycle.PricePerKg)),
-			fmt.Sprintf("margem %s  CAA %s", signedCoins(cycle.MarginTC), ratio(cycle.FCRPPM)))
+			fmt.Sprintf("margem %s  CAA %s", signedCoins(cycle.MarginCents), ratio(cycle.FCRPPM)))
 	}
 
 	return strings.Join(lines, "\n")

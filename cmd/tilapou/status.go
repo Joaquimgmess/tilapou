@@ -42,7 +42,7 @@ func runStatus(args []string) error {
 
 	var line strings.Builder
 	fmt.Fprintf(&line, "%d,%02d TC | %d kg | %d peixes",
-		snapshot.CashCents/centsPerCoin, snapshot.CashCents%centsPerCoin, snapshot.BiomassG/gramsPerKg, snapshot.Fish)
+		snapshot.CashCents/centsPerCoin, snapshot.CashCents%centsPerCoin, snapshot.BiomassGrams/gramsPerKg, snapshot.Fish)
 
 	for i := range snapshot.Tanks {
 		t := &snapshot.Tanks[i]
