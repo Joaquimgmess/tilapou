@@ -1,6 +1,8 @@
 package sim
 
-func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
+// apply runs the action and, when it is refused, says how many cents would settle it:
+// the price for what needs cash, and the room left in the limit for RejectCreditLimit.
+func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	switch a.Kind {
 	case ActionBuyTank:
 		return applyBuyTank(s, b, a, at, sink)
@@ -13,7 +15,7 @@ func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReas
 	case ActionAerate:
 		return applyAerate(s, a)
 	case ActionHarvest:
-		return applyHarvest(s, b, a, at, sink), 0
+		return applyHarvest(s, b, a, at, sink)
 	case ActionBuyUpgrade:
 		return applyBuyUpgrade(s, b, a, at, sink)
 	case ActionRestart:
@@ -32,7 +34,7 @@ func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReas
 	return RejectUnknownKind, 0
 }
 
-func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
+func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	if a.TankKind >= tankKindCount {
 		return RejectUnknownKind, 0
 	}
@@ -54,7 +56,7 @@ func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) (Rej
 	return RejectNone, 0
 }
 
-func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
+func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	if a.Amount <= 0 || a.Amount > maxInt32 {
 		return RejectBadAmount, 0
 	}
@@ -94,7 +96,7 @@ func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) (Rejec
 	return RejectNone, 0
 }
 
-func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
+func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	if a.Amount <= 0 {
 		return RejectBadAmount, 0
 	}
@@ -118,7 +120,7 @@ func applyBuyFeed(s *State, b *Balance, a Action, at Tick, sink *eventSink) (Rej
 	return RejectNone, 0
 }
 
-func applyFeed(s *State, b *Balance, a Action, at Tick) (RejectReason, Coins) {
+func applyFeed(s *State, b *Balance, a Action, at Tick) (reason RejectReason, needed Coins) {
 	t := s.tank(a.Tank)
 	if t == nil {
 		return RejectNoSuchTank, 0
@@ -135,7 +137,7 @@ func applyFeed(s *State, b *Balance, a Action, at Tick) (RejectReason, Coins) {
 	return RejectNone, 0
 }
 
-func applyAerate(s *State, a Action) (RejectReason, Coins) {
+func applyAerate(s *State, a Action) (reason RejectReason, needed Coins) {
 	t := s.tank(a.Tank)
 	if t == nil {
 		return RejectNoSuchTank, 0
@@ -146,10 +148,10 @@ func applyAerate(s *State, a Action) (RejectReason, Coins) {
 	return RejectNone, 0
 }
 
-func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) RejectReason {
+func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	t := s.tank(a.Tank)
 	if t == nil {
-		return RejectNoSuchTank
+		return RejectNoSuchTank, 0
 	}
 
 	for i := range t.BatchCount {
@@ -158,7 +160,7 @@ func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reje
 			continue
 		}
 		if batch.Empty() {
-			return RejectNoSuchBatch
+			return RejectNoSuchBatch, 0
 		}
 
 		count := batch.Fish
@@ -167,13 +169,13 @@ func applyHarvest(s *State, b *Balance, a Action, at Tick, sink *eventSink) Reje
 		}
 		sell(s, b, t, batch, count, at, sink)
 
-		return RejectNone
+		return RejectNone, 0
 	}
 
-	return RejectNoSuchBatch
+	return RejectNoSuchBatch, 0
 }
 
-func applyBuyUpgrade(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
+func applyBuyUpgrade(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	if a.Auto >= autoKindCount {
 		return RejectUnknownKind, 0
 	}

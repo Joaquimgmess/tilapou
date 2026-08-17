@@ -92,7 +92,7 @@ func accrueInterest(s *State, b *Balance) {
 	charge(s, Coins(due))
 }
 
-func borrow(s *State, b *Balance, amount Coins, at Tick, sink *eventSink) (RejectReason, Coins) {
+func borrow(s *State, b *Balance, amount Coins, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	if amount <= 0 {
 		return RejectBadAmount, 0
 	}
@@ -110,7 +110,7 @@ func borrow(s *State, b *Balance, amount Coins, at Tick, sink *eventSink) (Rejec
 	return RejectNone, 0
 }
 
-func repay(s *State, amount Coins, at Tick, sink *eventSink) (RejectReason, Coins) {
+func repay(s *State, amount Coins, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	if s.Debt <= 0 {
 		return RejectNoDebt, 0
 	}

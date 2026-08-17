@@ -73,7 +73,7 @@ func riskFor(b *Balance, t *Tank, base PPM, tick Tick) PPM {
 	return risk
 }
 
-func treat(s *State, b *Balance, a Action, at Tick, sink *eventSink) (RejectReason, Coins) {
+func treat(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	t := s.tank(a.Tank)
 	if t == nil {
 		return RejectNoSuchTank, 0
