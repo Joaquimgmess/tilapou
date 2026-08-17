@@ -79,11 +79,11 @@ func Load() (Config, error) {
 		fallback time.Duration
 		dst      *time.Duration
 	}{
-		{"DB_TIMEOUT", defaultDBTimeout, &cfg.DBTimeout},
-		{"REQUEST_TIMEOUT", defaultReqTimeout, &cfg.RequestTimeout},
-		{"READ_TIMEOUT", defaultReadTimeout, &cfg.ReadTimeout},
-		{"WRITE_TIMEOUT", defaultWriteTimeout, &cfg.WriteTimeout},
-		{"SHUTDOWN_TIMEOUT", defaultShutdownGrace, &cfg.ShutdownTimeout},
+		{key: "DB_TIMEOUT", fallback: defaultDBTimeout, dst: &cfg.DBTimeout},
+		{key: "REQUEST_TIMEOUT", fallback: defaultReqTimeout, dst: &cfg.RequestTimeout},
+		{key: "READ_TIMEOUT", fallback: defaultReadTimeout, dst: &cfg.ReadTimeout},
+		{key: "WRITE_TIMEOUT", fallback: defaultWriteTimeout, dst: &cfg.WriteTimeout},
+		{key: "SHUTDOWN_TIMEOUT", fallback: defaultShutdownGrace, dst: &cfg.ShutdownTimeout},
 	}
 	for _, d := range durations {
 		*d.dst, err = durationEnv(d.key, d.fallback)

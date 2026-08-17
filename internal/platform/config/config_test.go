@@ -85,3 +85,43 @@ func TestLoadRejectsInvalidValues(t *testing.T) {
 		})
 	}
 }
+
+func TestLoadWiresEveryDurationToItsOwnVariable(t *testing.T) {
+	t.Setenv("DATABASE_URL", validURL)
+	t.Setenv("DB_TIMEOUT", "1s")
+	t.Setenv("REQUEST_TIMEOUT", "2s")
+	t.Setenv("READ_TIMEOUT", "3s")
+	t.Setenv("WRITE_TIMEOUT", "4s")
+	t.Setenv("SHUTDOWN_TIMEOUT", "5s")
+	t.Setenv("TRUSTED_PROXIES", "7")
+
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("Load() error = %v", err)
+	}
+
+	got := map[string]time.Duration{
+		"DB_TIMEOUT":       cfg.DBTimeout,
+		"REQUEST_TIMEOUT":  cfg.RequestTimeout,
+		"READ_TIMEOUT":     cfg.ReadTimeout,
+		"WRITE_TIMEOUT":    cfg.WriteTimeout,
+		"SHUTDOWN_TIMEOUT": cfg.ShutdownTimeout,
+	}
+	want := map[string]time.Duration{
+		"DB_TIMEOUT":       1 * time.Second,
+		"REQUEST_TIMEOUT":  2 * time.Second,
+		"READ_TIMEOUT":     3 * time.Second,
+		"WRITE_TIMEOUT":    4 * time.Second,
+		"SHUTDOWN_TIMEOUT": 5 * time.Second,
+	}
+
+	for key, w := range want {
+		if got[key] != w {
+			t.Errorf("%s virou %v, queria %v: a env caiu no campo errado", key, got[key], w)
+		}
+	}
+
+	if cfg.TrustedProxies != 7 {
+		t.Errorf("TrustedProxies = %d, queria 7", cfg.TrustedProxies)
+	}
+}
