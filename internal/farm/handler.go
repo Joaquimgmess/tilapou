@@ -483,7 +483,7 @@ func runwayDays(state *sim.State, b *sim.Balance) int64 {
 	return int64(state.Cash) / daily
 }
 
-var upgradeOrder = []sim.AutoKind{
+var upgradeOrder = [5]sim.AutoKind{
 	sim.AutoFeeder,
 	sim.AutoAerator,
 	sim.AutoHarvester,
@@ -505,7 +505,7 @@ func upgradesOf(tank *sim.Tank, b *sim.Balance) []UpgradeView {
 }
 
 func reportError(ctx context.Context, operation string, err error) error {
-	if known, converted := toHTTPError(err); known {
+	if converted := toHTTPError(err); converted != nil {
 		return converted
 	}
 
@@ -515,16 +515,16 @@ func reportError(ctx context.Context, operation string, err error) error {
 	return huma.Error500InternalServerError("erro interno")
 }
 
-func toHTTPError(err error) (known bool, converted error) {
+func toHTTPError(err error) error {
 	switch {
 	case errors.Is(err, ErrNotFound):
-		return true, huma.Error404NotFound("fazenda nao encontrada")
+		return huma.Error404NotFound("fazenda nao encontrada")
 	case errors.Is(err, ErrUnknownAction), errors.Is(err, ErrMissingAuto),
 		errors.Is(err, ErrMissingTankKind), errors.Is(err, ErrMissingTank):
-		return true, huma.Error422UnprocessableEntity(err.Error())
+		return huma.Error422UnprocessableEntity(err.Error())
 	case errors.Is(err, ErrStaleRevision):
-		return true, huma.Error409Conflict("a fazenda mudou durante a escrita, tente de novo")
+		return huma.Error409Conflict("a fazenda mudou durante a escrita, tente de novo")
 	default:
-		return false, err
+		return nil
 	}
 }
