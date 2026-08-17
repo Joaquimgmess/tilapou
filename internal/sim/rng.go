@@ -14,6 +14,7 @@ const (
 	PurposeMortality
 	PurposeStarvation
 	PurposeDisease
+	// Slot queimado: mexer aqui desloca os ordinais e muda o replay de todo save.
 	_
 	PurposeMarket
 	PurposeFeedPrice
