@@ -6,7 +6,6 @@ linters:
     - dupword
     - exhaustruct
     - funlen
-    - gochecknoglobals
     - godot
     - godox
     - ireturn
@@ -82,6 +81,21 @@ linters:
               desc: o client transporta DTO, nao roda simulacao
             - pkg: github.com/Joaquimgmess/tilapou/internal/farm
               desc: o client fala HTTP, nao chama o slice direto
+            - pkg: database/sql
+              desc: o client fala HTTP; banco e do daemon, do outro lado do fio
+            - pkg: github.com/Joaquimgmess/tilapou/internal/platform/postgres
+              desc: o client roda na maquina do jogador e nao alcanca o banco
+        balance-e-tabela:
+          files:
+            - "**/internal/balance/**"
+            - "!**/*_test.go"
+          deny:
+            - pkg: github.com/Joaquimgmess/tilapou/internal/farm
+              desc: balance e tabela de ajuste lida pelo sim; quem persiste e o slice
+            - pkg: github.com/Joaquimgmess/tilapou/internal/client
+              desc: balance nao fala com ninguem; e carregado e passado como argumento
+            - pkg: database/sql
+              desc: os numeros vem do TOML embutido, nao do banco
     gocognit:
       min-complexity: 25
     gocritic:
@@ -172,6 +186,13 @@ linters:
         linters:
           - gosec
           - mnd
+          - gochecknoglobals
+      - path: internal/tui/
+        linters:
+          - gochecknoglobals
+      - text: "(upgradeOrder|durationBuckets) is a global variable"
+        linters:
+          - gochecknoglobals
       - path: internal/balance/
         text: "G115:"
         linters:
