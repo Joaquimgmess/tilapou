@@ -218,11 +218,12 @@ func Decode(raw []byte) (sim.State, error) {
 		}
 
 		state.Tanks[i] = sim.Tank{
-			ID:           sim.TankID(tank.ID),
-			Kind:         sim.TankKind(tank.Kind),
-			Litres:       sim.Litres(tank.Litres),
-			FeedStock:    sim.Micrograms(tank.FeedStock),
-			ServedUntil:  sim.Tick(tank.ServedUntil),
+			ID:          sim.TankID(tank.ID),
+			Kind:        sim.TankKind(tank.Kind),
+			Litres:      sim.Litres(tank.Litres),
+			FeedStock:   sim.Micrograms(tank.FeedStock),
+			ServedUntil: sim.Tick(tank.ServedUntil),
+			// doc.Upgrades e save antigo, quando a automacao era da fazenda: espalha em todo tanque.
 			Upgrades:     tank.Upgrades | doc.Upgrades,
 			Oxygen:       sim.MicrogramsPerLiter(tank.Oxygen),
 			Aerating:     tank.Aerating,
