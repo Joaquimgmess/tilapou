@@ -1,5 +1,6 @@
 package sim
 
+// Cycle tem massa em microgramas, valores em centavos e FCR em PPM.
 type Cycle struct {
 	Fish       FishCount
 	Mass       Micrograms
@@ -10,6 +11,7 @@ type Cycle struct {
 	FCRPPM     PPM
 }
 
+// Margin e receita menos custo, em centavos.
 func (c Cycle) Margin() Coins {
 	return Coins(subSat(int64(c.Revenue), int64(c.Cost)))
 }

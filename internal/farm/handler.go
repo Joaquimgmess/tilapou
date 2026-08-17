@@ -15,6 +15,8 @@ import (
 
 const litresPerCubicMetre = 1_000
 
+// TankView e o tanque na API: dinheiro em centavos, peso em gramas, oxigenio em
+// microgramas por litro, densidade em milesimos de kg/m3 e proporcoes em PPM.
 type TankView struct {
 	ID           uint32 `json:"id"`
 	Kind         string `json:"kind"`
@@ -50,6 +52,7 @@ type TankView struct {
 	Upgrades      []UpgradeView `json:"upgrades"`
 }
 
+// EventView e o evento na API, com massa em gramas e caixa em centavos.
 type EventView struct {
 	Seq    uint64 `json:"seq"`
 	Kind   string `json:"kind"`
@@ -62,18 +65,21 @@ type EventView struct {
 	Reason string `json:"reason"`
 }
 
+// UpgradeView traz o custo da automacao em centavos.
 type UpgradeView struct {
 	Kind      string `json:"kind"`
 	Owned     bool   `json:"owned"`
 	CostCents int64  `json:"cost_cents"`
 }
 
+// OutcomeView traz o motivo da recusa e o caixa que faltou, em centavos.
 type OutcomeView struct {
 	Applied    bool   `json:"applied"`
 	Reason     string `json:"reason"`
 	NeededCash int64  `json:"needed_cents"`
 }
 
+// PriceView traz precos do tick atual em centavos e a troca racao-peixe em PPM.
 type PriceView struct {
 	FeedKgCents     int64 `json:"feed_kg_cents"`
 	FingerlingCents int64 `json:"fingerling_cents"`
@@ -82,6 +88,8 @@ type PriceView struct {
 	ViablePPM       int64 `json:"equivalence_viable_ppm"`
 }
 
+// CycleView fecha o ultimo ciclo: massa em gramas, valores em centavos e
+// conversao alimentar em PPM.
 type CycleView struct {
 	Fish       int32 `json:"fish"`
 	MassG      int64 `json:"mass_grams"`
@@ -93,6 +101,8 @@ type CycleView struct {
 	FCRPPM     int64 `json:"fcr_ppm"`
 }
 
+// DecisionView compara vender agora com segurar ate a proxima classe de peso:
+// centavos, ganho diario em miligramas, racao diaria em gramas.
 type DecisionView struct {
 	SellNowCents   int64 `json:"sell_now_cents"`
 	SellNowMargin  int64 `json:"sell_now_margin_cents"`
@@ -109,12 +119,15 @@ type DecisionView struct {
 	DaysOfFeed     int64 `json:"days_of_feed"`
 }
 
+// SeriesView traz precos em centavos por quilo, um ponto a cada StepTicks.
 type SeriesView struct {
 	FishKgCents []int64 `json:"fish_kg_cents"`
 	FeedKgCents []int64 `json:"feed_kg_cents"`
 	StepTicks   int64   `json:"step_ticks"`
 }
 
+// SnapshotView e a fazenda na API: centavos, gramas e milesimos de grau, com
+// RunwayDays em -1 quando nao ha custo diario.
 type SnapshotView struct {
 	FarmID      string       `json:"farm_id"`
 	Name        string       `json:"name"`
@@ -170,6 +183,8 @@ type actionInput struct {
 	Body actionBody
 }
 
+// RegisterRoutes publica GET /farm e POST /farm/actions, que devolvem o
+// snapshot ja adiantado.
 func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.Balance) {
 	p := newPlans()
 

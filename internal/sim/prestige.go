@@ -2,6 +2,7 @@ package sim
 
 const prestigeScale = 10
 
+// RaisingCost estima em centavos alevinos mais a racao implicada pelo FCR alvo, aos precos do tick.
 func RaisingCost(b *Balance, fish FishCount, mass Micrograms, at Tick) Coins {
 	fingerlings := int64(b.Economy.FingerlingPrice) * int64(fish)
 	gained := subSat(int64(mass), int64(b.Growth.FingerlingMass)) * int64(fish)
@@ -10,6 +11,7 @@ func RaisingCost(b *Balance, fish FishCount, mass Micrograms, at Tick) Coins {
 	return Coins(addSat(fingerlings, mulDivFloor(feed, int64(MarketAt(b, at).FeedKg), int64(MicrogramsPerKilogram))))
 }
 
+// PrestigePointsFor devolve 0 se o divisor nao for positivo.
 func PrestigePointsFor(lifetime Coins, divisor int64) uint32 {
 	if divisor <= 0 || lifetime <= 0 {
 		return 0
@@ -22,6 +24,7 @@ func (s *State) prestigeBonus(b *Balance) PPM {
 	return PPM(addSat(int64(UnitPPM), int64(s.Prestige)*int64(b.Progression.PrestigeBonusPPM)))
 }
 
+// Broke e true sem peixes, sem caixa para alevino, sem prestigio a resgatar e sem credito.
 func (s *State) Broke(b *Balance) bool {
 	if s.Fish() > 0 || s.Cash >= b.Economy.FingerlingPrice {
 		return false

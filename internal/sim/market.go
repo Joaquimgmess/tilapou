@@ -2,11 +2,13 @@ package sim
 
 const maxPriceClasses = 6
 
+// PriceClass e uma faixa de peso e o multiplicador em PPM sobre o preco base.
 type PriceClass struct {
 	UpToMass Micrograms
 	PPM      PPM
 }
 
+// MarketBalance tem precos base por quilo em centavos e periodo em ticks.
 type MarketBalance struct {
 	FishBasePerKg  Coins
 	FeedBasePerKg  Coins
@@ -19,12 +21,14 @@ type MarketBalance struct {
 	ViableRatioPPM PPM
 }
 
+// Market tem precos por quilo em centavos e a razao de equivalencia em PPM.
 type Market struct {
 	FishKg   Coins
 	FeedKg   Coins
 	RatioPPM PPM
 }
 
+// MarketAt calcula deterministicamente os precos de peixe e racao no tick dado.
 func MarketAt(b *Balance, tick Tick) Market {
 	fish := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FishBasePerKg, b.Market.SwingPPM, PurposeMarket)
 	feed := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FeedBasePerKg, b.Market.FeedSwingPPM, PurposeEvent)
@@ -68,6 +72,7 @@ func anchor(seed Seed, index int64, purpose Purpose) int64 {
 	return roll - int64(UnitPPM)
 }
 
+// ClassPPM cai na ultima classe acima da faixa e em UnitPPM se nao houver classes.
 func (b *Balance) ClassPPM(mass Micrograms) PPM {
 	for i := range b.Market.ClassCount {
 		if mass <= b.Market.Classes[i].UpToMass {
@@ -81,6 +86,7 @@ func (b *Balance) ClassPPM(mass Micrograms) PPM {
 	return b.Market.Classes[b.Market.ClassCount-1].PPM
 }
 
+// PriceFor devolve o preco por quilo em centavos, ja com a classe da massa.
 func (b *Balance) PriceFor(mass Micrograms, tick Tick) Coins {
 	market := MarketAt(b, tick)
 

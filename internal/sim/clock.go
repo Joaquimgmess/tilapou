@@ -1,13 +1,16 @@
 package sim
 
+// ZoneOffset e o fuso da fazenda, em ticks.
 type ZoneOffset int32
 
+// DayPhase e a posicao de um tick no calendario local; Day conta desde o tick zero.
 type DayPhase struct {
 	Minute int32
 	Hour   int32
 	Day    int64
 }
 
+// At situa o tick no fuso informado.
 func (t Tick) At(zone ZoneOffset) DayPhase {
 	local := t + Tick(zone)
 	minuteOfDay := floorMod(int64(local), int64(TicksPerDay))
@@ -19,6 +22,7 @@ func (t Tick) At(zone ZoneOffset) DayPhase {
 	}
 }
 
+// WindowStart devolve o inicio da janela que contem t, ou t se window nao for positivo.
 func (t Tick) WindowStart(window Tick) Tick {
 	if window <= 0 {
 		return t

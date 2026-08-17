@@ -228,6 +228,7 @@ func killFish(batch *Batch, ratePPM int64, seed Seed, key RollKey) FishCount {
 	return deaths
 }
 
+// MassRootOf devolve a raiz cubica da massa em milesimos.
 func MassRootOf(mass Micrograms) int64 {
 	return massRootOf(mass)
 }

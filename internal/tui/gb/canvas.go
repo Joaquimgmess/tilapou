@@ -1,3 +1,4 @@
+// Package gb desenha telas no estilo GameBoy.
 package gb
 
 import (
@@ -5,8 +6,10 @@ import (
 	"strings"
 )
 
+// Shade e um tom da paleta, do mais claro (0) ao mais escuro (3).
 type Shade uint8
 
+// Os quatro tons validos, do mais claro ao mais escuro.
 const (
 	Lightest Shade = iota
 	Light
@@ -59,6 +62,7 @@ func writeRGB(sb *strings.Builder, c rgb) {
 	sb.WriteString(strconv.Itoa(int(c.b)))
 }
 
+// Hex da a cor do tom em #RRGGBB, ou "#000000" se o tom for invalido.
 func Hex(s Shade) string {
 	if s >= shadeCount {
 		return "#000000"
@@ -75,12 +79,14 @@ func Hex(s Shade) string {
 	})
 }
 
+// Canvas e a grade de pixels onde os sprites sao desenhados.
 type Canvas struct {
 	width  int
 	height int
 	pixels []Shade
 }
 
+// NewCanvas cria um canvas de width por height pixels; height impar sobe para o par seguinte.
 func NewCanvas(width, height int) *Canvas {
 	if height%2 != 0 {
 		height++
@@ -89,6 +95,7 @@ func NewCanvas(width, height int) *Canvas {
 	return &Canvas{width: width, height: height, pixels: make([]Shade, width*height)}
 }
 
+// Set pinta o pixel em (x, y); fora do canvas ou tom invalido nao faz nada.
 func (c *Canvas) Set(x, y int, s Shade) {
 	if x < 0 || y < 0 || x >= c.width || y >= c.height || s >= shadeCount {
 		return
@@ -97,6 +104,7 @@ func (c *Canvas) Set(x, y int, s Shade) {
 	c.pixels[y*c.width+x] = s
 }
 
+// Render da o canvas como texto ANSI, uma linha de terminal a cada dois pixels de altura.
 func (c *Canvas) Render() string {
 	var sb strings.Builder
 	sb.Grow(c.width * c.height / 2 * bytesPerCell)

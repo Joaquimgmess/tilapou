@@ -1,5 +1,7 @@
 package sim
 
+// Input parte de State e roda ate Until aplicando Actions ordenadas por tick.
+// Budget limita o trabalho por chamada; se nao for positivo, nao trunca.
 type Input struct {
 	State   State
 	Until   Tick
@@ -8,6 +10,8 @@ type Input struct {
 	Budget  int64
 }
 
+// Output traz o estado novo; Stopped so fica aquem de Input.Until quando Truncated,
+// e Outcomes tem uma entrada por acao.
 type Output struct {
 	State     State
 	Events    []Event
@@ -18,6 +22,9 @@ type Output struct {
 
 const defaultBudget = int64(1) << 62
 
+// Advance roda a simulacao ate in.Until sem mutar in.State e devolve sempre a mesma
+// saida para a mesma entrada. Erra com ErrNoBalance, o erro de Balance.Validate,
+// ErrBackwardsTime ou ErrActionsUnsorted.
 func Advance(in Input) (Output, error) {
 	if in.Balance == nil {
 		return Output{}, ErrNoBalance

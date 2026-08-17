@@ -6,6 +6,7 @@ const (
 	forecastFeedTopUp = 500 * MicrogramsPerKilogram
 )
 
+// Forecast traz massas em microgramas e valores em centavos; Reached e false quando o teto de dias veio antes do alvo.
 type Forecast struct {
 	Reached    bool
 	Days       int64
@@ -18,6 +19,7 @@ type Forecast struct {
 	PricePerKg Coins
 }
 
+// Forecast projeta o lote num tanque isolado e bem tratado; devolve o zero se o lote nao existir ou estiver vazio.
 func (s *State) Forecast(b *Balance, tank TankID, batch BatchID, target Micrograms) Forecast {
 	start := s.isolate(tank)
 	found := start.batch(tank, batch)
@@ -118,6 +120,7 @@ func (s *State) batch(tank TankID, batch BatchID) *Batch {
 	return nil
 }
 
+// NextClass devolve a massa de entrada da proxima classe e o ganho em PPM sobre a atual; ok e false se nao ha classe melhor.
 func (b *Balance) NextClass(mass Micrograms) (entry Micrograms, gain PPM, ok bool) {
 	current := b.ClassPPM(mass)
 
@@ -139,6 +142,7 @@ func (b *Balance) NextClass(mass Micrograms) (entry Micrograms, gain PPM, ok boo
 	return 0, 0, false
 }
 
+// Series amostra precos por quilo em centavos, a cada step ticks ate o tick atual; nil se points ou step nao forem positivos.
 func (s *State) Series(b *Balance, points int, step Tick) (fish, feed []Coins) {
 	if points <= 0 || step <= 0 {
 		return nil, nil
@@ -158,6 +162,7 @@ func (s *State) Series(b *Balance, points int, step Tick) (fish, feed []Coins) {
 	return fish, feed
 }
 
+// StockAdvice sugere alevinos que cabem e cabem no caixa, com o custo por peixe em centavos ate a engorda.
 func (s *State) StockAdvice(b *Balance, tank TankID) (fish FishCount, perFish Coins) {
 	t := s.tank(tank)
 	if t == nil {
@@ -188,8 +193,10 @@ func feedToRaise(b *Balance, at Tick) Coins {
 	return Coins(mulDivCeil(feed, int64(MarketAt(b, at).FeedKg), int64(MicrogramsPerKilogram)))
 }
 
+// LoanBlock diz se vale tomar credito agora e, se nao, o que impede.
 type LoanBlock uint8
 
+// Motivos pelos quais tomar credito esta liberado ou bloqueado.
 const (
 	LoanOpen LoanBlock = iota
 	LoanNoCredit
@@ -215,6 +222,7 @@ func (l LoanBlock) String() string {
 	return loanBlockNames[l]
 }
 
+// LoanAdvice sugere quanto tomar emprestado em centavos ate a lotacao de equilibrio, ou 0 com o motivo do bloqueio.
 func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) (Coins, LoanBlock) {
 	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
 	if room <= 0 {

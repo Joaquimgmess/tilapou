@@ -1,9 +1,12 @@
 package sim
 
+// WindowTicks e a janela, em ticks, em que os acumulados de um tanque viram um so evento.
 const WindowTicks = Tick(60)
 
+// EventKind e o tipo de um evento da simulacao.
 type EventKind uint16
 
+// Tipos de evento emitidos durante o avanco da simulacao.
 const (
 	EventUnknown EventKind = iota
 	EventGrowth
@@ -57,6 +60,7 @@ func (k EventKind) String() string {
 	return eventKindNames[k]
 }
 
+// Event tem massa em microgramas e caixa em centavos; Seq ordena a emissao e os demais campos dependem do Kind.
 type Event struct {
 	Seq    uint64
 	Kind   EventKind

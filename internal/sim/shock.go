@@ -2,6 +2,7 @@ package sim
 
 const maxDiseases = 4
 
+// DiseaseSpec tem faixa de temperatura em milesimos de grau, riscos em PPM e duracao em ticks.
 type DiseaseSpec struct {
 	MinTemp     MilliCelsius
 	MaxTemp     MilliCelsius
@@ -10,6 +11,7 @@ type DiseaseSpec struct {
 	Ticks       int32
 }
 
+// ShockBalance e o ajuste de doenca: prazos em ticks, custo em centavos e riscos em PPM.
 type ShockBalance struct {
 	Diseases       [maxDiseases]DiseaseSpec
 	DiseaseCount   int32

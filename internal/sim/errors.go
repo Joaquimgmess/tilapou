@@ -2,6 +2,8 @@ package sim
 
 import "errors"
 
+// ErrCurve* vem da validacao de uma Curve, ErrBalance* de Balance.Validate e os
+// tres ultimos de Advance.
 var (
 	ErrCurveEmpty     = errors.New("sim: curve needs at least one point")
 	ErrCurveTooLong   = errors.New("sim: curve exceeds the maximum number of points")

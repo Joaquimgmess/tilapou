@@ -31,15 +31,18 @@ type histogram struct {
 	count   uint64
 }
 
+// Metrics acumula latencia HTTP por metodo, rota e status; seguro concorrente.
 type Metrics struct {
 	mu     sync.Mutex
 	series map[seriesKey]*histogram
 }
 
+// NewMetrics cria um coletor vazio.
 func NewMetrics() *Metrics {
 	return &Metrics{series: make(map[seriesKey]*histogram)}
 }
 
+// Handler serve GET /metrics no formato texto do Prometheus.
 func (m *Metrics) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body strings.Builder

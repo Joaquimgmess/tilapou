@@ -1,3 +1,4 @@
+// Package postgres abre o pool de conexoes.
 package postgres
 
 import (
@@ -7,6 +8,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// Connect abre um pool e so devolve apos ping; em falha o pool ja vem fechado.
 func Connect(ctx context.Context, url string, maxConns int32) (*pgxpool.Pool, error) {
 	cfg, err := pgxpool.ParseConfig(url)
 	if err != nil {

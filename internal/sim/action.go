@@ -2,10 +2,13 @@ package sim
 
 const invalidName = "invalid"
 
+// ActionID casa uma acao com seu Outcome de mesmo ID.
 type ActionID uint64
 
+// ActionKind e o tipo de acao pedida pelo jogador.
 type ActionKind uint8
 
+// Acoes aceitas; ActionUnknown e o zero e sempre rejeitado.
 const (
 	ActionUnknown ActionKind = iota
 	ActionBuyTank
@@ -41,6 +44,7 @@ var actionKindNames = [...]string{
 
 var _ [len(actionKindNames) - int(actionKindCount)]struct{}
 
+// ActionKindNamed devolve ActionUnknown e false para nome desconhecido ou "unknown".
 func ActionKindNamed(name string) (ActionKind, bool) {
 	for kind, known := range actionKindNames {
 		if known == name && ActionKind(kind) != ActionUnknown {
@@ -51,10 +55,12 @@ func ActionKindNamed(name string) (ActionKind, bool) {
 	return ActionUnknown, false
 }
 
+// ActionKindNames devolve uma copia dos nomes validos, sem ActionUnknown.
 func ActionKindNames() []string {
 	return append([]string(nil), actionKindNames[ActionUnknown+1:]...)
 }
 
+// String devolve "invalid" fora do enum.
 func (k ActionKind) String() string {
 	if k >= actionKindCount {
 		return invalidName
@@ -63,8 +69,10 @@ func (k ActionKind) String() string {
 	return actionKindNames[k]
 }
 
+// RejectReason explica a rejeicao; RejectNone significa aceita.
 type RejectReason uint8
 
+// Motivos de rejeicao de uma acao.
 const (
 	RejectNone RejectReason = iota
 	RejectUnknownKind
@@ -104,6 +112,7 @@ var rejectReasonNames = [...]string{
 	RejectNothingSick:       "nothing_sick",
 }
 
+// RejectReasonNamed devolve RejectNone e false para nome desconhecido.
 func RejectReasonNamed(name string) (RejectReason, bool) {
 	for reason, known := range rejectReasonNames {
 		if known == name {
@@ -116,6 +125,7 @@ func RejectReasonNamed(name string) (RejectReason, bool) {
 
 var _ [len(rejectReasonNames) - int(rejectReasonCount)]struct{}
 
+// String devolve "invalid" fora do enum.
 func (r RejectReason) String() string {
 	if r >= rejectReasonCount {
 		return invalidName
@@ -124,6 +134,8 @@ func (r RejectReason) String() string {
 	return rejectReasonNames[r]
 }
 
+// Action e um pedido agendado para o tick At; os demais campos so valem conforme
+// Kind, e Amount vem em peixes, microgramas ou centavos.
 type Action struct {
 	ID       ActionID
 	Kind     ActionKind
@@ -135,6 +147,8 @@ type Action struct {
 	Amount   int64
 }
 
+// Outcome responde a uma Action por ID; se Applied for falso, Reason da o motivo e
+// Needed traz em centavos o que faltou de caixa.
 type Outcome struct {
 	ID      ActionID
 	At      Tick

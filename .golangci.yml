@@ -6,7 +6,6 @@ linters:
     - dupword
     - exhaustruct
     - funlen
-    - godot
     - godox
     - ireturn
     - lll
@@ -125,10 +124,6 @@ linters:
     revive:
       enable-all-rules: true
       rules:
-        - name: exported
-          disabled: true
-        - name: package-comments
-          disabled: true
         - name: comment-spacings
           disabled: true
         - name: add-constant
@@ -160,7 +155,6 @@ linters:
     staticcheck:
       checks:
         - all
-        - -ST1000
     tagliatelle:
       case:
         rules:

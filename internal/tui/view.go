@@ -7,6 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 )
 
+// Fatores de conversao da formatacao; UnitPPMValue e uma unidade em partes por milhao.
 const (
 	minutesPerHour   = 60
 	hoursPerDay      = 24
@@ -26,6 +27,7 @@ var (
 	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
 )
 
+// View monta a tela a partir do ultimo snapshot.
 func (m Model) View() tea.View {
 	if m.quitting {
 		return tea.NewView("ate mais, piscicultor\n")

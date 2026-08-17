@@ -2,6 +2,7 @@ package farm
 
 import "errors"
 
+// Erros da fazenda: leitura sem fazenda, conflito de escrita e acao invalida.
 var (
 	ErrNotFound        = errors.New("farm: not found")
 	ErrStaleRevision   = errors.New("farm: state changed underneath the write")

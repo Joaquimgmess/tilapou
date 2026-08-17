@@ -1,3 +1,5 @@
+// Package scenario roda partidas deterministas do simulador para conferir
+// balanceamento e travar regressao.
 package scenario
 
 import (
@@ -9,6 +11,8 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
+// Scenario descreve uma partida com Cash em centavos, Setup montando o estado
+// no tick 0 e Actions agendadas em ticks.
 type Scenario struct {
 	Name    string
 	Zone    sim.ZoneOffset
@@ -19,6 +23,8 @@ type Scenario struct {
 	Actions []sim.Action
 }
 
+// Sample fotografa o primeiro tanque no fim do dia, nas unidades do sufixo e
+// com Cash em centavos e Density em milesimos de kg por metro cubico.
 type Sample struct {
 	Day     int64
 	Fish    sim.FishCount
@@ -29,6 +35,7 @@ type Sample struct {
 	Density int64
 }
 
+// Result traz uma amostra por dia, a contagem de eventos por tipo e o final.
 type Result struct {
 	Scenario Scenario
 	Samples  []Sample
@@ -46,6 +53,7 @@ func (s Scenario) initial() sim.State {
 	return state
 }
 
+// Run avanca o cenario dia a dia, amostrando o fim de cada um.
 func Run(s Scenario, b *sim.Balance) (Result, error) {
 	state := s.initial()
 
@@ -74,6 +82,8 @@ func Run(s Scenario, b *sim.Balance) (Result, error) {
 	return result, nil
 }
 
+// RunWhole avanca o cenario num unico Advance, para conferir que o resultado
+// bate com o de Run.
 func RunWhole(s Scenario, b *sim.Balance) (sim.State, error) {
 	state := s.initial()
 
@@ -121,6 +131,7 @@ func sampleOf(day int64, state *sim.State) Sample {
 	return sample
 }
 
+// Render monta a tabela de texto, com o caixa ja fora dos centavos.
 func (r Result) Render() string {
 	var b strings.Builder
 

@@ -1,3 +1,4 @@
+// Command tilapou e a CLI do jogo.
 package main
 
 import (

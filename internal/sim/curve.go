@@ -2,16 +2,19 @@ package sim
 
 const maxCurvePoints = 12
 
+// CurvePoint e um par de ancoragem de uma Curve.
 type CurvePoint struct {
 	X int64
 	Y int64
 }
 
+// Curve e linear por partes, com ate maxCurvePoints pontos ordenados por X.
 type Curve struct {
 	Points [maxCurvePoints]CurvePoint
 	Len    int32
 }
 
+// NewCurve erra com ErrCurveEmpty sem pontos, ErrCurveTooLong acima do limite e ErrCurveNotSorted se X nao crescer.
 func NewCurve(points []CurvePoint) (Curve, error) {
 	if len(points) == 0 {
 		return Curve{}, ErrCurveEmpty
@@ -36,6 +39,7 @@ func NewCurve(points []CurvePoint) (Curve, error) {
 	return c, nil
 }
 
+// At interpola Y em x, prendendo nas extremidades; devolve 0 na curva vazia.
 func (c Curve) At(x int64) int64 {
 	if c.Len == 0 {
 		return 0

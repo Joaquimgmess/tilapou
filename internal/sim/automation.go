@@ -1,7 +1,9 @@
 package sim
 
+// AutoKind e uma melhoria de automacao, comprada por tanque.
 type AutoKind uint8
 
+// Melhorias de automacao disponiveis por tanque.
 const (
 	AutoFeeder AutoKind = iota
 	AutoAerator
@@ -21,6 +23,7 @@ var autoKindNames = [...]string{
 
 var _ [len(autoKindNames) - int(autoKindCount)]struct{}
 
+// AutoKindNamed resolve a melhoria pelo nome; com o bool false o AutoKind devolvido e o zero e nao deve ser usado.
 func AutoKindNamed(name string) (AutoKind, bool) {
 	for kind, known := range autoKindNames {
 		if known == name {
@@ -39,6 +42,7 @@ func (k AutoKind) String() string {
 	return autoKindNames[k]
 }
 
+// Owns e false para valores fora da faixa.
 func (t *Tank) Owns(k AutoKind) bool {
 	if k >= autoKindCount {
 		return false

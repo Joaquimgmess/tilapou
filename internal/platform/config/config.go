@@ -1,3 +1,4 @@
+// Package config le a configuracao do processo do ambiente.
 package config
 
 import (
@@ -9,6 +10,18 @@ import (
 	"time"
 )
 
+// Config e a configuracao do daemon:
+//
+//	Addr            ADDR, default ":8080"
+//	DatabaseURL     DATABASE_URL, obrigatoria
+//	LogLevel        LOG_LEVEL, default info
+//	DBMaxConns      DB_MAX_CONNS, default 10
+//	DBTimeout       DB_TIMEOUT, default 3s
+//	RequestTimeout  REQUEST_TIMEOUT, default 30s
+//	TrustedProxies  TRUSTED_PROXIES, default 0
+//	ReadTimeout     READ_TIMEOUT, default 10s
+//	WriteTimeout    WRITE_TIMEOUT, default 15s
+//	ShutdownTimeout SHUTDOWN_TIMEOUT, default 15s
 type Config struct {
 	Addr            string
 	DatabaseURL     string
@@ -33,6 +46,7 @@ const (
 	defaultShutdownGrace = 15 * time.Second
 )
 
+// Load le a Config do ambiente.
 func Load() (Config, error) {
 	var err error
 

@@ -1,3 +1,5 @@
+// Package balance le o balance.toml embutido, em unidades humanas, e o converte
+// no sim.Balance em inteiros.
 package balance
 
 import (
@@ -152,6 +154,7 @@ type automacaoRow struct {
 	CustoCentavos int64  `toml:"custo_centavos"`
 }
 
+// Load devolve o sim.Balance ja validado.
 func Load() (sim.Balance, error) {
 	raw, err := files.ReadFile("balance.toml")
 	if err != nil {

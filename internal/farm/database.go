@@ -16,6 +16,7 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim/save"
 )
 
+// Store e a borda de persistencia da fazenda.
 type Store interface {
 	ByPlayer(ctx context.Context, playerID uuid.UUID) (Farm, error)
 	Insert(ctx context.Context, f Farm) error
@@ -26,6 +27,7 @@ type Store interface {
 
 var _ Store = (*DB)(nil)
 
+// StoredEvent e o evento gravado, com Mass em microgramas e Cash em centavos.
 type StoredEvent struct {
 	Seq    uint64
 	Kind   string
@@ -38,15 +40,18 @@ type StoredEvent struct {
 	Reason string
 }
 
+// DB e o Store sobre Postgres, com timeout por consulta.
 type DB struct {
 	pool    *pgxpool.Pool
 	timeout time.Duration
 }
 
+// NewDB aplica timeout a cada operacao sobre o pool.
 func NewDB(pool *pgxpool.Pool, timeout time.Duration) *DB {
 	return &DB{pool: pool, timeout: timeout}
 }
 
+// ByPlayer decodifica o estado e erra ErrNotFound se o jogador nao tem fazenda.
 func (d *DB) ByPlayer(ctx context.Context, playerID uuid.UUID) (Farm, error) {
 	const query = `
 		SELECT id, player_id, name, epoch, revision, state, created_at
@@ -78,6 +83,7 @@ func (d *DB) ByPlayer(ctx context.Context, playerID uuid.UUID) (Farm, error) {
 	return f, nil
 }
 
+// Insert grava a fazenda nova com a projecao junto.
 func (d *DB) Insert(ctx context.Context, f Farm) error {
 	const query = `
 		INSERT INTO farms (id, player_id, name, epoch, revision, state, cash_cents, biomass_ug, created_at)
@@ -102,6 +108,8 @@ func (d *DB) Insert(ctx context.Context, f Farm) error {
 	return nil
 }
 
+// Save grava tudo numa transacao se a revisao em banco ainda for f.Revision;
+// senao erra ErrStaleRevision, ou ErrAlreadyApplied se a chave ja constava.
 func (d *DB) Save(ctx context.Context, f Farm, events []sim.Event, outcome *sim.Outcome) error {
 	raw, err := save.Encode(f.State)
 	if err != nil {
@@ -207,6 +215,7 @@ func insertEvents(ctx context.Context, tx pgx.Tx, id ID, events []sim.Event) err
 	return nil
 }
 
+// Events devolve ate limit eventos, do mais recente para o mais antigo.
 func (d *DB) Events(ctx context.Context, id ID, limit int32) ([]StoredEvent, error) {
 	const query = `
 		SELECT seq, kind, from_tick, to_tick, tank_id, fish, mass_ug, cash_cents, reason
@@ -247,6 +256,8 @@ func (d *DB) Events(ctx context.Context, id ID, limit int32) ([]StoredEvent, err
 	return events, nil
 }
 
+// AppliedOutcome devolve bool falso, com Outcome zerado, se a chave key ainda
+// nao foi aplicada.
 func (d *DB) AppliedOutcome(ctx context.Context, id ID, key sim.ActionID) (sim.Outcome, bool, error) {
 	const query = `
 		SELECT applied, reason, at_tick, needed_cents
