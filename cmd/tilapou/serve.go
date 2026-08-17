@@ -71,14 +71,10 @@ func runServe(args []string) error {
 
 	sessions := farm.NewSessions(farm.NewDB(pool, cfg.DBTimeout), &rules, time.Now)
 
-	router, api := httpx.NewAPI(logger, httpx.Options{
-		Title:          "Tilapou",
-		Version:        "1.0.0",
-		APIPrefix:      "/v1",
-		RequestTimeout: cfg.RequestTimeout,
-		TrustedProxies: int(cfg.TrustedProxies),
-		ErrorDocsURL:   errorDocsPrefix,
-	})
+	router, api := httpx.NewAPI(logger, "Tilapou", "1.0.0", "/v1", cfg.RequestTimeout,
+		httpx.WithTrustedProxies(int(cfg.TrustedProxies)),
+		httpx.WithErrorDocs(errorDocsPrefix),
+	)
 	httpx.RegisterHealth(router, pool.Ping)
 	farm.RegisterRoutes(api, sessions, player, &rules)
 

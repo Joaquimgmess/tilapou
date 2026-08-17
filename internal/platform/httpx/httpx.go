@@ -19,36 +19,55 @@ const (
 	compressionLevel = 5
 )
 
-// Options configures NewAPI. Title, Version, APIPrefix and RequestTimeout are
-// required: a zero RequestTimeout drops every request immediately.
-type Options struct {
-	Title          string
-	Version        string
-	APIPrefix      string
-	RequestTimeout time.Duration
-	TrustedProxies int
-	ErrorDocsURL   string
+type options struct {
+	trustedProxies int
+	errorDocsURL   string
+}
+
+// Option tunes what NewAPI leaves optional.
+type Option func(*options)
+
+// WithTrustedProxies takes the client IP from X-Forwarded-For, skipping n
+// trusted hops. Without it the IP comes from the connection.
+func WithTrustedProxies(n int) Option {
+	return func(o *options) { o.trustedProxies = n }
+}
+
+// WithErrorDocs prefixes the problem+json type with url, linking each error to
+// its documentation.
+func WithErrorDocs(url string) Option {
+	return func(o *options) { o.errorDocsURL = url }
 }
 
 // NewAPI returns the chi router, with /metrics already registered, and the huma
-// group mounted under opts.APIPrefix.
-func NewAPI(logger *slog.Logger, opts Options) (chi.Router, *huma.Group) {
+// group mounted under prefix. Every request is cut off at requestTimeout.
+func NewAPI(
+	logger *slog.Logger,
+	title, version, prefix string,
+	requestTimeout time.Duration,
+	opts ...Option,
+) (chi.Router, *huma.Group) {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+
 	metrics := NewMetrics()
-	problem := problems{docsPrefix: opts.ErrorDocsURL}
+	problem := problems{docsPrefix: o.errorDocsURL}
 
 	router := chi.NewRouter()
 	router.NotFound(problem.notFound)
 	router.MethodNotAllowed(problem.methodNotAllowed)
 	router.Use(middleware.RequestID)
-	router.Use(clientIP(opts.TrustedProxies))
+	router.Use(clientIP(o.trustedProxies))
 	router.Use(observe(logger, metrics))
 	router.Use(problem.recoverer)
-	router.Use(middleware.Timeout(opts.RequestTimeout))
+	router.Use(middleware.Timeout(requestTimeout))
 	router.Use(middleware.RequestSize(maxRequestBytes))
 	router.Use(problem.allowContentType("application/json"))
 	router.Use(middleware.Compress(compressionLevel))
 
-	cfg := huma.DefaultConfig(opts.Title, opts.Version)
+	cfg := huma.DefaultConfig(title, version)
 	cfg.RejectUnknownQueryParameters = true
 	cfg.Transformers = append(cfg.Transformers, problem.transformer)
 
@@ -56,7 +75,7 @@ func NewAPI(logger *slog.Logger, opts Options) (chi.Router, *huma.Group) {
 
 	api := humachi.New(router, cfg)
 
-	return router, huma.NewGroup(api, opts.APIPrefix)
+	return router, huma.NewGroup(api, prefix)
 }
 
 func clientIP(trustedProxies int) func(http.Handler) http.Handler {
