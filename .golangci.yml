@@ -180,6 +180,10 @@ linters:
           - mnd
           - gochecknoglobals
       - path: internal/tui/
+        text: "Style is a global variable"
+        linters:
+          - gochecknoglobals
+      - path: internal/tui/gb/
         linters:
           - gochecknoglobals
       - text: "(upgradeOrder|durationBuckets) is a global variable"
