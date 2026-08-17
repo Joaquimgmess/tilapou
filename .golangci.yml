@@ -140,8 +140,6 @@ linters:
           disabled: true
         - name: flag-parameter
           disabled: true
-        - name: confusing-naming
-          disabled: true
         - name: enforce-switch-style
           disabled: true
         - name: unhandled-error
