@@ -24,6 +24,8 @@ type Store interface {
 	AppliedOutcome(ctx context.Context, id ID, key sim.ActionID) (sim.Outcome, bool, error)
 }
 
+var _ Store = (*DB)(nil)
+
 type StoredEvent struct {
 	Seq    uint64
 	Kind   string
