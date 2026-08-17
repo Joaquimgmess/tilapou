@@ -54,7 +54,20 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 	lock.Lock()
 	defer lock.Unlock()
 
-	f, err = s.store.ByPlayer(ctx, playerID)
+	for range 2 {
+		snap, attemptErr := s.attempt(ctx, playerID, action)
+		if errors.Is(attemptErr, ErrAlreadyApplied) {
+			continue
+		}
+
+		return snap, attemptErr
+	}
+
+	return Snapshot{}, ErrAlreadyApplied
+}
+
+func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.Action) (Snapshot, error) {
+	f, err := s.store.ByPlayer(ctx, playerID)
 	if err != nil {
 		return Snapshot{}, err
 	}
@@ -93,10 +106,7 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 	f.State = out.State
 
 	if changed {
-		switch err := s.store.Save(ctx, f, out.Events, outcome); {
-		case errors.Is(err, ErrAlreadyApplied):
-			return s.withFarm(ctx, playerID, nil)
-		case err != nil:
+		if err := s.store.Save(ctx, f, out.Events, outcome); err != nil {
 			return Snapshot{}, err
 		}
 		f.Revision++

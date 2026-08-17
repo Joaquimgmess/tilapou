@@ -13,9 +13,10 @@ import (
 )
 
 type memoryStore struct {
-	farm    farm.Farm
-	actions map[sim.ActionID]sim.Outcome
-	saves   int
+	farm     farm.Farm
+	actions  map[sim.ActionID]sim.Outcome
+	saves    int
+	failNext error
 }
 
 func (m *memoryStore) ByPlayer(context.Context, uuid.UUID) (farm.Farm, error) {
@@ -29,6 +30,16 @@ func (m *memoryStore) Insert(_ context.Context, f farm.Farm) error {
 }
 
 func (m *memoryStore) Save(_ context.Context, f farm.Farm, _ []sim.Event, outcome *sim.Outcome) error {
+	if err := m.failNext; err != nil {
+		m.failNext = nil
+
+		if outcome != nil {
+			m.actions[outcome.ID] = *outcome
+		}
+
+		return err
+	}
+
 	m.farm = f
 	m.farm.Revision++
 	m.saves++
@@ -235,5 +246,51 @@ func TestReenviarAMesmaChaveDevolveAMesmaRespostaSemAplicarDeNovo(t *testing.T) 
 	if store.farm.State.Tanks[0].FeedStock != stock || store.farm.State.Cash != cash {
 		t.Errorf("o retry aplicou a acao de novo: racao %d (era %d), caixa %d (era %d)",
 			store.farm.State.Tanks[0].FeedStock, stock, store.farm.State.Cash, cash)
+	}
+}
+
+func TestAWriteLostToAnotherWriterReplaysWithoutDeadlocking(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	epoch := time.Unix(0, 0).UTC()
+	store := &memoryStore{
+		farm:     farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
+		actions:  map[sim.ActionID]sim.Outcome{},
+		failNext: farm.ErrAlreadyApplied,
+	}
+
+	frozen := epoch.Add(time.Hour)
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+
+	type result struct {
+		snap farm.Snapshot
+		err  error
+	}
+	done := make(chan result, 1)
+
+	go func() {
+		snap, actErr := sessions.Act(context.Background(), store.farm.PlayerID,
+			sim.Action{ID: 9, Kind: sim.ActionBuyFeed, Tank: 1, Amount: 50})
+		done <- result{snap, actErr}
+	}()
+
+	select {
+	case got := <-done:
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		if got.snap.Outcome == nil {
+			t.Fatal("o replay devolveu outcome nulo: o cliente nao sabe o que o outro writer gravou")
+		}
+		if got.snap.Outcome.ID != 9 {
+			t.Errorf("o replay devolveu o outcome %d, esperado o 9 gravado pelo outro writer", got.snap.Outcome.ID)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("Act travou: o retry pede o mutex da fazenda que ele mesmo ja segura")
 	}
 }
