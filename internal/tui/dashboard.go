@@ -114,11 +114,16 @@ func (m Model) renderGoal() string {
 }
 
 func clipTo(text string, width int) string {
-	if width <= 1 || len(text) <= width {
+	if width <= 1 || lipgloss.Width(text) <= width {
 		return text
 	}
 
-	return text[:width-1] + "~"
+	runes := []rune(text)
+	for len(runes) > 0 && lipgloss.Width(string(runes)) > width-1 {
+		runes = runes[:len(runes)-1]
+	}
+
+	return string(runes) + "~"
 }
 
 func (m Model) renderBatches() string {
