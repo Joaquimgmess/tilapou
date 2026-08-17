@@ -17,7 +17,7 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
 )
 
-var durationBuckets = []float64{0.005, 0.025, 0.1, 0.5, 1, 2.5, 5, 10}
+var durationBuckets = [8]float64{0.005, 0.025, 0.1, 0.5, 1, 2.5, 5, 10}
 
 type seriesKey struct {
 	method string
