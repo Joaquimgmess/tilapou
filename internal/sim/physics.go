@@ -101,12 +101,12 @@ func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) Microgr
 }
 
 func rationCap(batch *Batch, b *Balance, tempMult PPM) int64 {
-	step := b.Ration.For(batch.MeanMass)
-	if step.RatePPMDay <= 0 {
+	ration := b.Ration.For(batch.MeanMass)
+	if ration.RatePPMDay <= 0 {
 		return 0
 	}
 
-	daily := mulDivFloor(int64(batch.Biomass()), int64(step.RatePPMDay), int64(UnitPPM))
+	daily := mulDivFloor(int64(batch.Biomass()), int64(ration.RatePPMDay), int64(UnitPPM))
 	daily = mulDivFloor(daily, int64(tempMult), int64(UnitPPM))
 
 	return daily / int64(TicksPerDay)

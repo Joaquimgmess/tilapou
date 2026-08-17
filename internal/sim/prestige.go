@@ -62,7 +62,7 @@ func prestige(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
 	return RejectNone
 }
 
-func rebuild(s *State, b *Balance, at Tick, prestige uint32) {
+func rebuild(s *State, b *Balance, at Tick, points uint32) {
 	kept := State{
 		Version:        s.Version,
 		BalanceVersion: s.BalanceVersion,
@@ -72,7 +72,7 @@ func rebuild(s *State, b *Balance, at Tick, prestige uint32) {
 		Tick:           s.Tick,
 		Cash:           b.Progression.RestartCash,
 		LifetimeEarned: s.LifetimeEarned,
-		Prestige:       prestige,
+		Prestige:       points,
 		NextTankID:     1,
 		NextBatchID:    1,
 		EventSeq:       s.EventSeq,
