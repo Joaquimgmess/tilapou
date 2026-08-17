@@ -40,15 +40,16 @@ func (m *memoryStore) Save(_ context.Context, f farm.Farm, _ []sim.Event, outcom
 		return err
 	}
 
+	if outcome != nil {
+		if _, seen := m.actions[outcome.ID]; seen {
+			return farm.ErrAlreadyApplied
+		}
+		m.actions[outcome.ID] = *outcome
+	}
+
 	m.farm = f
 	m.farm.Revision++
 	m.saves++
-
-	if outcome != nil {
-		if _, seen := m.actions[outcome.ID]; !seen {
-			m.actions[outcome.ID] = *outcome
-		}
-	}
 
 	return nil
 }
@@ -292,5 +293,50 @@ func TestAWriteLostToAnotherWriterReplaysWithoutDeadlocking(t *testing.T) {
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("Act travou: o retry pede o mutex da fazenda que ele mesmo ja segura")
+	}
+}
+
+func TestOMesmoRetryFuncionaDepoisQueOTickAvanca(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	epoch := time.Unix(0, 0).UTC()
+	store := &memoryStore{
+		farm:    farm.New(uuid.New(), uuid.New(), "t", epoch, 0, 1, &b),
+		actions: map[sim.ActionID]sim.Outcome{},
+	}
+
+	agora := epoch.Add(time.Hour)
+	sessions := farm.NewSessions(store, &b, func() time.Time { return agora })
+	player := store.farm.PlayerID
+	borrow := sim.Action{ID: 21, Kind: sim.ActionBorrow, Amount: 1_000}
+
+	first, err := sessions.Act(context.Background(), player, borrow)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !first.Outcome.Applied {
+		t.Fatalf("a primeira chamada foi recusada: %v", first.Outcome.Reason)
+	}
+
+	debt := store.farm.State.Debt
+
+	for volta, espera := range []time.Duration{0, time.Minute, 10 * time.Minute} {
+		agora = epoch.Add(time.Hour + espera)
+
+		again, actErr := sessions.Act(context.Background(), player, borrow)
+		if actErr != nil {
+			t.Fatalf("volta %d, %v depois: o retry da mesma chave falhou: %v", volta, espera, actErr)
+		}
+		if again.Outcome == nil || *again.Outcome != *first.Outcome {
+			t.Errorf("volta %d: o retry devolveu %+v, a primeira foi %+v", volta, again.Outcome, *first.Outcome)
+		}
+		if store.farm.State.Debt != debt {
+			t.Fatalf("volta %d: o retry emprestou de novo: divida %d, era %d", volta, store.farm.State.Debt, debt)
+		}
 	}
 }

@@ -110,16 +110,21 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 		return Snapshot{}, err
 	}
 
-	outcome := replayed
+	var recorded *sim.Outcome
 	if len(out.Outcomes) > 0 {
-		outcome = &out.Outcomes[0]
+		recorded = &out.Outcomes[0]
+	}
+
+	outcome := replayed
+	if recorded != nil {
+		outcome = recorded
 	}
 
 	changed := out.State.Tick != f.State.Tick || len(out.Outcomes) > 0
 	f.State = out.State
 
 	if changed {
-		if err := s.store.Save(ctx, f, out.Events, outcome); err != nil {
+		if err := s.store.Save(ctx, f, out.Events, recorded); err != nil {
 			return Snapshot{}, err
 		}
 		f.Revision++
