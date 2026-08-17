@@ -267,7 +267,7 @@ func convert(f file) (sim.Balance, error) {
 
 	for i, row := range f.Arracoamento {
 		if i >= len(b.Ration.Steps) {
-			break
+			return sim.Balance{}, fmt.Errorf("%w: arracoamento tem mais de %d linhas", ErrTooManyRows, len(b.Ration.Steps))
 		}
 		b.Ration.Steps[i] = sim.RationStep{
 			UpToMass:    micrograms(row.AtePesoMg),
@@ -282,7 +282,7 @@ func convert(f file) (sim.Balance, error) {
 
 	for i, row := range f.Mercado.Classes {
 		if i >= len(b.Market.Classes) {
-			break
+			return sim.Balance{}, fmt.Errorf("%w: mercado.classes tem mais de %d linhas", ErrTooManyRows, len(b.Market.Classes))
 		}
 		b.Market.Classes[i] = sim.PriceClass{
 			UpToMass: micrograms(row.AtePesoMg),
@@ -293,7 +293,7 @@ func convert(f file) (sim.Balance, error) {
 
 	for i, row := range f.Doencas {
 		if i >= len(b.Shock.Diseases) {
-			break
+			return sim.Balance{}, fmt.Errorf("%w: doencas tem mais de %d linhas", ErrTooManyRows, len(b.Shock.Diseases))
 		}
 		b.Shock.Diseases[i] = sim.DiseaseSpec{
 			MinTemp:     milliCelsius(row.TemperaturaMinC),

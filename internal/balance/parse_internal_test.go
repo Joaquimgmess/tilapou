@@ -40,6 +40,24 @@ func TestParseRecusaTOMLQuebrado(t *testing.T) {
 			mutate: func(s string) string { return s + "\n[secao_inventada]\nx = 1\n" },
 			want:   ErrUnusedKeys,
 		},
+		"arracoamento com mais linhas do que o jogo le": {
+			mutate: func(s string) string {
+				return s + strings.Repeat("\n[[arracoamento]]\nate_peso_mg = 900000\ntaxa_biomassa_pct = 1.0\ntratos_dia = 1\nproteina_pct = 30\n", 4)
+			},
+			want: ErrTooManyRows,
+		},
+		"mercado com mais classes do que o jogo le": {
+			mutate: func(s string) string {
+				return s + strings.Repeat("\n[[mercado.classes]]\nate_peso_mg = 900000\npreco_pct = 90.0\n", 2)
+			},
+			want: ErrTooManyRows,
+		},
+		"doencas com mais linhas do que o jogo le": {
+			mutate: func(s string) string {
+				return s + strings.Repeat("\n[[doencas]]\nnome = \"inventada\"\ntemperatura_min_c = 1.0\ntemperatura_max_c = 2.0\nsurto_pct = 1.0\nmortalidade_dia_pct = 1.0\nduracao_dias = 1\n", 3)
+			},
+			want: ErrTooManyRows,
+		},
 		"tipo de tanque fora do enum": {
 			mutate: func(s string) string {
 				return strings.Replace(s, `tipo = "viveiro_escavado"`, `tipo = "aquario"`, 1)
