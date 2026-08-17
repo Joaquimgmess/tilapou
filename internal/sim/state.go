@@ -1,17 +1,17 @@
-// Package sim e o nucleo deterministico do jogo: Advance leva um estado ao proximo
-// tick. Nao faz I/O nem importa time; todo instante e um Tick.
+// Package sim is the deterministic core of the game: Advance takes a state to the next
+// tick. It does no I/O and does not import time; every instant is a Tick.
 package sim
 
-// TankID e unico no State e nunca reaproveitado.
+// TankID is unique within the State and never reused.
 type TankID uint32
 
-// BatchID e unico no State e nunca reaproveitado.
+// BatchID is unique within the State and never reused.
 type BatchID uint32
 
-// TankKind escolhe o TankSpec do tanque.
+// TankKind selects the tank's TankSpec.
 type TankKind uint8
 
-// Tipos de tanque, do mais simples ao mais intensivo.
+// Tank kinds, from the simplest to the most intensive.
 const (
 	TankEarthPond TankKind = iota
 	TankNetCage
@@ -27,8 +27,8 @@ var tankKindNames = [...]string{
 	TankRecirculation: "recirculacao",
 }
 
-// TankKindNamed devolve TankEarthPond e false para nome desconhecido, entao o bool
-// precisa ser checado.
+// TankKindNamed returns TankEarthPond and false for an unknown name, so the bool
+// must be checked.
 func TankKindNamed(name string) (TankKind, bool) {
 	for kind, known := range tankKindNames {
 		if known == name {
@@ -39,14 +39,14 @@ func TankKindNamed(name string) (TankKind, bool) {
 	return TankEarthPond, false
 }
 
-// TankKindNames devolve uma copia dos nomes, em ordem de enum.
+// TankKindNames returns a copy of the names, in enum order.
 func TankKindNames() []string {
 	return append([]string(nil), tankKindNames[:]...)
 }
 
 var _ [len(tankKindNames) - int(tankKindCount)]struct{}
 
-// String devolve "invalid" fora do enum.
+// String returns "invalid" outside the enum.
 func (k TankKind) String() string {
 	if k >= tankKindCount {
 		return invalidName
@@ -55,7 +55,7 @@ func (k TankKind) String() string {
 	return tankKindNames[k]
 }
 
-// Teto de lotes por tanque e as versoes de formato gravadas no save.
+// Cap of batches per tank and the format versions written to the save.
 const (
 	maxTanks          = 64
 	MaxBatchesPerTank = 4
@@ -63,8 +63,8 @@ const (
 	RngVersion        = 1
 )
 
-// Accrual junta o que houve no tanque na janela iniciada em Window para virar um
-// unico evento; mortes em peixes, massas em microgramas.
+// Accrual gathers what happened in the tank in the window starting at Window to become a
+// single event; deaths in fish, masses in micrograms.
 type Accrual struct {
 	Window           Tick
 	HypoxiaDeaths    FishCount
@@ -74,8 +74,8 @@ type Accrual struct {
 	MassGained       Micrograms
 }
 
-// Batch e um lote estocado junto, com massa em microgramas e custo em centavos; os
-// campos Carry guardam o resto das divisoes inteiras entre ticks.
+// Batch is a batch stocked together, with mass in micrograms and cost in cents; the
+// Carry fields hold the remainder of the integer divisions between ticks.
 type Batch struct {
 	ID              BatchID
 	Fish            FishCount
@@ -92,18 +92,18 @@ type Batch struct {
 	StarvationTicks int32
 }
 
-// Biomass satura em vez de estourar.
+// Biomass saturates instead of overflowing.
 func (b *Batch) Biomass() Micrograms {
 	return Micrograms(mulDivFloor(int64(b.MeanMass), int64(b.Fish), 1))
 }
 
-// Empty diz que o lote nao tem mais peixes vivos.
+// Empty reports whether the batch has no live fish left.
 func (b *Batch) Empty() bool {
 	return b.Fish <= 0
 }
 
-// Tank tem racao em microgramas e oxigenio em microgramas por litro; so os primeiros
-// BatchCount elementos de Batches valem.
+// Tank carries feed in micrograms and oxygen in micrograms per litre; only the first
+// BatchCount elements of Batches are valid.
 type Tank struct {
 	ID           TankID
 	Kind         TankKind
@@ -122,7 +122,7 @@ type Tank struct {
 	Accrual      Accrual
 }
 
-// Biomass soma os lotes do tanque, saturando.
+// Biomass sums the tank's batches, saturating.
 func (t *Tank) Biomass() Micrograms {
 	var total Micrograms
 	for i := range t.BatchCount {
@@ -132,17 +132,17 @@ func (t *Tank) Biomass() Micrograms {
 	return total
 }
 
-// Known diz se o valor esta dentro do enum.
+// Known reports whether the value is inside the enum.
 func (k TankKind) Known() bool {
 	return k < tankKindCount
 }
 
-// Capacity devolve quantos peixes cabem no tanque, pela densidade maxima do seu tipo.
+// Capacity returns how many fish fit in the tank, by the maximum density of its kind.
 func (t *Tank) Capacity(b *Balance) int64 {
 	return b.Tanks[t.Kind].MaxDensityPerM3 * int64(t.Litres) / litresPerCubicMetre
 }
 
-// Fish satura no maximo de FishCount.
+// Fish saturates at the FishCount maximum.
 func (t *Tank) Fish() FishCount {
 	var total int64
 	for i := range t.BatchCount {
@@ -152,8 +152,8 @@ func (t *Tank) Fish() FishCount {
 	return FishCount(min(total, maxInt32))
 }
 
-// State e todo o jogo num tick, copiavel por valor e sem ponteiros. So os primeiros
-// TankCount elementos de Tanks valem.
+// State is the whole game at a tick, copyable by value and free of pointers. Only the
+// first TankCount elements of Tanks are valid.
 type State struct {
 	Version        uint16
 	BalanceVersion uint16
@@ -179,7 +179,7 @@ const (
 	litresPerCubicMetre = 1_000
 )
 
-// NewState cria uma fazenda vazia comecando no tick at.
+// NewState creates an empty farm starting at tick at.
 func NewState(seed Seed, zone ZoneOffset, at Tick) State {
 	return State{
 		Version:        StateVersion,
@@ -193,7 +193,7 @@ func NewState(seed Seed, zone ZoneOffset, at Tick) State {
 	}
 }
 
-// Biomass soma todos os tanques, saturando.
+// Biomass sums every tank, saturating.
 func (s *State) Biomass() Micrograms {
 	var total Micrograms
 	for i := range s.TankCount {
@@ -203,7 +203,7 @@ func (s *State) Biomass() Micrograms {
 	return total
 }
 
-// Fish satura no maximo de FishCount.
+// Fish saturates at the FishCount maximum.
 func (s *State) Fish() FishCount {
 	var total int64
 	for i := range s.TankCount {
@@ -246,13 +246,13 @@ func (t *Tank) addBatch(id BatchID, fish FishCount, mass Micrograms, at Tick) bo
 	return true
 }
 
-// AddTank devolve false, sem mudar nada, se a fazenda ja estiver no teto de tanques.
+// AddTank returns false, changing nothing, if the farm is already at the tank cap.
 func (s *State) AddTank(kind TankKind, litres Litres) (TankID, bool) {
 	return s.addTank(kind, litres)
 }
 
-// StockTank recebe massa em microgramas e custo em centavos, sem checar densidade nem
-// caixa; devolve false se o tanque nao existir ou ja estiver cheio de lotes.
+// StockTank takes mass in micrograms and cost in cents, checking neither density nor
+// cash; it returns false if the tank does not exist or is already full of batches.
 func (s *State) StockTank(id TankID, fish FishCount, mass Micrograms, cost Coins) bool {
 	t := s.tank(id)
 	if t == nil {
@@ -268,7 +268,7 @@ func (s *State) StockTank(id TankID, fish FishCount, mass Micrograms, cost Coins
 	return true
 }
 
-// LoadFeed recebe unitCost em centavos por quilo e devolve false se o tanque nao existir.
+// LoadFeed takes unitCost in cents per kilo and returns false if the tank does not exist.
 func (s *State) LoadFeed(id TankID, mass Micrograms, unitCost Coins) bool {
 	t := s.tank(id)
 	if t == nil {

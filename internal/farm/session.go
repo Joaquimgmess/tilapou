@@ -13,11 +13,11 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
-// Clock da o instante real que define ate que tick adiantar a fazenda.
+// Clock gives the real instant that defines up to which tick the farm advances.
 type Clock func() time.Time
 
-// Sessions adianta a fazenda e aplica acoes, serializando as escritas de uma
-// mesma fazenda dentro do processo.
+// Sessions advances the farm and applies actions, serializing the writes of a
+// single farm within the process.
 type Sessions struct {
 	store   Store
 	balance *sim.Balance
@@ -27,12 +27,12 @@ type Sessions struct {
 	locks map[ID]*sync.Mutex
 }
 
-// NewSessions monta as sessoes sobre o store, o balance e o relogio.
+// NewSessions builds the sessions on top of the store, the balance and the clock.
 func NewSessions(store Store, balance *sim.Balance, clock Clock) *Sessions {
 	return &Sessions{store: store, balance: balance, clock: clock, locks: make(map[ID]*sync.Mutex)}
 }
 
-// Snapshot e a fazenda ja adiantada, com Outcome nulo quando nao houve acao.
+// Snapshot is the already advanced farm, with a nil Outcome when there was no action.
 type Snapshot struct {
 	Farm       Farm
 	Projection sim.Projection
@@ -41,13 +41,13 @@ type Snapshot struct {
 	Outcome    *sim.Outcome
 }
 
-// Sync adianta a fazenda ate agora, criando-a se o jogador nao tiver uma.
+// Sync advances the farm up to now, creating it if the player has none.
 func (s *Sessions) Sync(ctx context.Context, playerID uuid.UUID) (Snapshot, error) {
 	return s.withFarm(ctx, playerID, nil)
 }
 
-// Act aplica a acao no tick de agora. Repetir o mesmo action.ID so devolve o
-// resultado ja registrado.
+// Act applies the action at the current tick. Repeating the same action.ID only returns
+// the already recorded result.
 func (s *Sessions) Act(ctx context.Context, playerID uuid.UUID, action sim.Action) (Snapshot, error) {
 	return s.withFarm(ctx, playerID, &action)
 }

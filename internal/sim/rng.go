@@ -2,13 +2,13 @@ package sim
 
 import "math/bits"
 
-// Seed e a semente do gerador deterministico da simulacao.
+// Seed is the seed of the simulation's deterministic generator.
 type Seed uint64
 
-// Purpose isola o fluxo de aleatoriedade de cada consumidor de sorteio.
+// Purpose isolates the randomness stream of each roll consumer.
 type Purpose uint16
 
-// Propositos de sorteio: cada um gera sua propria sequencia para a mesma chave.
+// Roll purposes: each one generates its own sequence for the same key.
 const (
 	PurposeUnknown Purpose = iota
 	PurposeMortality
@@ -26,7 +26,7 @@ const (
 	goldenGamma = 0x9e3779b97f4a7c15
 )
 
-// RollKey e a coordenada de um sorteio; a mesma chave sempre devolve o mesmo valor.
+// RollKey is the coordinate of a roll; the same key always returns the same value.
 type RollKey struct {
 	Tick    Tick
 	Tank    TankID
@@ -34,7 +34,7 @@ type RollKey struct {
 	Purpose Purpose
 }
 
-// Roll e deterministico e uniforme em todo o uint64.
+// Roll is deterministic and uniform over the whole uint64.
 func (s Seed) Roll(k RollKey) uint64 {
 	counter := uint64(k.Tick)*goldenGamma ^
 		uint64(k.Tank)<<40 ^
@@ -44,7 +44,7 @@ func (s Seed) Roll(k RollKey) uint64 {
 	return mix64(mix64(uint64(s)^counter) ^ goldenGamma*counter)
 }
 
-// RollBelow devolve um valor uniforme em [0, bound), ou 0 se bound nao for positivo.
+// RollBelow returns a uniform value in [0, bound), or 0 if bound is not positive.
 func (s Seed) RollBelow(k RollKey, bound int64) int64 {
 	if bound <= 0 {
 		return 0
@@ -55,7 +55,7 @@ func (s Seed) RollBelow(k RollKey, bound int64) int64 {
 	return int64(high)
 }
 
-// Chance satura em false abaixo de zero e em true a partir de UnitPPM.
+// Chance saturates to false below zero and to true from UnitPPM on.
 func (s Seed) Chance(k RollKey, probability PPM) bool {
 	if probability <= 0 {
 		return false

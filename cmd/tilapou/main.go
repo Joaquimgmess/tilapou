@@ -1,4 +1,4 @@
-// Command tilapou e a CLI do jogo.
+// Command tilapou is the game CLI.
 package main
 
 import (

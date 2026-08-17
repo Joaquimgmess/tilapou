@@ -2,13 +2,13 @@ package sim
 
 const invalidName = "invalid"
 
-// ActionID casa uma acao com seu Outcome de mesmo ID.
+// ActionID matches an action to the Outcome with the same ID.
 type ActionID uint64
 
-// ActionKind e o tipo de acao pedida pelo jogador.
+// ActionKind is the kind of action requested by the player.
 type ActionKind uint8
 
-// Acoes aceitas; ActionUnknown e o zero e sempre rejeitado.
+// Accepted actions; ActionUnknown is the zero value and is always rejected.
 const (
 	ActionUnknown ActionKind = iota
 	ActionBuyTank
@@ -44,7 +44,7 @@ var actionKindNames = [...]string{
 
 var _ [len(actionKindNames) - int(actionKindCount)]struct{}
 
-// ActionKindNamed devolve ActionUnknown e false para nome desconhecido ou "unknown".
+// ActionKindNamed returns ActionUnknown and false for an unknown name or "unknown".
 func ActionKindNamed(name string) (ActionKind, bool) {
 	for kind, known := range actionKindNames {
 		if known == name && ActionKind(kind) != ActionUnknown {
@@ -55,12 +55,12 @@ func ActionKindNamed(name string) (ActionKind, bool) {
 	return ActionUnknown, false
 }
 
-// ActionKindNames devolve uma copia dos nomes validos, sem ActionUnknown.
+// ActionKindNames returns a copy of the valid names, without ActionUnknown.
 func ActionKindNames() []string {
 	return append([]string(nil), actionKindNames[ActionUnknown+1:]...)
 }
 
-// String devolve "invalid" fora do enum.
+// String returns "invalid" outside the enum.
 func (k ActionKind) String() string {
 	if k >= actionKindCount {
 		return invalidName
@@ -69,10 +69,10 @@ func (k ActionKind) String() string {
 	return actionKindNames[k]
 }
 
-// RejectReason explica a rejeicao; RejectNone significa aceita.
+// RejectReason explains the rejection; RejectNone means accepted.
 type RejectReason uint8
 
-// Motivos de rejeicao de uma acao.
+// Reasons an action is rejected.
 const (
 	RejectNone RejectReason = iota
 	RejectUnknownKind
@@ -112,7 +112,7 @@ var rejectReasonNames = [...]string{
 	RejectNothingSick:       "nothing_sick",
 }
 
-// RejectReasonNamed devolve RejectNone e false para nome desconhecido.
+// RejectReasonNamed returns RejectNone and false for an unknown name.
 func RejectReasonNamed(name string) (RejectReason, bool) {
 	for reason, known := range rejectReasonNames {
 		if known == name {
@@ -125,7 +125,7 @@ func RejectReasonNamed(name string) (RejectReason, bool) {
 
 var _ [len(rejectReasonNames) - int(rejectReasonCount)]struct{}
 
-// String devolve "invalid" fora do enum.
+// String returns "invalid" outside the enum.
 func (r RejectReason) String() string {
 	if r >= rejectReasonCount {
 		return invalidName
@@ -134,8 +134,8 @@ func (r RejectReason) String() string {
 	return rejectReasonNames[r]
 }
 
-// Action e um pedido agendado para o tick At; os demais campos so valem conforme
-// Kind, e Amount vem em peixes, microgramas ou centavos.
+// Action is a request scheduled for tick At; the remaining fields are only valid
+// according to Kind, and Amount comes in fish, micrograms or cents.
 type Action struct {
 	ID       ActionID
 	Kind     ActionKind
@@ -147,8 +147,8 @@ type Action struct {
 	Amount   int64
 }
 
-// Outcome responde a uma Action por ID; se Applied for falso, Reason da o motivo e
-// Needed traz em centavos o que faltou de caixa.
+// Outcome answers an Action by ID; if Applied is false, Reason gives the cause and
+// Needed carries in cents the cash that was missing.
 type Outcome struct {
 	ID      ActionID
 	At      Tick

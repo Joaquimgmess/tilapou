@@ -1,7 +1,7 @@
-// Package client e o transporte HTTP para o daemon do tilapou.
+// Package client is the HTTP transport for the tilapou daemon.
 //
-// Os tipos sao DTOs espelhados do contrato JSON; as unidades estao nos sufixos
-// das tags (_cents, _grams, _ppm) e os campos com sufixo TC estao em centavos.
+// The types are DTOs mirroring the JSON contract; units live in the tag
+// suffixes (_cents, _grams, _ppm) and the TC-suffixed fields are in cents.
 package client
 
 import (
@@ -15,15 +15,15 @@ import (
 )
 
 var (
-	// ErrDaemonUnreachable indica chamada HTTP incompleta: daemon fora, DNS,
-	// conexao recusada, timeout ou contexto cancelado.
+	// ErrDaemonUnreachable reports an incomplete HTTP call: daemon down, DNS,
+	// connection refused, timeout or cancelled context.
 	ErrDaemonUnreachable = errors.New("client: daemon nao respondeu")
-	// ErrRequestFailed indica status diferente de 200 ou 201, com o detalhe do
-	// problem+json embrulhado na mensagem.
+	// ErrRequestFailed reports a status other than 200 or 201, with the
+	// problem+json detail wrapped in the message.
 	ErrRequestFailed = errors.New("client: o daemon recusou a chamada")
 )
 
-// Tank e o estado de um tanque no snapshot.
+// Tank is the state of a tank in the snapshot.
 type Tank struct {
 	ID            uint32    `json:"id"`
 	Kind          string    `json:"kind"`
@@ -58,7 +58,7 @@ type Tank struct {
 	Upgrades      []Upgrade `json:"upgrades"`
 }
 
-// Event e uma entrada do diario da fazenda.
+// Event is one event from the farm history.
 type Event struct {
 	Seq    uint64 `json:"seq"`
 	Kind   string `json:"kind"`
@@ -71,21 +71,21 @@ type Event struct {
 	Reason string `json:"reason"`
 }
 
-// Upgrade e uma melhoria de tanque.
+// Upgrade is a tank improvement.
 type Upgrade struct {
 	Kind      string `json:"kind"`
 	Owned     bool   `json:"owned"`
 	CostCents int64  `json:"cost_cents"`
 }
 
-// Outcome e o resultado da ultima acao; NeededCash e quanto faltou de caixa.
+// Outcome is the result of the last action; NeededCash is how much cash was missing.
 type Outcome struct {
 	Applied    bool   `json:"applied"`
 	Reason     string `json:"reason"`
 	NeededCash int64  `json:"needed_cents"`
 }
 
-// Prices sao os precos correntes do mercado.
+// Prices are the current market prices.
 type Prices struct {
 	FeedKgCents     int64 `json:"feed_kg_cents"`
 	FingerlingCents int64 `json:"fingerling_cents"`
@@ -94,7 +94,7 @@ type Prices struct {
 	ViablePPM       int64 `json:"equivalence_viable_ppm"`
 }
 
-// Cycle resume o ultimo ciclo de producao fechado.
+// Cycle summarizes the last closed production cycle.
 type Cycle struct {
 	Fish       int32 `json:"fish"`
 	MassG      int64 `json:"mass_grams"`
@@ -106,7 +106,7 @@ type Cycle struct {
 	FCRPPM     int64 `json:"fcr_ppm"`
 }
 
-// Decision e a recomendacao de vender agora ou segurar.
+// Decision is the recommendation to sell now or hold.
 type Decision struct {
 	SellNowCents   int64 `json:"sell_now_cents"`
 	SellNowMargin  int64 `json:"sell_now_margin_cents"`
@@ -123,14 +123,14 @@ type Decision struct {
 	DaysOfFeed     int64 `json:"days_of_feed"`
 }
 
-// Series sao as historias de preco, amostradas a cada StepTicks ticks.
+// Series are the price histories, sampled every StepTicks ticks.
 type Series struct {
 	FishKgCents []int64 `json:"fish_kg_cents"`
 	FeedKgCents []int64 `json:"feed_kg_cents"`
 	StepTicks   int64   `json:"step_ticks"`
 }
 
-// Snapshot e o estado da fazenda devolvido por toda chamada da API.
+// Snapshot is the farm state returned by every API call.
 type Snapshot struct {
 	FarmID      string   `json:"farm_id"`
 	Name        string   `json:"name"`
@@ -155,7 +155,7 @@ type Snapshot struct {
 	LastOutcome *Outcome `json:"last_outcome,omitempty"`
 }
 
-// Action e o comando enviado ao daemon; Key e a chave de idempotencia.
+// Action is the command sent to the daemon; Key is the idempotency key.
 type Action struct {
 	Key      uint64 `json:"key"`
 	Kind     string `json:"kind"`
@@ -166,23 +166,23 @@ type Action struct {
 	Amount   int64  `json:"amount,omitempty"`
 }
 
-// Client fala com o daemon do tilapou por HTTP.
+// Client talks to the tilapou daemon over HTTP.
 type Client struct {
 	base string
 	http *http.Client
 }
 
-// New cria um Client com timeout por request.
+// New creates a Client with a per-request timeout.
 func New(base string, timeout time.Duration) *Client {
 	return &Client{base: base, http: &http.Client{Timeout: timeout}}
 }
 
-// Snapshot faz GET /v1/farm.
+// Snapshot performs GET /v1/farm.
 func (c *Client) Snapshot(ctx context.Context) (Snapshot, error) {
 	return c.do(ctx, http.MethodGet, "/v1/farm", nil)
 }
 
-// Act faz POST /v1/farm/actions.
+// Act performs POST /v1/farm/actions.
 func (c *Client) Act(ctx context.Context, action Action) (Snapshot, error) {
 	body, err := json.Marshal(action)
 	if err != nil {

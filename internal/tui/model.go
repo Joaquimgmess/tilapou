@@ -1,4 +1,4 @@
-// Package tui so desenha o snapshot que vem do daemon, sem fazer conta nem guardar estado.
+// Package tui only draws the snapshot coming from the daemon, without computing or storing state.
 package tui
 
 import (
@@ -29,16 +29,16 @@ type snapshotMsg struct {
 
 type tickMsg time.Time
 
-// Mode e a tela ativa.
+// Mode is the active screen.
 type Mode uint8
 
-// As telas disponiveis.
+// The available screens.
 const (
 	ModeGameBoy Mode = iota
 	ModeDashboard
 )
 
-// Model e o estado da tela e implementa tea.Model.
+// Model is the screen state and implements tea.Model.
 type Model struct {
 	mode       Mode
 	farm       farmMap
@@ -60,7 +60,7 @@ type Model struct {
 	staleTicks int
 }
 
-// New cria a Model inicial ligada ao client do daemon.
+// New creates the initial Model bound to the daemon client.
 func New(c *client.Client) Model {
 	var seed [8]byte
 	_, _ = rand.Read(seed[:])
@@ -73,12 +73,12 @@ func New(c *client.Client) Model {
 	}
 }
 
-// Init dispara a primeira busca de snapshot e o tick periodico.
+// Init starts the first snapshot fetch and the periodic tick.
 func (m Model) Init() tea.Cmd {
 	return tea.Batch(m.fetch(), tick())
 }
 
-// Update trata as mensagens e da uma Model nova, sem alterar a original.
+// Update handles messages and returns a new Model, without changing the original.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:

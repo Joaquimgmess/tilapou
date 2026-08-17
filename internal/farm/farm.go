@@ -1,5 +1,5 @@
-// Package farm guarda a fazenda de um jogador: estado persistido, sessao que o
-// adianta ate agora e rotas HTTP.
+// Package farm holds a player's farm: persisted state, the session that advances it
+// up to now and the HTTP routes.
 package farm
 
 import (
@@ -10,11 +10,11 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
-// ID identifica uma fazenda.
+// ID identifies a farm.
 type ID = uuid.UUID
 
-// Farm guarda o estado do sim com a origem dos ticks (Epoch) e a Revision que
-// detecta escrita concorrente.
+// Farm holds the sim state with the origin of the ticks (Epoch) and the Revision that
+// detects concurrent writes.
 type Farm struct {
 	ID        ID
 	PlayerID  uuid.UUID
@@ -25,7 +25,7 @@ type Farm struct {
 	CreatedAt time.Time
 }
 
-// TickAt conta um tick por segundo desde epoch, e 0 se now for anterior a ele.
+// TickAt counts one tick per second since epoch, and 0 if now is earlier than it.
 func TickAt(epoch, now time.Time) sim.Tick {
 	if now.Before(epoch) {
 		return 0
@@ -34,7 +34,7 @@ func TickAt(epoch, now time.Time) sim.Tick {
 	return sim.Tick(now.Sub(epoch) / time.Second)
 }
 
-// New monta a fazenda no tick 0, com caixa inicial e um viveiro ja povoado.
+// New builds the farm at tick 0, with starting cash and an already stocked earthen pond.
 func New(id, playerID uuid.UUID, name string, epoch time.Time, zone sim.ZoneOffset, seed sim.Seed, b *sim.Balance) Farm {
 	state := sim.NewState(seed, zone, 0)
 	state.Cash = startingCash

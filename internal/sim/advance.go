@@ -1,7 +1,7 @@
 package sim
 
-// Input parte de State e roda ate Until aplicando Actions ordenadas por tick.
-// Budget limita o trabalho por chamada; se nao for positivo, nao trunca.
+// Input starts from State and runs until Until applying Actions sorted by tick.
+// Budget limits the work per call; if it is not positive, nothing is truncated.
 type Input struct {
 	State   State
 	Until   Tick
@@ -10,8 +10,8 @@ type Input struct {
 	Budget  int64
 }
 
-// Output traz o estado novo; Stopped so fica aquem de Input.Until quando Truncated,
-// e Outcomes tem uma entrada por acao.
+// Output carries the new state; Stopped falls short of Input.Until only when Truncated,
+// and Outcomes has one entry per action.
 type Output struct {
 	State     State
 	Events    []Event
@@ -22,9 +22,9 @@ type Output struct {
 
 const defaultBudget = int64(1) << 62
 
-// Advance roda a simulacao ate in.Until sem mutar in.State e devolve sempre a mesma
-// saida para a mesma entrada. Erra com ErrNoBalance, o erro de Balance.Validate,
-// ErrBackwardsTime ou ErrActionsUnsorted.
+// Advance runs the simulation until in.Until without mutating in.State and always
+// returns the same output for the same input. It fails with ErrNoBalance, the error
+// from Balance.Validate, ErrBackwardsTime or ErrActionsUnsorted.
 func Advance(in Input) (Output, error) {
 	if in.Balance == nil {
 		return Output{}, ErrNoBalance

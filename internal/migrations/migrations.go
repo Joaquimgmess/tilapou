@@ -1,4 +1,4 @@
-// Package migrations aplica no Postgres as migracoes SQL embutidas no binario.
+// Package migrations applies to Postgres the SQL migrations embedded in the binary.
 package migrations
 
 import (
@@ -18,7 +18,7 @@ import (
 //go:embed sql/*.sql
 var files embed.FS
 
-// Apply sobe as migracoes pendentes e loga cada uma aplicada.
+// Apply runs the pending migrations and logs each one applied.
 func Apply(ctx context.Context, pool *pgxpool.Pool) error {
 	provider, err := newProvider(ctx, pool)
 	if err != nil {

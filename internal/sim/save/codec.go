@@ -1,5 +1,5 @@
-// Package save serializa o sim.State em JSON e o le de volta, recusando save
-// que o estado atual nao comporta.
+// Package save serializes the sim.State to JSON and reads it back, refusing a save
+// that the current state cannot hold.
 package save
 
 import (
@@ -10,7 +10,7 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
-// Erros de leitura do save, todos devolvidos por Decode.
+// Save reading errors, all returned by Decode.
 var (
 	ErrUnknownVersion = errors.New("save: unknown state version")
 	ErrTooManyTanks   = errors.New("save: more tanks than the state can hold")
@@ -89,7 +89,7 @@ type batchDocument struct {
 	StarvationTicks int32  `json:"starvation_ticks"`
 }
 
-// Encode serializa o estado em JSON, gravando so os tanques e lotes em uso.
+// Encode serializes the state to JSON, writing only the tanks and batches in use.
 func Encode(s sim.State) ([]byte, error) {
 	doc := document{
 		Version:        s.Version,
@@ -173,7 +173,7 @@ func Encode(s sim.State) ([]byte, error) {
 	return raw, nil
 }
 
-// Decode reconstroi o estado do JSON, recalculando o que e derivado.
+// Decode rebuilds the state from the JSON, recomputing what is derived.
 func Decode(raw []byte) (sim.State, error) {
 	var doc document
 	if err := json.Unmarshal(raw, &doc); err != nil {

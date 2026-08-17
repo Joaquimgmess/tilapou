@@ -8,7 +8,7 @@ const (
 	probeUnlimited   = Coins(1) << 40
 )
 
-// CyclePlan tem duracao em dias, massa em microgramas, preco por quilo em centavos e a lotacao que paga os custos fixos.
+// CyclePlan carries duration in days, mass in micrograms, price per kilo in cents and the stocking that pays the fixed costs.
 type CyclePlan struct {
 	Days       int64
 	Mass       Micrograms
@@ -16,7 +16,7 @@ type CyclePlan struct {
 	BreakEven  FishCount
 }
 
-// CycleAt devolve o plano de melhor margem para o tipo de tanque, ou o zero se nenhum ciclo se completar.
+// CycleAt returns the best-margin plan for the tank kind, or the zero value if no cycle completes.
 func (b *Balance) CycleAt(kind TankKind, at Tick, zone ZoneOffset) CyclePlan {
 	low, lowMargin, ok := probeCycle(b, kind, at, zone, probeLow)
 	if !ok {

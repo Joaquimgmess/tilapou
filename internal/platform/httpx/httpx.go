@@ -1,4 +1,4 @@
-// Package httpx monta o roteador HTTP do daemon.
+// Package httpx builds the daemon HTTP router.
 package httpx
 
 import (
@@ -19,8 +19,8 @@ const (
 	compressionLevel = 5
 )
 
-// Options configura NewAPI. Title, Version, APIPrefix e RequestTimeout sao
-// obrigatorios: RequestTimeout zero derruba todo request no ato.
+// Options configures NewAPI. Title, Version, APIPrefix and RequestTimeout are
+// required: a zero RequestTimeout drops every request immediately.
 type Options struct {
 	Title          string
 	Version        string
@@ -30,8 +30,8 @@ type Options struct {
 	ErrorDocsURL   string
 }
 
-// NewAPI devolve o roteador chi, com /metrics ja registrada, e o grupo huma
-// montado sob opts.APIPrefix.
+// NewAPI returns the chi router, with /metrics already registered, and the huma
+// group mounted under opts.APIPrefix.
 func NewAPI(logger *slog.Logger, opts Options) (chi.Router, *huma.Group) {
 	metrics := NewMetrics()
 	problem := problems{docsPrefix: opts.ErrorDocsURL}

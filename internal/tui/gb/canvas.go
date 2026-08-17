@@ -1,4 +1,4 @@
-// Package gb desenha telas no estilo GameBoy.
+// Package gb draws GameBoy style screens.
 package gb
 
 import (
@@ -6,10 +6,10 @@ import (
 	"strings"
 )
 
-// Shade e um tom da paleta, do mais claro (0) ao mais escuro (3).
+// Shade is a palette shade, from the lightest (0) to the darkest (3).
 type Shade uint8
 
-// Os quatro tons validos, do mais claro ao mais escuro.
+// The four valid shades, from the lightest to the darkest.
 const (
 	Lightest Shade = iota
 	Light
@@ -62,7 +62,7 @@ func writeRGB(sb *strings.Builder, c rgb) {
 	sb.WriteString(strconv.Itoa(int(c.b)))
 }
 
-// Hex da a cor do tom em #RRGGBB, ou "#000000" se o tom for invalido.
+// Hex gives the shade color as #RRGGBB, or "#000000" if the shade is invalid.
 func Hex(s Shade) string {
 	if s >= shadeCount {
 		return "#000000"
@@ -79,14 +79,14 @@ func Hex(s Shade) string {
 	})
 }
 
-// Canvas e a grade de pixels onde os sprites sao desenhados.
+// Canvas is the pixel grid where sprites are drawn.
 type Canvas struct {
 	width  int
 	height int
 	pixels []Shade
 }
 
-// NewCanvas cria um canvas de width por height pixels; height impar sobe para o par seguinte.
+// NewCanvas creates a canvas of width by height pixels; an odd height rounds up to the next even one.
 func NewCanvas(width, height int) *Canvas {
 	if height%2 != 0 {
 		height++
@@ -95,7 +95,7 @@ func NewCanvas(width, height int) *Canvas {
 	return &Canvas{width: width, height: height, pixels: make([]Shade, width*height)}
 }
 
-// Set pinta o pixel em (x, y); fora do canvas ou tom invalido nao faz nada.
+// Set paints the pixel at (x, y); outside the canvas or an invalid shade does nothing.
 func (c *Canvas) Set(x, y int, s Shade) {
 	if x < 0 || y < 0 || x >= c.width || y >= c.height || s >= shadeCount {
 		return
@@ -104,7 +104,7 @@ func (c *Canvas) Set(x, y int, s Shade) {
 	c.pixels[y*c.width+x] = s
 }
 
-// Render da o canvas como texto ANSI, uma linha de terminal a cada dois pixels de altura.
+// Render gives the canvas as ANSI text, one terminal line per two pixels of height.
 func (c *Canvas) Render() string {
 	var sb strings.Builder
 	sb.Grow(c.width * c.height / 2 * bytesPerCell)

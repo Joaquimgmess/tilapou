@@ -13,7 +13,7 @@ import (
 
 const readyTimeout = 2 * time.Second
 
-// RegisterHealth registra GET /healthz e GET /readyz; ready roda com timeout de 2s.
+// RegisterHealth registers GET /healthz and GET /readyz; ready runs with a 2s timeout.
 func RegisterHealth(router chi.Router, ready func(ctx context.Context) error) {
 	router.Get("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)

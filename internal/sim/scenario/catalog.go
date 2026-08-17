@@ -2,7 +2,7 @@ package scenario
 
 import "github.com/Joaquimgmess/tilapou/internal/sim"
 
-// All monta os cenarios do catalogo do zero a cada chamada.
+// All builds the catalog scenarios from scratch on every call.
 func All() []Scenario {
 	return []Scenario{
 		heranca(),
@@ -16,7 +16,7 @@ func All() []Scenario {
 	}
 }
 
-// ByName devolve bool falso, com Scenario zerado, quando o nome nao existe.
+// ByName returns a false bool, with a zeroed Scenario, when the name does not exist.
 func ByName(name string) (Scenario, bool) {
 	for _, s := range All() {
 		if s.Name == name {

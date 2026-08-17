@@ -2,8 +2,8 @@ package sim
 
 const maxRationSteps = 8
 
-// TankSpec sao as constantes de um tipo de tanque: densidade em peixes por metro
-// cubico, renovacao em PPM por hora, custos em centavos e volume em litros.
+// TankSpec holds the constants of a tank kind: density in fish per cubic metre,
+// renewal in PPM per hour, costs in cents and volume in litres.
 type TankSpec struct {
 	MaxDensityPerM3   int64
 	RenewalPPMPerHour PPM
@@ -12,8 +12,8 @@ type TankSpec struct {
 	Litres            Litres
 }
 
-// GrowthBalance rege o crescimento: massas em microgramas, temperatura em milesimos
-// de grau e TempMultiplier mapeando calor para um fator em PPM.
+// GrowthBalance governs growth: masses in micrograms, temperature in thousandths of a
+// degree and TempMultiplier mapping heat to a factor in PPM.
 type GrowthBalance struct {
 	TGCPPM         PPM
 	ReferenceTemp  MilliCelsius
@@ -23,15 +23,15 @@ type GrowthBalance struct {
 	TempMultiplier Curve
 }
 
-// RationStep vale ate peixes de UpToMass microgramas, com taxa diaria em PPM da biomassa.
+// RationStep applies up to fish of UpToMass micrograms, with a daily rate in PPM of the biomass.
 type RationStep struct {
 	UpToMass    Micrograms
 	RatePPMDay  PPM
 	MealsPerDay int32
 }
 
-// RationBalance e a tabela de arracoamento; so os primeiros Len passos valem, em
-// ordem crescente de UpToMass.
+// RationBalance is the feeding table; only the first Len steps are valid, in
+// increasing order of UpToMass.
 type RationBalance struct {
 	Steps          [maxRationSteps]RationStep
 	Len            int32
@@ -39,8 +39,8 @@ type RationBalance struct {
 	MaintenancePPM PPM
 }
 
-// For cai no ultimo passo se a massa passar de todas as faixas, e no passo zero se a
-// tabela estiver vazia.
+// For falls on the last step if the mass exceeds every band, and on the zero step if the
+// table is empty.
 func (r RationBalance) For(mass Micrograms) RationStep {
 	for i := range r.Len {
 		if mass <= r.Steps[i].UpToMass {
@@ -54,8 +54,8 @@ func (r RationBalance) For(mass Micrograms) RationStep {
 	return r.Steps[r.Len-1]
 }
 
-// WaterBalance rege a agua: calor em milesimos de grau, oxigenio em microgramas por
-// litro e os ciclos diario e sazonal por hora e dia de pico.
+// WaterBalance governs the water: heat in thousandths of a degree, oxygen in micrograms
+// per litre and the daily and seasonal cycles by peak hour and day.
 type WaterBalance struct {
 	BaseTemp        MilliCelsius
 	DailyTempSwing  MilliCelsius
@@ -75,7 +75,7 @@ type WaterBalance struct {
 	AeratorOff      MicrogramsPerLiter
 }
 
-// MortalityBalance rege mortes por hipoxia e fome: carencia em ticks e taxa em PPM.
+// MortalityBalance governs deaths by hypoxia and starvation: grace in ticks and rate in PPM.
 type MortalityBalance struct {
 	HypoxiaTicksToLethal int32
 	HypoxiaRatePPM       PPM
@@ -83,25 +83,25 @@ type MortalityBalance struct {
 	StarvationRatePPM    PPM
 }
 
-// EconomyBalance sao os precos fixos, em centavos.
+// EconomyBalance holds the fixed prices, in cents.
 type EconomyBalance struct {
 	FingerlingPrice Coins
 	AeratorCostTick Coins
 }
 
-// CreditBalance rege o emprestimo: teto em centavos e juros diarios em PPM.
+// CreditBalance governs the loan: cap in cents and daily interest in PPM.
 type CreditBalance struct {
 	MaxPrincipal Coins
 	DailyRatePPM PPM
 }
 
-// AutomationSpec e o custo de uma automacao, em centavos.
+// AutomationSpec is the cost of an automation, in cents.
 type AutomationSpec struct {
 	Cost Coins
 }
 
-// ProgressionBalance rege progressao e recomeco: fatores em PPM e a partida em
-// centavos, peixes e microgramas.
+// ProgressionBalance governs progression and restart: factors in PPM and the start in
+// cents, fish and micrograms.
 type ProgressionBalance struct {
 	CostFactorPPM    PPM
 	PrestigeDivisor  int64
@@ -112,8 +112,8 @@ type ProgressionBalance struct {
 	RestartFeed      Micrograms
 }
 
-// Balance sao as constantes que Advance consulta; so leitura, e precisa passar por
-// Validate antes do uso.
+// Balance holds the constants Advance reads; read-only, and it must pass through
+// Validate before use.
 type Balance struct {
 	Version     uint16
 	Growth      GrowthBalance
@@ -129,7 +129,7 @@ type Balance struct {
 	Automation  [autoKindCount]AutomationSpec
 }
 
-// Validate devolve o ErrBalance* da primeira falha encontrada.
+// Validate returns the ErrBalance* of the first failure found.
 func (b *Balance) Validate() error {
 	if b.Version == 0 {
 		return ErrBalanceUnversioned
@@ -160,7 +160,7 @@ func (b *Balance) Validate() error {
 	return nil
 }
 
-// TempMultiplier devolve o fator de crescimento em PPM, interpolado na curva de Growth.
+// TempMultiplier returns the growth factor in PPM, interpolated on the Growth curve.
 func (b *Balance) TempMultiplier(temp MilliCelsius) PPM {
 	return PPM(b.Growth.TempMultiplier.At(int64(temp)))
 }

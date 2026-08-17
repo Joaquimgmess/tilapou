@@ -1,30 +1,30 @@
 package sim
 
-// Tick e a unidade de tempo da simulacao: um minuto de jogo.
+// Tick is the time unit of the simulation: one minute of game time.
 type Tick int64
 
-// Micrograms e massa em microgramas.
+// Micrograms is mass in micrograms.
 type Micrograms int64
 
-// Coins e dinheiro em centavos.
+// Coins is money in cents.
 type Coins int64
 
-// MilliCelsius e temperatura em milesimos de grau.
+// MilliCelsius is temperature in thousandths of a degree.
 type MilliCelsius int32
 
-// MicrogramsPerLiter e oxigenio dissolvido em microgramas por litro.
+// MicrogramsPerLiter is dissolved oxygen in micrograms per litre.
 type MicrogramsPerLiter int32
 
-// Litres e volume em litros.
+// Litres is volume in litres.
 type Litres int64
 
-// FishCount conta peixes.
+// FishCount counts fish.
 type FishCount int32
 
-// PPM e uma fracao em partes por milhao, usada no lugar de ponto flutuante.
+// PPM is a fraction in parts per million, used in place of floating point.
 type PPM int32
 
-// Escalas de PPM e a conversao entre tick e dia.
+// PPM scales and the conversion between tick and day.
 const (
 	OnePPM         PPM = 1
 	UnitPPM        PPM = 1_000_000
@@ -32,18 +32,18 @@ const (
 	MinutesPerTick     = 1
 )
 
-// Fatores de conversao de massa.
+// Mass conversion factors.
 const (
 	MicrogramsPerGram     Micrograms = 1_000_000
 	MicrogramsPerKilogram Micrograms = 1_000 * MicrogramsPerGram
 )
 
-// Grams trunca o resto.
+// Grams truncates the remainder.
 func (m Micrograms) Grams() int64 {
 	return int64(m / MicrogramsPerGram)
 }
 
-// Apply escala v pela fracao p, arredondando para baixo.
+// Apply scales v by the fraction p, rounding down.
 func (p PPM) Apply(v int64) int64 {
 	return mulDivFloor(v, int64(p), int64(UnitPPM))
 }

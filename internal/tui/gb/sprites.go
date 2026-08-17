@@ -1,20 +1,20 @@
 package gb
 
-// TileSize e o lado do tile em pixels.
+// TileSize is the tile side in pixels.
 const TileSize = 8
 
-// Sprite e um tile de TileSize por TileSize pixels.
+// Sprite is a tile of TileSize by TileSize pixels.
 type Sprite struct {
 	rows [TileSize]string
 }
 
-// NewSprite monta um sprite de TileSize linhas onde cada digito '0' a '3' e um Shade.
-// Qualquer outro caractere fica transparente, sem aviso.
+// NewSprite builds a sprite of TileSize rows where each digit '0' to '3' is a Shade.
+// Any other character stays transparent, without warning.
 func NewSprite(rows [TileSize]string) Sprite {
 	return Sprite{rows: rows}
 }
 
-// Draw desenha o sprite com o canto superior esquerdo em (x, y).
+// Draw draws the sprite with its top left corner at (x, y).
 func (s Sprite) Draw(c *Canvas, x, y int) {
 	for dy, row := range s.rows {
 		for dx, ch := range row {
@@ -26,7 +26,7 @@ func (s Sprite) Draw(c *Canvas, x, y int) {
 	}
 }
 
-// Tiles do cenario e do avatar.
+// Scenery and avatar tiles.
 var (
 	Grass = NewSprite([TileSize]string{
 		"11111111",

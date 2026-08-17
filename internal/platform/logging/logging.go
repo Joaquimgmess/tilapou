@@ -1,4 +1,4 @@
-// Package logging monta o logger estruturado do processo.
+// Package logging builds the structured logger of the process.
 package logging
 
 import (
@@ -9,17 +9,17 @@ import (
 
 type contextKey struct{}
 
-// New cria um logger JSON em stdout.
+// New creates a JSON logger on stdout.
 func New(level slog.Level) *slog.Logger {
 	return slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: level}))
 }
 
-// WithLogger guarda logger no context.
+// WithLogger stores logger in the context.
 func WithLogger(ctx context.Context, logger *slog.Logger) context.Context {
 	return context.WithValue(ctx, contextKey{}, logger)
 }
 
-// FromContext devolve o logger do context, ou slog.Default.
+// FromContext returns the logger from the context, or slog.Default.
 func FromContext(ctx context.Context) *slog.Logger {
 	if logger, ok := ctx.Value(contextKey{}).(*slog.Logger); ok {
 		return logger

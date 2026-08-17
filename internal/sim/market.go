@@ -2,13 +2,13 @@ package sim
 
 const maxPriceClasses = 6
 
-// PriceClass e uma faixa de peso e o multiplicador em PPM sobre o preco base.
+// PriceClass is a weight band and the multiplier in PPM over the base price.
 type PriceClass struct {
 	UpToMass Micrograms
 	PPM      PPM
 }
 
-// MarketBalance tem precos base por quilo em centavos e periodo em ticks.
+// MarketBalance carries base prices per kilo in cents and the period in ticks.
 type MarketBalance struct {
 	FishBasePerKg  Coins
 	FeedBasePerKg  Coins
@@ -21,14 +21,14 @@ type MarketBalance struct {
 	ViableRatioPPM PPM
 }
 
-// Market tem precos por quilo em centavos e a razao de equivalencia em PPM.
+// Market carries prices per kilo in cents and the equivalence ratio in PPM.
 type Market struct {
 	FishKg   Coins
 	FeedKg   Coins
 	RatioPPM PPM
 }
 
-// MarketAt calcula deterministicamente os precos de peixe e racao no tick dado.
+// MarketAt deterministically computes the fish and feed prices at the given tick.
 func MarketAt(b *Balance, tick Tick) Market {
 	fish := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FishBasePerKg, b.Market.SwingPPM, PurposeMarket)
 	feed := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FeedBasePerKg, b.Market.FeedSwingPPM, PurposeEvent)
@@ -72,7 +72,7 @@ func anchor(seed Seed, index int64, purpose Purpose) int64 {
 	return roll - int64(UnitPPM)
 }
 
-// ClassPPM cai na ultima classe acima da faixa e em UnitPPM se nao houver classes.
+// ClassPPM falls on the last class above the band and on UnitPPM if there are no classes.
 func (b *Balance) ClassPPM(mass Micrograms) PPM {
 	for i := range b.Market.ClassCount {
 		if mass <= b.Market.Classes[i].UpToMass {
@@ -86,7 +86,7 @@ func (b *Balance) ClassPPM(mass Micrograms) PPM {
 	return b.Market.Classes[b.Market.ClassCount-1].PPM
 }
 
-// PriceFor devolve o preco por quilo em centavos, ja com a classe da massa.
+// PriceFor returns the price per kilo in cents, already with the mass's class applied.
 func (b *Balance) PriceFor(mass Micrograms, tick Tick) Coins {
 	market := MarketAt(b, tick)
 

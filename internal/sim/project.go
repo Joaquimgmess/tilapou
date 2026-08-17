@@ -1,6 +1,6 @@
 package sim
 
-// Projection e o retrato dos numeros de topo do save num tick.
+// Projection is the snapshot of the save's top-level numbers at a tick.
 type Projection struct {
 	Tick     Tick
 	Cash     Coins
@@ -11,7 +11,7 @@ type Projection struct {
 	Prestige uint32
 }
 
-// Project extrai o retrato atual do estado sem avancar a simulacao.
+// Project extracts the current snapshot of the state without advancing the simulation.
 func Project(s *State) Projection {
 	return Projection{
 		Tick:     s.Tick,
