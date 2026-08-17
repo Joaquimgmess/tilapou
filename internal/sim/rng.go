@@ -14,9 +14,9 @@ const (
 	PurposeMortality
 	PurposeStarvation
 	PurposeDisease
-	PurposeWeather
+	_
 	PurposeMarket
-	PurposeEvent
+	PurposeFeedPrice
 	PurposeDiseaseDeath
 )
 

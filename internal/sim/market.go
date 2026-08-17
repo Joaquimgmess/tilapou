@@ -31,7 +31,7 @@ type Market struct {
 // MarketAt deterministically computes the fish and feed prices at the given tick.
 func MarketAt(b *Balance, tick Tick) Market {
 	fish := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FishBasePerKg, b.Market.SwingPPM, PurposeMarket)
-	feed := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FeedBasePerKg, b.Market.FeedSwingPPM, PurposeEvent)
+	feed := drift(b.Market.Seed, tick, b.Market.PeriodTicks, b.Market.FeedBasePerKg, b.Market.FeedSwingPPM, PurposeFeedPrice)
 
 	return Market{
 		FishKg:   fish,
