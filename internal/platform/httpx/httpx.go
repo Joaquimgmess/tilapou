@@ -52,7 +52,7 @@ func NewAPI(
 		opt(&o)
 	}
 
-	metrics := NewMetrics()
+	metrics := newMetrics()
 	problem := problems{docsPrefix: o.errorDocsURL}
 
 	router := chi.NewRouter()
@@ -85,7 +85,7 @@ func clientIP(trustedProxies int) func(http.Handler) http.Handler {
 	return middleware.ClientIPFromXFFTrustedProxies(trustedProxies)
 }
 
-func observe(logger *slog.Logger, metrics *Metrics) func(http.Handler) http.Handler {
+func observe(logger *slog.Logger, m *metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqLogger := logger.With(
@@ -101,7 +101,7 @@ func observe(logger *slog.Logger, metrics *Metrics) func(http.Handler) http.Hand
 			elapsed := time.Since(start)
 			route := routePattern(r)
 
-			metrics.observe(r.Method, route, ww.Status(), elapsed)
+			m.observe(r.Method, route, ww.Status(), elapsed)
 
 			reqLogger.InfoContext(ctx, "http request",
 				slog.String("method", r.Method),

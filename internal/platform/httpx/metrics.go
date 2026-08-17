@@ -31,19 +31,19 @@ type histogram struct {
 	count   uint64
 }
 
-// Metrics accumulates HTTP latency by method, route and status; safe for concurrent use.
-type Metrics struct {
+// metrics accumulates HTTP latency by method, route and status; safe for concurrent use.
+type metrics struct {
 	mu     sync.Mutex
 	series map[seriesKey]*histogram
 }
 
-// NewMetrics creates an empty collector.
-func NewMetrics() *Metrics {
-	return &Metrics{series: make(map[seriesKey]*histogram)}
+// newMetrics creates an empty collector.
+func newMetrics() *metrics {
+	return &metrics{series: make(map[seriesKey]*histogram)}
 }
 
 // Handler serves GET /metrics in the Prometheus text format.
-func (m *Metrics) Handler() http.HandlerFunc {
+func (m *metrics) Handler() http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var body strings.Builder
 		body.WriteString("# HELP http_request_duration_seconds Latency of HTTP requests.\n")
@@ -69,7 +69,7 @@ func (m *Metrics) Handler() http.HandlerFunc {
 	}
 }
 
-func (m *Metrics) observe(method, route string, status int, elapsed time.Duration) {
+func (m *metrics) observe(method, route string, status int, elapsed time.Duration) {
 	k := seriesKey{method: method, route: route, status: status}
 
 	m.mu.Lock()
@@ -91,7 +91,7 @@ func (m *Metrics) observe(method, route string, status int, elapsed time.Duratio
 	}
 }
 
-func (m *Metrics) snapshot() (map[seriesKey]histogram, []seriesKey) {
+func (m *metrics) snapshot() (map[seriesKey]histogram, []seriesKey) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
