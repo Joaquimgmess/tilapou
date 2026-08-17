@@ -91,7 +91,7 @@ func (d *DB) Insert(ctx context.Context, f Farm) error {
 
 	raw, err := save.Encode(f.State)
 	if err != nil {
-		return err
+		return fmt.Errorf("encode farm %s: %w", f.ID, err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, d.timeout)
@@ -114,7 +114,7 @@ func (d *DB) Insert(ctx context.Context, f Farm) error {
 func (d *DB) Save(ctx context.Context, f Farm, events []sim.Event, outcome *sim.Outcome) error {
 	raw, err := save.Encode(f.State)
 	if err != nil {
-		return err
+		return fmt.Errorf("encode farm %s: %w", f.ID, err)
 	}
 
 	ctx, cancel := context.WithTimeout(ctx, d.timeout)

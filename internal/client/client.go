@@ -193,14 +193,7 @@ func (c *Client) Act(ctx context.Context, action Action) (Snapshot, error) {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, body []byte) (Snapshot, error) {
-	var reader *bytes.Reader
-	if body != nil {
-		reader = bytes.NewReader(body)
-	} else {
-		reader = bytes.NewReader(nil)
-	}
-
-	req, err := http.NewRequestWithContext(ctx, method, c.base+path, reader)
+	req, err := http.NewRequestWithContext(ctx, method, c.base+path, bytes.NewReader(body))
 	if err != nil {
 		return Snapshot{}, fmt.Errorf("client: building request: %w", err)
 	}

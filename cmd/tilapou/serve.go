@@ -23,10 +23,13 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/platform/postgres"
 )
 
+var errNotReady = errors.New("service is not ready")
+
 const (
-	readHeaderTimeout = 5 * time.Second
-	errorDocsPrefix   = "https://github.com/Joaquimgmess/tilapou/blob/main/docs/errors.md#"
-	localPlayer       = "00000000-0000-0000-0000-000000000001"
+	readHeaderTimeout  = 5 * time.Second
+	errorDocsPrefix    = "https://github.com/Joaquimgmess/tilapou/blob/main/docs/errors.md#"
+	localPlayer        = "00000000-0000-0000-0000-000000000001"
+	healthProbeTimeout = 3 * time.Second
 )
 
 func runServe(args []string) error {
@@ -143,7 +146,3 @@ func runHealth(args []string) error {
 
 	return nil
 }
-
-const healthProbeTimeout = 3 * time.Second
-
-var errNotReady = errors.New("service is not ready")

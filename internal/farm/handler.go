@@ -13,8 +13,6 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
-const litresPerCubicMetre = 1_000
-
 // TankView is the tank in the API: money in cents, weight in grams, oxygen in
 // micrograms per litre, density in thousandths of kg/m3 and ratios in PPM.
 type TankView struct {
@@ -349,7 +347,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			Upgrades:    upgradesOf(tank, b),
 		}
 		if tank.Litres > 0 {
-			tv.DensityMilli = int64(tank.Biomass()) / (litresPerCubicMetre * int64(tank.Litres))
+			tv.DensityMilli = int64(tank.Biomass()) / (sim.LitresPerCubicMetre * int64(tank.Litres))
 		}
 		if tank.BatchCount > 0 {
 			fillBatch(&tv, state, b, tank, &tank.Batches[0], p)

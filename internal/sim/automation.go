@@ -13,6 +13,11 @@ const (
 	autoKindCount
 )
 
+const (
+	autoRestockKg    = 200
+	autoMinRestockKg = 10
+)
+
 var autoKindNames = [...]string{
 	AutoFeeder:     "comedouro",
 	AutoAerator:    "aerador",
@@ -103,11 +108,11 @@ func payEnergy(s *State, b *Balance, t *Tank) {
 }
 
 func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
-	if t.FeedStock > 0 || t.Fish() == 0 || MarketAt(b, tick).FeedKg <= 0 {
+	unit := MarketAt(b, tick).FeedKg
+	if t.FeedStock > 0 || t.Fish() == 0 || unit <= 0 {
 		return
 	}
 
-	unit := MarketAt(b, tick).FeedKg
 	kilos := min(int64(autoRestockKg), int64(s.Cash)/int64(unit))
 	if kilos < autoMinRestockKg {
 		return
@@ -168,8 +173,3 @@ func sell(s *State, b *Balance, t *Tank, batch *Batch, count FishCount, tick Tic
 		Cash:  revenue,
 	})
 }
-
-const (
-	autoRestockKg    = 200
-	autoMinRestockKg = 10
-)

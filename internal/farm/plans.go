@@ -24,8 +24,8 @@ type plans struct {
 
 func newPlans() *plans {
 	return &plans{
-		cache:     map[sim.TankKind]sim.CyclePlan{},
-		decisions: map[batchKey]DecisionView{},
+		cache:     make(map[sim.TankKind]sim.CyclePlan),
+		decisions: make(map[batchKey]DecisionView),
 	}
 }
 

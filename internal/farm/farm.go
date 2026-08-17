@@ -10,6 +10,13 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
+const (
+	startingCash = sim.Coins(50_000)
+	startingFish = sim.FishCount(2_000)
+	startingMass = 450 * sim.MicrogramsPerGram
+	startingFeed = 200 * sim.MicrogramsPerKilogram
+)
+
 // ID identifies a farm.
 type ID = uuid.UUID
 
@@ -57,10 +64,3 @@ func New(id, playerID uuid.UUID, name string, epoch time.Time, zone sim.ZoneOffs
 		CreatedAt: epoch,
 	}
 }
-
-const (
-	startingCash = sim.Coins(50_000)
-	startingFish = sim.FishCount(2_000)
-	startingMass = 450 * sim.MicrogramsPerGram
-	startingFeed = 200 * sim.MicrogramsPerKilogram
-)

@@ -122,7 +122,7 @@ func sampleOf(day int64, state *sim.State) Sample {
 	sample.FeedKg = int64(tank.FeedStock / sim.MicrogramsPerKilogram)
 	sample.Oxygen = tank.Oxygen
 	if tank.Litres > 0 {
-		sample.Density = int64(tank.Biomass()) / (1_000 * int64(tank.Litres))
+		sample.Density = int64(tank.Biomass()) / (sim.LitresPerCubicMetre * int64(tank.Litres))
 	}
 	if tank.BatchCount > 0 {
 		sample.MeanG = tank.Batches[0].MeanMass.Grams()

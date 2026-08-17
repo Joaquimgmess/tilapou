@@ -139,7 +139,7 @@ func (k TankKind) Known() bool {
 
 // Capacity returns how many fish fit in the tank, by the maximum density of its kind.
 func (t *Tank) Capacity(b *Balance) int64 {
-	return b.Tanks[t.Kind].MaxDensityPerM3 * int64(t.Litres) / litresPerCubicMetre
+	return b.Tanks[t.Kind].MaxDensityPerM3 * int64(t.Litres) / LitresPerCubicMetre
 }
 
 // Fish saturates at the FishCount maximum.
@@ -175,8 +175,9 @@ type State struct {
 }
 
 const (
-	maxInt32            = int64(1)<<31 - 1
-	litresPerCubicMetre = 1_000
+	maxInt32 = int64(1)<<31 - 1
+	// LitresPerCubicMetre converts a tank volume in litres to cubic metres.
+	LitresPerCubicMetre = 1_000
 )
 
 // NewState creates an empty farm starting at tick at.

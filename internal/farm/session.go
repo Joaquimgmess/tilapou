@@ -13,6 +13,11 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
+const (
+	defaultZone    = sim.ZoneOffset(-180)
+	eventFeedLimit = int32(40)
+)
+
 // Clock gives the real instant that defines up to which tick the farm advances.
 type Clock func() time.Time
 
@@ -160,11 +165,6 @@ func (s *Sessions) snapshot(ctx context.Context, f Farm, outcome *sim.Outcome) (
 		Outcome:    outcome,
 	}, nil
 }
-
-const (
-	defaultZone    = sim.ZoneOffset(-180)
-	eventFeedLimit = int32(40)
-)
 
 func (s *Sessions) lockFor(id ID) *sync.Mutex {
 	s.mu.Lock()
