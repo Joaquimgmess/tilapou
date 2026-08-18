@@ -33,6 +33,10 @@ var (
 			Foreground(lipgloss.Color(gb.Hex(gb.Lightest))).
 			Padding(0, 1)
 
+	// marginStyle preenche a sobra em volta do aparelho: so cor, sem padding, senao ela
+	// mesma alarga o quadro.
+	marginStyle = lipgloss.NewStyle().Background(lipgloss.Color(gb.Hex(gb.Lightest)))
+
 	keyStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color(gb.Hex(gb.Darkest))).
 			Foreground(lipgloss.Color(gb.Hex(gb.Light))).

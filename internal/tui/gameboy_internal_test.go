@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 )
 
 func TestTheGameBoyFrameIsTheSizeTheGuardClaims(t *testing.T) {
@@ -15,10 +16,23 @@ func TestTheGameBoyFrameIsTheSizeTheGuardClaims(t *testing.T) {
 	m.width, m.height = 200, 80
 
 	frame := m.render()
-	cols, rows := lipgloss.Width(frame), strings.Count(frame, "\n")+1
+	rows := strings.Count(frame, "\n") + 1
 
-	if cols != gbCols || rows != gbRows {
-		t.Errorf("o quadro mede %dx%d e a guarda promete %dx%d", cols, rows, gbCols, gbRows)
+	if rows != gbRows {
+		t.Errorf("o quadro tem %d linhas e a guarda promete %d", rows, gbRows)
+	}
+	if cols := lipgloss.Width(frame); cols != m.width {
+		t.Errorf("o quadro tem %d colunas numa tela de %d: sobra fundo do terminal em volta", cols, m.width)
+	}
+
+	// O aparelho fica centrado dentro do quadro, e e ele que a guarda dimensiona.
+	device := 0
+	for line := range strings.SplitSeq(ansi.Strip(frame), "\n") {
+		device = max(device, lipgloss.Width(strings.TrimSpace(line)))
+	}
+
+	if device != gbCols {
+		t.Errorf("o aparelho desenhado mede %d colunas e a guarda promete %d", device, gbCols)
 	}
 }
 

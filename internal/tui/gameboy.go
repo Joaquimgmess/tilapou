@@ -115,13 +115,22 @@ func (m Model) renderGameBoy() string {
 	chrome := lipgloss.Height(hud) + lipgloss.Height(banner) + lipgloss.Height(body) +
 		lipgloss.Height(m.renderGameBoyKeys())
 
-	return strings.Join([]string{
+	frame := strings.Join([]string{
 		hud,
 		banner,
 		cropTo(renderMap(m.farm, m.you, snapshot, m.frame), m.mapScreenRows(chrome)),
 		body,
 		m.renderGameBoyKeys(),
 	}, "\n")
+
+	// O mapa tem teto de tamanho, entao numa tela grande sobra faixa com o fundo do
+	// terminal em volta: centralizar e pintar mantem a ilusao de um aparelho.
+	if m.width <= 0 || m.width <= width {
+		return frame
+	}
+
+	return lipgloss.PlaceHorizontal(m.width, lipgloss.Center, frame,
+		lipgloss.WithWhitespaceStyle(marginStyle))
 }
 
 // menuWithReply keeps the refusal visible while the menu is open: without it the answer

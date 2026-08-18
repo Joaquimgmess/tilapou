@@ -239,3 +239,21 @@ func TestEsbarrarJaOlhandoParaOObstaculoResponde(t *testing.T) {
 		t.Error("esbarrar de frente para o obstaculo nao respondeu nada")
 	}
 }
+
+func TestOMapaFicaCentradoNaTelaGrande(t *testing.T) {
+	t.Parallel()
+
+	for _, size := range [][2]int{{200, 60}, {240, 80}} {
+		m := New(nil)
+		m.snapshot = sizedSnapshot()
+		m.width, m.height, m.mode = size[0], size[1], ModeGameBoy
+		m.farm = m.resizedFarm(len(m.snapshot.Tanks))
+		m.you = m.you.clampedTo(m.farm)
+
+		frame := m.render()
+		if got := lipgloss.Width(frame); got != size[0] {
+			t.Errorf("em %dx%d o quadro tem %d colunas: sobram %d com o fundo do terminal",
+				size[0], size[1], got, size[0]-got)
+		}
+	}
+}
