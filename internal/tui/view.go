@@ -5,6 +5,8 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
+
+	"github.com/Joaquimgmess/tilapou/internal/tui/gb"
 )
 
 // Formatting conversion factors; unitPPMValue is one unit in parts per million.
@@ -18,12 +20,23 @@ const (
 )
 
 var (
-	titleStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#8BAC0F"))
-	labelStyle  = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	valueStyle  = lipgloss.NewStyle().Bold(true)
+	titleStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gb.Hex(gb.Light)))
+	labelStyle = lipgloss.NewStyle().Foreground(lipgloss.Color(gb.Hex(gb.Dark)))
+	valueStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(gb.Hex(gb.Lightest)))
+	okStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color(gb.Hex(gb.Light)))
+	dimStyle   = lipgloss.NewStyle().Foreground(lipgloss.Color(gb.Hex(gb.Dark)))
+
 	dangerStyle = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#D64545"))
-	okStyle     = lipgloss.NewStyle().Foreground(lipgloss.Color("#4CAF50"))
-	dimStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#888888"))
+
+	barStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color(gb.Hex(gb.Dark))).
+			Foreground(lipgloss.Color(gb.Hex(gb.Lightest))).
+			Padding(0, 1)
+
+	keyStyle = lipgloss.NewStyle().
+			Background(lipgloss.Color(gb.Hex(gb.Darkest))).
+			Foreground(lipgloss.Color(gb.Hex(gb.Light))).
+			Padding(0, 1)
 )
 
 // View builds the screen from the latest snapshot.

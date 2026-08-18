@@ -49,8 +49,7 @@ var (
 			Padding(0, 1).
 			Width(mapCols * gb.TileSize)
 
-	pickedStyle   = lipgloss.NewStyle().Bold(true).Underline(true)
-	selectedStyle = lipgloss.NewStyle().Reverse(true).Bold(true)
+	pickedStyle = lipgloss.NewStyle().Bold(true).Underline(true)
 )
 
 const (

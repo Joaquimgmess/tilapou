@@ -92,7 +92,18 @@ func (m Model) renderTopBar() string {
 		parts = append(parts, dangerStyle.Render(fmt.Sprintf("! %ds sem resposta", m.staleTicks)))
 	}
 
-	return strings.Join(parts, "  ")
+	return barStyle.Width(m.effectiveWidth()).Render(strings.Join(parts, dimStyle.Render(" | ")))
+}
+
+// rule renders a section title followed by a line filling the width.
+func rule(title string, width int) string {
+	head := labelStyle.Render(title + " ")
+	fill := width - lipgloss.Width(head)
+	if fill < 1 {
+		return head
+	}
+
+	return head + dimStyle.Render(strings.Repeat("─", fill))
 }
 
 func (m Model) renderGoal() string {
@@ -146,7 +157,8 @@ func (m Model) renderBatches() string {
 			"LOTE", "PEIXES", "PESO", "VALOR", "MARGEM", "PROX CLASSE", "ESTADO")
 	}
 
-	lines := []string{labelStyle.Render(header)}
+	lines := []string{labelStyle.Render(header) + dimStyle.Render(
+		strings.Repeat(" ", max(m.effectiveWidth()-lipgloss.Width(header)-panelInset, 0)))}
 
 	for i := range m.snapshot.Tanks {
 		t := &m.snapshot.Tanks[i]
@@ -170,13 +182,13 @@ func (m Model) renderBatches() string {
 
 func (m Model) decorateRow(index int, row string, alert bool) string {
 	if index == m.selected {
-		return selectedStyle.Render("> " + row)
+		return okStyle.Render("▌") + " " + valueStyle.Render(row)
 	}
 	if alert {
 		return "  " + dangerStyle.Render(row)
 	}
 
-	return "  " + row
+	return "  " + dimStyle.Render(row)
 }
 
 func nextClass(t *client.Tank) string {
@@ -220,7 +232,7 @@ func (m Model) renderDecision() string {
 
 	d := tank.Decision
 	lines := []string{
-		labelStyle.Render(fmt.Sprintf("DECISAO T%d-L%d", tank.ID, tank.BatchID)),
+		rule(fmt.Sprintf("DECISAO T%d-L%d", tank.ID, tank.BatchID), decisionCol-panelInset),
 		fmt.Sprintf("%s %s/kg (classe %s)   %s %s g/d",
 			labelStyle.Render("preco"), coins(tank.PriceKgCents), percent(tank.ClassPPM),
 			labelStyle.Render("ganho"), grams(d.GainPerDayMg)),
@@ -289,7 +301,7 @@ func (m Model) renderMarket() string {
 	s := m.snapshot.Series
 
 	lines := []string{
-		labelStyle.Render("MERCADO") + dimStyle.Render(history(len(s.FishKgCents))),
+		rule("MERCADO"+history(len(s.FishKgCents)), marketCol-panelInset),
 		fmt.Sprintf("%s %s/kg %s", labelStyle.Render("peixe"), coins(p.FishKgCents), sparkline(s.FishKgCents)),
 		fmt.Sprintf("%s %s/kg %s", labelStyle.Render("racao"), coins(p.FeedKgCents), sparkline(s.FeedKgCents)),
 		fmt.Sprintf("%s %s  %s", labelStyle.Render("equivalencia"), valueStyle.Render(ratio(p.RatioPPM)),
@@ -325,15 +337,15 @@ func viability(ratio, viable int64) string {
 }
 
 func (m Model) renderKeys() string {
-	if m.menu != nil {
-		return dimStyle.Render(menuKeys)
-	}
-	if m.effectiveWidth() < wideWidth {
-		return dimStyle.Render("j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair")
+	keys := "j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  tab mapa  q sair"
+	switch {
+	case m.menu != nil:
+		keys = menuKeys
+	case m.effectiveWidth() < wideWidth:
+		keys = "j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair"
 	}
 
-	return dimStyle.Render(
-		"j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  tab mapa  q sair")
+	return keyStyle.Width(m.effectiveWidth()).Render(keys)
 }
 
 func sparkline(values []int64) string {
