@@ -201,6 +201,16 @@ func applyBuyUpgrade(s *State, b *Balance, a Action, at Tick, sink *eventSink) (
 	return RejectNone, 0
 }
 
+// NextTankCost is what the next tank of that kind costs now, in cents: the ladder makes
+// every tank dearer than the last.
+func (s *State) NextTankCost(b *Balance, kind TankKind) Coins {
+	if !kind.Known() {
+		return 0
+	}
+
+	return ladderCost(b.Tanks[kind].BaseCost, int64(s.TankCount), b.Progression.CostFactorPPM)
+}
+
 func ladderCost(base Coins, owned int64, factor PPM) Coins {
 	if factor <= 0 {
 		factor = UnitPPM

@@ -296,15 +296,26 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 
 	items = append(items, creditItems(s, t)...)
 
-	items = append(items, menuItem{
-		label:   "Comprar outro viveiro",
-		hint:    "amplia a fazenda",
-		enabled: true,
-		status:  "comprando um viveiro",
-		action:  client.Action{Kind: "buy_tank", TankKind: "viveiro_escavado"},
-	})
+	items = append(items, tankItem(s))
 
 	return &menu{title: shedTitle, items: items}
+}
+
+func tankItem(s client.Snapshot) menuItem {
+	price := s.NextTankCents
+	hint := "amplia a fazenda, e cada tanque sai mais caro que o anterior"
+
+	if short := price - s.CashCents; short > 0 {
+		hint = "faltam " + coins(short)
+	}
+
+	return menuItem{
+		label:   "Comprar outro viveiro por " + coins(price),
+		hint:    hint,
+		enabled: price > 0 && s.CashCents >= price,
+		status:  "comprando um viveiro",
+		action:  client.Action{Kind: "buy_tank", TankKind: "viveiro_escavado"},
+	}
 }
 
 func creditItems(s client.Snapshot, t client.Tank) []menuItem {

@@ -225,3 +225,44 @@ func TestConselhoNaoMandaPegarCreditoComOLimiteEstourado(t *testing.T) {
 		})
 	}
 }
+
+func TestComprarViveiroSemGranaDizOPrecoEOQueFalta(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	snap.CashCents = 1_000
+	snap.NextTankCents = 5_247_03
+
+	shed := shedMenu(snap, snap.Tanks[0])
+
+	var found *menuItem
+	for i := range shed.items {
+		if strings.Contains(shed.items[i].label, "viveiro") {
+			found = &shed.items[i]
+		}
+	}
+
+	if found == nil {
+		t.Fatal("o galpao nao oferece comprar viveiro")
+	}
+	if !strings.Contains(found.label+found.hint, coins(snap.NextTankCents)) {
+		t.Errorf("a opcao nao diz o preco: %q / %q", found.label, found.hint)
+	}
+	if found.enabled {
+		t.Error("a opcao esta clicavel sem caixa para pagar")
+	}
+}
+
+func TestRecusaApareceComOMenuAberto(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height, m.mode = 120, 40, ModeGameBoy
+	m.menu = shedMenu(m.snapshot, m.snapshot.Tanks[0])
+	m = m.say("Sem grana: custa 5247,03 TC e faltam 1702,19 TC")
+
+	if !strings.Contains(m.render(), "faltam 1702,19 TC") {
+		t.Error("a recusa nao aparece enquanto o menu esta aberto: o jogador aperta e nada responde")
+	}
+}

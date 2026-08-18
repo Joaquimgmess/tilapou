@@ -109,7 +109,7 @@ func (m Model) renderGameBoy() string {
 
 	body := box.Render(m.dialogue())
 	if m.menu != nil {
-		body = box.Render(renderMenu(m.menu))
+		body = box.Render(m.menuWithReply())
 	}
 
 	chrome := lipgloss.Height(hud) + lipgloss.Height(banner) + lipgloss.Height(body) +
@@ -122,6 +122,17 @@ func (m Model) renderGameBoy() string {
 		body,
 		m.renderGameBoyKeys(),
 	}, "\n")
+}
+
+// menuWithReply keeps the refusal visible while the menu is open: without it the answer
+// lands in the dialogue box behind the menu and the key looks like it did nothing.
+func (m Model) menuWithReply() string {
+	rendered := renderMenu(m.menu)
+	if m.message == "" {
+		return rendered
+	}
+
+	return dangerStyle.Render(m.message) + "\n" + rendered
 }
 
 func renderMenu(current *menu) string {

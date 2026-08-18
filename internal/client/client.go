@@ -144,6 +144,7 @@ type Snapshot struct {
 	Prestige      uint32   `json:"prestige"`
 	Tanks         []Tank   `json:"tanks"`
 	PrestigeNow   uint32   `json:"prestige_available"`
+	NextTankCents int64    `json:"next_tank_cents"`
 	Prices        Prices   `json:"prices"`
 	Debt          int64    `json:"debt_cents"`
 	LastCycle     Cycle    `json:"last_cycle"`

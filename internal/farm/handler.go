@@ -145,6 +145,7 @@ type SnapshotView struct {
 	Prestige      uint32       `json:"prestige"`
 	Tanks         []TankView   `json:"tanks"`
 	PrestigeNow   uint32       `json:"prestige_available"`
+	NextTankCents int64        `json:"next_tank_cents"`
 	Prices        PriceView    `json:"prices"`
 	Debt          int64        `json:"debt_cents"`
 	LastCycle     CycleView    `json:"last_cycle"`
@@ -295,6 +296,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		Prestige:      snap.Projection.Prestige,
 		Tanks:         make([]TankView, 0, state.TankCount),
 		PrestigeNow:   sim.PrestigePointsFor(state.LifetimeEarned, b.Progression.PrestigeDivisor),
+		NextTankCents: int64(state.NextTankCost(b, sim.TankEarthPond)),
 		Series:        seriesOf(state, b),
 		InterestDay:   int64(state.Debt) * int64(b.Credit.DailyRatePPM) / int64(sim.UnitPPM),
 		RunwayDays:    runwayDays(state, b),
