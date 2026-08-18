@@ -104,6 +104,15 @@ func (c *Canvas) Set(x, y int, s Shade) {
 	c.pixels[y*c.width+x] = s
 }
 
+// At returns the shade of the pixel, or Lightest outside the canvas.
+func (c *Canvas) At(x, y int) Shade {
+	if x < 0 || y < 0 || x >= c.width || y >= c.height {
+		return Lightest
+	}
+
+	return c.pixels[y*c.width+x]
+}
+
 // Render gives the canvas as ANSI text, one terminal line per two pixels of height.
 func (c *Canvas) Render() string {
 	var sb strings.Builder

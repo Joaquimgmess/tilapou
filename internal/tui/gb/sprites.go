@@ -15,6 +15,21 @@ func NewSprite(rows [TileSize]string) Sprite {
 	return Sprite{rows: rows}
 }
 
+// Flipped returns the sprite mirrored horizontally, for the side that faces the other way.
+func (s Sprite) Flipped() Sprite {
+	var flipped Sprite
+
+	for i, row := range s.rows {
+		runes := []rune(row)
+		for a, b := 0, len(runes)-1; a < b; a, b = a+1, b-1 {
+			runes[a], runes[b] = runes[b], runes[a]
+		}
+		flipped.rows[i] = string(runes)
+	}
+
+	return flipped
+}
+
 // Draw draws the sprite with its top left corner at (x, y).
 func (s Sprite) Draw(c *Canvas, x, y int) {
 	for dy, row := range s.rows {
