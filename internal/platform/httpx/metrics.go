@@ -1,110 +1,27 @@
 package httpx
 
 import (
-	"cmp"
-	"fmt"
 	"io"
 	"log/slog"
-	"maps"
 	"net/http"
-	"slices"
-	"strings"
-	"sync"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/metrics"
 )
 
-var durationBuckets = [8]float64{0.005, 0.025, 0.1, 0.5, 1, 2.5, 5, 10}
+// httpDuration is the latency series of every request, by method, route and status.
+const httpDuration = "http_request_duration_seconds"
 
-type seriesKey struct {
-	method string
-	route  string
-	status int
-}
-
-type histogram struct {
-	buckets []uint64
-	sum     float64
-	count   uint64
-}
-
-// metrics accumulates HTTP latency by method, route and status; safe for concurrent use.
-type metrics struct {
-	mu     sync.Mutex
-	series map[seriesKey]*histogram
-}
-
-// newMetrics creates an empty collector.
-func newMetrics() *metrics {
-	return &metrics{series: make(map[seriesKey]*histogram)}
-}
-
-// Handler serves GET /metrics in the Prometheus text format.
-func (m *metrics) Handler() http.HandlerFunc {
+func renderMetrics(registry *metrics.Registry) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var body strings.Builder
-		body.WriteString("# HELP http_request_duration_seconds Latency of HTTP requests.\n")
-		body.WriteString("# TYPE http_request_duration_seconds histogram\n")
-
-		snapshot, keys := m.snapshot()
-		for _, k := range keys {
-			h := snapshot[k]
-			labels := fmt.Sprintf("method=%q,route=%q,status=\"%d\"", k.method, k.route, k.status)
-
-			for i, upper := range durationBuckets {
-				fmt.Fprintf(&body, "http_request_duration_seconds_bucket{%s,le=\"%g\"} %d\n", labels, upper, h.buckets[i])
-			}
-			fmt.Fprintf(&body, "http_request_duration_seconds_bucket{%s,le=\"+Inf\"} %d\n", labels, h.count)
-			fmt.Fprintf(&body, "http_request_duration_seconds_sum{%s} %g\n", labels, h.sum)
-			fmt.Fprintf(&body, "http_request_duration_seconds_count{%s} %d\n", labels, h.count)
-		}
-
 		w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-		if _, err := io.WriteString(w, body.String()); err != nil {
+
+		if _, err := io.WriteString(w, registry.Render()); err != nil {
 			logging.FromContext(r.Context()).ErrorContext(r.Context(), "writing metrics", slog.Any("error", err))
 		}
 	}
-}
-
-func (m *metrics) observe(method, route string, status int, elapsed time.Duration) {
-	k := seriesKey{method: method, route: route, status: status}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	h, ok := m.series[k]
-	if !ok {
-		h = &histogram{buckets: make([]uint64, len(durationBuckets))}
-		m.series[k] = h
-	}
-
-	seconds := elapsed.Seconds()
-	h.count++
-	h.sum += seconds
-	for i, upper := range durationBuckets {
-		if seconds <= upper {
-			h.buckets[i]++
-		}
-	}
-}
-
-func (m *metrics) snapshot() (map[seriesKey]histogram, []seriesKey) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	snapshot := make(map[seriesKey]histogram, len(m.series))
-	for k, h := range m.series {
-		snapshot[k] = histogram{buckets: slices.Clone(h.buckets), sum: h.sum, count: h.count}
-	}
-
-	keys := slices.SortedFunc(maps.Keys(snapshot), func(a, b seriesKey) int {
-		return cmp.Or(cmp.Compare(a.route, b.route), cmp.Compare(a.method, b.method), cmp.Compare(a.status, b.status))
-	})
-
-	return snapshot, keys
 }
 
 func routePattern(r *http.Request) string {

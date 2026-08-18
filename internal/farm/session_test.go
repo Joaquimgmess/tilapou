@@ -9,6 +9,7 @@ import (
 
 	"github.com/Joaquimgmess/tilapou/internal/balance"
 	"github.com/Joaquimgmess/tilapou/internal/farm"
+	"github.com/Joaquimgmess/tilapou/internal/platform/metrics"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
@@ -79,7 +80,7 @@ func TestAnActionLandsAtTheCurrentTickNotTheStaleOne(t *testing.T) {
 	}
 
 	away := 3 * 24 * time.Hour
-	sessions := farm.NewSessions(store, &b, func() time.Time { return epoch.Add(away) })
+	sessions := farm.NewSessions(store, &b, func() time.Time { return epoch.Add(away) }, metrics.NewRegistry())
 
 	snap, err := sessions.Act(context.Background(), store.farm.PlayerID,
 		sim.Action{ID: 1, Kind: sim.ActionFeed, Tank: 1})
@@ -112,7 +113,7 @@ func TestAReadWithNoTimePassedDoesNotWriteTheState(t *testing.T) {
 	}
 
 	frozen := epoch.Add(time.Hour)
-	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen }, metrics.NewRegistry())
 	player := store.farm.PlayerID
 
 	if _, err := sessions.Sync(context.Background(), player); err != nil {
@@ -146,7 +147,7 @@ func TestActingDoesNotPushTheFarmClockAheadOfRealTime(t *testing.T) {
 	}
 
 	frozen := epoch.Add(time.Hour)
-	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen }, metrics.NewRegistry())
 	player := store.farm.PlayerID
 
 	for i := range 50 {
@@ -176,7 +177,7 @@ func TestAnActionWithNoTimePassingIsStillPersisted(t *testing.T) {
 	}
 
 	frozen := epoch.Add(time.Hour)
-	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen }, metrics.NewRegistry())
 	player := store.farm.PlayerID
 
 	if _, err := sessions.Sync(context.Background(), player); err != nil {
@@ -218,7 +219,7 @@ func TestReenviarAMesmaChaveDevolveAMesmaRespostaSemAplicarDeNovo(t *testing.T) 
 	}
 
 	frozen := epoch.Add(time.Hour)
-	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen }, metrics.NewRegistry())
 	player := store.farm.PlayerID
 	buy := sim.Action{ID: 7, Kind: sim.ActionBuyFeed, Tank: 1, Amount: 50}
 
@@ -266,7 +267,7 @@ func TestAWriteLostToAnotherWriterReplaysWithoutDeadlocking(t *testing.T) {
 	}
 
 	frozen := epoch.Add(time.Hour)
-	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen })
+	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen }, metrics.NewRegistry())
 
 	type result struct {
 		snap farm.Snapshot
@@ -311,7 +312,7 @@ func TestOMesmoRetryFuncionaDepoisQueOTickAvanca(t *testing.T) {
 	}
 
 	agora := epoch.Add(time.Hour)
-	sessions := farm.NewSessions(store, &b, func() time.Time { return agora })
+	sessions := farm.NewSessions(store, &b, func() time.Time { return agora }, metrics.NewRegistry())
 	player := store.farm.PlayerID
 	borrow := sim.Action{ID: 21, Kind: sim.ActionBorrow, Amount: 1_000}
 

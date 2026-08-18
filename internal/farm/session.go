@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/metrics"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
@@ -24,18 +25,38 @@ type Clock func() time.Time
 // Sessions advances the farm and applies actions, serializing the writes of a
 // single farm within the process.
 type Sessions struct {
-	store   Store
-	balance *sim.Balance
-	clock   Clock
+	store    Store
+	balance  *sim.Balance
+	clock    Clock
+	registry *metrics.Registry
 
 	mu    sync.Mutex
 	locks map[ID]*sync.Mutex
 }
 
 // NewSessions builds the sessions on top of the store, the balance and the clock.
-func NewSessions(store Store, balance *sim.Balance, clock Clock) *Sessions {
-	return &Sessions{store: store, balance: balance, clock: clock, locks: make(map[ID]*sync.Mutex)}
+func NewSessions(store Store, balance *sim.Balance, clock Clock, registry *metrics.Registry) *Sessions {
+	registry.Describe(eventsTotal, "Events emitted by the simulation, by kind.")
+	registry.Describe(rejectedTotal, "Actions the simulation refused, by reason.")
+	registry.Describe(truncatedTotal, "Advances that hit the step budget before catching up.")
+	registry.Describe(advanceDuration, "Time spent advancing the simulation.")
+
+	return &Sessions{
+		store:    store,
+		balance:  balance,
+		clock:    clock,
+		locks:    make(map[ID]*sync.Mutex),
+		registry: registry,
+	}
 }
+
+// Names of the business series. Never labelled by farm or player: that is unbounded.
+const (
+	eventsTotal     = "farm_events_total"
+	rejectedTotal   = "farm_actions_rejected_total"
+	truncatedTotal  = "farm_advance_truncated_total"
+	advanceDuration = "farm_advance_duration_seconds"
+)
 
 // Snapshot is the already advanced farm, with a nil Outcome when there was no action.
 type Snapshot struct {
@@ -107,10 +128,14 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 		actions = append(actions, scheduled)
 	}
 
+	started := s.clock()
+
 	out, err := sim.Advance(sim.Input{State: f.State, Until: now, Balance: s.balance, Actions: actions})
 	if err != nil {
 		return Snapshot{}, err
 	}
+
+	s.record(ctx, out, s.clock().Sub(started))
 
 	var recorded *sim.Outcome
 	if len(out.Outcomes) > 0 {
@@ -139,6 +164,30 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 	)
 
 	return s.snapshot(ctx, f, outcome)
+}
+
+// record turns what the simulation returned into series. The events are already stored by
+// the slice, so only the irreversible ones are worth a log line as well.
+func (s *Sessions) record(ctx context.Context, out sim.Output, elapsed time.Duration) {
+	s.registry.Observe(advanceDuration, elapsed.Seconds())
+
+	if out.Truncated {
+		s.registry.Count(truncatedTotal)
+		logging.FromContext(ctx).WarnContext(ctx, "advance truncated",
+			slog.Int64("tick", int64(out.State.Tick)),
+			slog.Int("events", len(out.Events)),
+		)
+	}
+
+	for i := range out.Events {
+		s.registry.Count(eventsTotal, metrics.Label{Name: "kind", Value: out.Events[i].Kind.String()})
+	}
+
+	for i := range out.Outcomes {
+		if reason := out.Outcomes[i].Reason; reason != sim.RejectNone {
+			s.registry.Count(rejectedTotal, metrics.Label{Name: "reason", Value: reason.String()})
+		}
+	}
 }
 
 func (s *Sessions) ensure(ctx context.Context, playerID uuid.UUID) (Farm, error) {

@@ -13,6 +13,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 
 	"github.com/Joaquimgmess/tilapou/internal/platform/httpx"
+	"github.com/Joaquimgmess/tilapou/internal/platform/metrics"
 )
 
 type echoBody struct {
@@ -31,7 +32,7 @@ func newServer(t *testing.T, ready func(ctx context.Context) error) http.Handler
 	t.Helper()
 
 	logger := slog.New(slog.DiscardHandler)
-	router, api := httpx.NewAPI(logger, "test", "1.0.0", "/v1", time.Second,
+	router, api := httpx.NewAPI(logger, metrics.NewRegistry(), "test", "1.0.0", "/v1", time.Second,
 		httpx.WithErrorDocs(errorDocs))
 	httpx.RegisterHealth(router, ready)
 
@@ -215,7 +216,7 @@ func TestPanicReturnsProblemAndIsLogged(t *testing.T) {
 
 	var logged strings.Builder
 	logger := slog.New(slog.NewJSONHandler(&logged, nil))
-	router, api := httpx.NewAPI(logger, "t", "1.0.0", "/v1", time.Second, httpx.WithErrorDocs(errorDocs))
+	router, api := httpx.NewAPI(logger, metrics.NewRegistry(), "t", "1.0.0", "/v1", time.Second, httpx.WithErrorDocs(errorDocs))
 	huma.Register(api, huma.Operation{OperationID: "boom", Method: http.MethodGet, Path: "/boom"},
 		func(context.Context, *struct{}) (*struct{}, error) { panic("boom") })
 
@@ -259,7 +260,7 @@ func TestHandlerErrorsCarryTypeAndInstance(t *testing.T) {
 	t.Parallel()
 
 	logger := slog.New(slog.DiscardHandler)
-	router, api := httpx.NewAPI(logger, "t", "1.0.0", "/v1", time.Second,
+	router, api := httpx.NewAPI(logger, metrics.NewRegistry(), "t", "1.0.0", "/v1", time.Second,
 		httpx.WithErrorDocs(errorDocs))
 	huma.Register(api, huma.Operation{OperationID: "missing", Method: http.MethodGet, Path: "/missing"},
 		func(context.Context, *struct{}) (*struct{}, error) {

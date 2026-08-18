@@ -4,6 +4,7 @@ package httpx
 import (
 	"log/slog"
 	"net/http"
+	"strconv"
 	"time"
 
 	"github.com/danielgtaylor/huma/v2"
@@ -12,6 +13,7 @@ import (
 	"github.com/go-chi/chi/v5/middleware"
 
 	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/metrics"
 )
 
 const (
@@ -43,6 +45,7 @@ func WithErrorDocs(url string) Option {
 // group mounted under prefix. Every request is cut off at requestTimeout.
 func NewAPI(
 	logger *slog.Logger,
+	registry *metrics.Registry,
 	title, version, prefix string,
 	requestTimeout time.Duration,
 	opts ...Option,
@@ -52,7 +55,8 @@ func NewAPI(
 		opt(&o)
 	}
 
-	metrics := newMetrics()
+	registry.Describe(httpDuration, "Latency of HTTP requests.")
+
 	problem := problems{docsPrefix: o.errorDocsURL}
 
 	router := chi.NewRouter()
@@ -60,7 +64,7 @@ func NewAPI(
 	router.MethodNotAllowed(problem.methodNotAllowed)
 	router.Use(middleware.RequestID)
 	router.Use(clientIP(o.trustedProxies))
-	router.Use(observe(logger, metrics))
+	router.Use(observe(logger, registry))
 	router.Use(problem.recoverer)
 	router.Use(middleware.Timeout(requestTimeout))
 	router.Use(middleware.RequestSize(maxRequestBytes))
@@ -71,7 +75,7 @@ func NewAPI(
 	cfg.RejectUnknownQueryParameters = true
 	cfg.Transformers = append(cfg.Transformers, problem.transformer)
 
-	router.Get("/metrics", metrics.Handler())
+	router.Get("/metrics", renderMetrics(registry))
 
 	api := humachi.New(router, cfg)
 
@@ -85,7 +89,7 @@ func clientIP(trustedProxies int) func(http.Handler) http.Handler {
 	return middleware.ClientIPFromXFFTrustedProxies(trustedProxies)
 }
 
-func observe(logger *slog.Logger, m *metrics) func(http.Handler) http.Handler {
+func observe(logger *slog.Logger, registry *metrics.Registry) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			reqLogger := logger.With(
@@ -101,7 +105,11 @@ func observe(logger *slog.Logger, m *metrics) func(http.Handler) http.Handler {
 			elapsed := time.Since(start)
 			route := routePattern(r)
 
-			m.observe(r.Method, route, ww.Status(), elapsed)
+			registry.Observe(httpDuration, elapsed.Seconds(),
+				metrics.Label{Name: "method", Value: r.Method},
+				metrics.Label{Name: "route", Value: route},
+				metrics.Label{Name: "status", Value: strconv.Itoa(ww.Status())},
+			)
 
 			reqLogger.InfoContext(ctx, "http request",
 				slog.String("method", r.Method),

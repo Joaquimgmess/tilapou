@@ -20,6 +20,7 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/platform/config"
 	"github.com/Joaquimgmess/tilapou/internal/platform/httpx"
 	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
+	"github.com/Joaquimgmess/tilapou/internal/platform/metrics"
 	"github.com/Joaquimgmess/tilapou/internal/platform/postgres"
 )
 
@@ -74,9 +75,10 @@ func runServe(args []string) error {
 		return fmt.Errorf("player local invalido: %w", err)
 	}
 
-	sessions := farm.NewSessions(farm.NewDB(pool, cfg.DBTimeout), &rules, time.Now)
+	registry := metrics.NewRegistry()
+	sessions := farm.NewSessions(farm.NewDB(pool, cfg.DBTimeout), &rules, time.Now, registry)
 
-	router, api := httpx.NewAPI(logger, "Tilapou", serviceVersion, "/v1", cfg.RequestTimeout,
+	router, api := httpx.NewAPI(logger, registry, "Tilapou", serviceVersion, "/v1", cfg.RequestTimeout,
 		httpx.WithTrustedProxies(int(cfg.TrustedProxies)),
 		httpx.WithErrorDocs(errorDocsPrefix),
 	)
