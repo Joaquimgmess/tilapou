@@ -335,6 +335,26 @@ func renderStocking(tank client.Tank) string {
 	return line + okStyle.Render("  no azul")
 }
 
+// jumpKeyHint anuncia o pulo so quando ele faz alguma coisa: a tecla nasce escondida
+// dentro do texto do conselho, e um jogador com um tanque so nunca a encontraria.
+func (m Model) jumpKeyHint() string {
+	target := adviceTank(m.snapshot)
+	if target == 0 || target == m.tankID() {
+		return ""
+	}
+
+	return "  " + jumpKey + " alerta"
+}
+
+// keyBar is the row of keys at the bottom of whichever screen is showing.
+func (m Model) keyBar() string {
+	if m.mode == ModeGameBoy {
+		return m.renderGameBoyKeys()
+	}
+
+	return m.renderKeys()
+}
+
 func tankMargin(tank client.Tank) int64 {
 	var total int64
 	for i := range tank.Batches {
@@ -402,11 +422,12 @@ func viability(ratio, viable int64) string {
 
 func (m Model) renderKeys() string {
 	keys := "j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  tab mapa  q sair"
+	keys += m.jumpKeyHint()
 	switch {
 	case m.menu != nil:
 		keys = menuKeys
 	case m.effectiveWidth() < wideWidth:
-		keys = "j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair"
+		keys = "j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair" + m.jumpKeyHint()
 	}
 
 	return keyStyle.Width(m.effectiveWidth()).Render(keys)

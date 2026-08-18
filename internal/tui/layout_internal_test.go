@@ -162,3 +162,38 @@ func TestOTanqueVazioContinuaSelecionavel(t *testing.T) {
 		t.Error("a linha do tanque vazio devolveu um lote")
 	}
 }
+
+func TestATeclaDoAlertaApareceNaBarraQuandoServe(t *testing.T) {
+	t.Parallel()
+
+	comAlerta := sizedSnapshot()
+	comAlerta.Tanks[1].Batches[0].Sick = true
+
+	// Fazenda saudavel: o conselho vira de fazenda e nao aponta tanque nenhum.
+	semAlerta := sizedSnapshot()
+	semAlerta.Tanks = semAlerta.Tanks[:1]
+	semAlerta.Tanks[0].OxygenUgL, semAlerta.Tanks[0].FeedKg, semAlerta.Tanks[0].ServedFor = 6_000, 400, 240
+	semAlerta.Tanks[0].BreakEven = 100
+
+	for _, mode := range []Mode{ModeGameBoy, ModeDashboard} {
+		m := New(nil)
+		m.snapshot = comAlerta
+		m.width, m.height, m.mode = 120, 40, mode
+		m.selected = 0
+
+		if !strings.Contains(ansi.Strip(m.keyBar()), jumpKey+" alerta") {
+			t.Errorf("modo %d: o alerta fala de outro tanque e a barra nao anuncia o %q: %q",
+				mode, jumpKey, ansi.Strip(m.keyBar()))
+		}
+		if got := lipgloss.Width(m.render()); got > m.width {
+			t.Errorf("modo %d: a barra com o %q estourou a largura, %d de %d", mode, jumpKey, got, m.width)
+		}
+
+		m.snapshot = semAlerta
+		m.selected = 0
+
+		if strings.Contains(ansi.Strip(m.keyBar()), jumpKey+" alerta") {
+			t.Errorf("modo %d: a barra anuncia o %q sem alerta de outro tanque", mode, jumpKey)
+		}
+	}
+}

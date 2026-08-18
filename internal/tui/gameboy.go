@@ -228,6 +228,12 @@ func (m Model) renderGameBoyKeys() string {
 		return screenStyle.Render(menuKeys)
 	}
 
+	// A barra do mapa cabe em 88 colunas contadas: com o alerta em outro tanque, o pulo
+	// entra no lugar do que o jogador descobre sozinho.
+	if m.jumpKeyHint() != "" {
+		return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despesca  . alerta  q sai")
+	}
+
 	return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despescar  tab numeros  q sai")
 }
 
