@@ -148,7 +148,7 @@ func (a avatar) ahead() (x, y int) {
 		return a.x + 1, a.y
 	}
 
-	return a.x + 1, a.y
+	return a.x, a.y
 }
 
 func renderMap(m farmMap, a avatar, snapshot client.Snapshot, frame int) string {
