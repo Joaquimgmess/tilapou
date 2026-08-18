@@ -203,12 +203,14 @@ caa_referencia = 1.6
 manutencao_pct_biomassa_dia = 0.35
 custo_energia_aerador_centavos_hora = 120
 
-# Escada classica: custo base * 1.15^n. Marcos de x2 acumulativos.
+# Escada classica: custo base * fator^n sobre o total de tanques. A 1.15 o 30o tanque
+# custa 66x a base e a fazenda para de crescer em ~25 dos 64 que o estado reserva; a 1.12
+# custa 30x. A receita cresce linear com o numero de tanques, o custo cresce exponencial.
 [progressao]
-fator_custo = 1.15
+fator_custo = 1.12
 prestigio_divisor = 1000000
 prestigio_bonus_por_unidade_pct = 5.0
-contrato_bonus_pct = 10.0
+contrato_bonus_pct = 25.0
 reinicio_caixa_centavos = 50000
 reinicio_peixes = 2000
 reinicio_racao_kg = 200
@@ -227,4 +229,4 @@ nome = "tecnico"
 custo_centavos = 2500000
 [[automacao]]
 nome = "contrato"
-custo_centavos = 6000000
+custo_centavos = 4000000

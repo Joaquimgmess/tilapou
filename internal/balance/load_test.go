@@ -24,7 +24,7 @@ func TestLoadQuantizesTheShippedFile(t *testing.T) {
 		"peso maximo em ug":   {int64(b.Growth.MaxMass), 1_100_000_000},
 		"peso de abate em ug": {int64(b.Growth.HarvestMass), 600_000_000},
 		"od critico":          {int64(b.Water.Critical), 2_000},
-		"fator de custo":      {int64(b.Progression.CostFactorPPM), 1_150_000},
+		"fator de custo":      {int64(b.Progression.CostFactorPPM), 1_120_000},
 		"passos de racao":     {int64(b.Ration.Len), 5},
 	}
 
