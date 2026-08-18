@@ -493,6 +493,7 @@ func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {
 
 	act := action
 	act.Key = m.nextKey
+	act.SeenTick = m.snapshot.Tick
 
 	said := m.say(status)
 	said.nextKey = m.nextKey + 1

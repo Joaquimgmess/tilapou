@@ -2,7 +2,25 @@ package sim
 
 // apply runs the action and, when it is refused, says how many cents would settle it:
 // the price for what needs cash, and the room left in the limit for RejectCreditLimit.
+// staleViewTicks e quanto o mundo pode andar entre o jogador ver a tela e a acao chegar. Um
+// pedido represado volta minutos depois e seria aplicado contra uma fazenda que ja mudou:
+// melhor recusar visivelmente do que aplicar em silencio uma decisao de outro mundo.
+const staleViewTicks = Tick(5)
+
 func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
+	if a.stale(at) {
+		return RejectStaleView, 0
+	}
+
+	return dispatch(s, b, a, at, sink)
+}
+
+// stale reporta se a tela que o jogador viu ja tinha morrido quando a acao chegou.
+func (a Action) stale(at Tick) bool {
+	return a.SeenAt > 0 && at-a.SeenAt > staleViewTicks
+}
+
+func dispatch(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
 	switch a.Kind {
 	case ActionBuyTank:
 		return applyBuyTank(s, b, a, at, sink)

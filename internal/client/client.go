@@ -172,6 +172,9 @@ type Action struct {
 	TankKind string `json:"tank_kind,omitempty"`
 	Auto     string `json:"auto,omitempty"`
 	Amount   int64  `json:"amount,omitempty"`
+	// SeenTick e o tick que estava na tela quando o jogador decidiu: o daemon recusa a acao
+	// que chega contra um mundo que ja andou demais.
+	SeenTick int64 `json:"seen_tick,omitempty"`
 }
 
 // Client talks to the tilapou daemon over HTTP.

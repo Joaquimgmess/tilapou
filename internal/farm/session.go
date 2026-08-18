@@ -3,6 +3,7 @@ package farm
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -41,6 +42,7 @@ func NewSessions(store Store, balance *sim.Balance, clock Clock, registry *metri
 	registry.Describe(rejectedTotal, "Actions the simulation refused, by reason.")
 	registry.Describe(truncatedTotal, "Advances that hit the step budget before catching up.")
 	registry.Describe(advanceDuration, "Time spent advancing the simulation.")
+	registry.Describe(abandonedTotal, "Requests the client gave up on while queued behind the farm lock.")
 
 	return &Sessions{
 		store:    store,
@@ -58,6 +60,7 @@ const (
 	rejectedTotal   = "farm_actions_rejected_total"
 	truncatedTotal  = "farm_advance_truncated_total"
 	advanceDuration = "farm_advance_duration_seconds"
+	abandonedTotal  = "farm_requests_abandoned_total"
 )
 
 // Snapshot is the already advanced farm, with a nil Outcome when there was no action.
@@ -101,6 +104,14 @@ func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim
 	lock := s.lockFor(f.ID)
 	lock.Lock()
 	defer lock.Unlock()
+
+	// A espera de verdade e a fila do lock, e nao a simulacao. Aqui nada foi tocado ainda,
+	// entao desistir e barato; depois que a simulacao decide, ja nao e.
+	if err := ctx.Err(); err != nil {
+		s.registry.Count(abandonedTotal)
+
+		return Snapshot{}, fmt.Errorf("farm: cliente desistiu na fila do tranco: %w", err)
+	}
 
 	for range 2 {
 		snap, attemptErr := s.attempt(ctx, playerID, action)
@@ -168,7 +179,10 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 	f.State = out.State
 
 	if changed {
-		if err := s.store.Save(ctx, f, out.Events, recorded); err != nil {
+		// A decisao ja existe: descarta-la porque o cliente desistiu joga fora o resultado e
+		// a chave de idempotencia junto, e o proximo pedido re-simula num tick diferente e
+		// pode decidir outra coisa. Gravar deixa o replay devolver o que o jogador pediu.
+		if err := s.store.Save(context.WithoutCancel(ctx), f, out.Events, recorded); err != nil {
 			return Snapshot{}, err
 		}
 		f.Revision++

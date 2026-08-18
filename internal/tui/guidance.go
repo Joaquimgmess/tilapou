@@ -435,7 +435,27 @@ func affords(s client.Snapshot, t *client.Tank, index int) bool {
 	return s.CashCents >= t.Upgrades[index].CostCents
 }
 
+// rejectMessageMore continua a tabela de rejectMessage: uma so estourava o limite de galhos.
+func rejectMessageMore(reason string) (string, bool) {
+	switch reason {
+	case "stale_view":
+		return "a tela ja estava velha quando isso chegou: olhe os numeros e decida de novo", true
+	case "too_dense":
+		return "densidade estourada: esse tanque nao suporta tanto peixe", true
+	case "already_owned":
+		return "esse tanque ja tem essa automacao", true
+	case "not_enough_lifetime":
+		return "ainda nao da para tilapar: fature mais primeiro", true
+	}
+
+	return "", false
+}
+
 func rejectMessage(reason string) (string, bool) {
+	if message, ok := rejectMessageMore(reason); ok {
+		return message, true
+	}
+
 	switch reason {
 	case "not_broke":
 		return "a fazenda ainda tem como se virar", true
@@ -457,12 +477,6 @@ func rejectMessage(reason string) (string, bool) {
 		return "a fazenda nao cabe mais tanques", true
 	case "bad_amount":
 		return "quantidade invalida", true
-	case "too_dense":
-		return "densidade estourada: esse tanque nao suporta tanto peixe", true
-	case "already_owned":
-		return "esse tanque ja tem essa automacao", true
-	case "not_enough_lifetime":
-		return "ainda nao da para tilapar: fature mais primeiro", true
 	case "unknown_kind":
 		return "acao desconhecida", true
 	}

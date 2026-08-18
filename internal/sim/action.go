@@ -90,6 +90,7 @@ const (
 	RejectNoDebt
 	RejectNotBroke
 	RejectNothingSick
+	RejectStaleView
 	rejectReasonCount
 )
 
@@ -110,6 +111,7 @@ var rejectReasonNames = [...]string{
 	RejectNoDebt:            "no_debt",
 	RejectNotBroke:          "not_broke",
 	RejectNothingSick:       "nothing_sick",
+	RejectStaleView:         "stale_view",
 }
 
 // RejectReasonNamed returns RejectNone and false for an unknown name.
@@ -137,9 +139,12 @@ func (r RejectReason) String() string {
 // Action is a request scheduled for tick At; the remaining fields are only valid
 // according to Kind, and Amount comes in fish, micrograms or cents.
 type Action struct {
-	ID       ActionID
-	Kind     ActionKind
-	At       Tick
+	ID   ActionID
+	Kind ActionKind
+	At   Tick
+	// SeenAt e o tick que o jogador tinha na tela quando decidiu. Zero quer dizer que o
+	// cliente nao informou, e ai a idade nao e cobrada.
+	SeenAt   Tick
 	Tank     TankID
 	Batch    BatchID
 	TankKind TankKind
