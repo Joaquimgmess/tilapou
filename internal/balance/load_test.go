@@ -199,3 +199,42 @@ func TestEmprestimoOferecidoCobreUmSacoDeRacao(t *testing.T) {
 			loan, int64(loan)+int64(s.Cash), sack)
 	}
 }
+
+// Apertar a tecla de povoar repetidas vezes nao pode encher o tanque sozinho: cada aperto
+// tem a bencao do jogo, e o custo fixo do ciclo que a primeira sugestao reservou evapora.
+// Quem enche o tanque e o jogador que tem caixa para isso, e nao a repeticao.
+func TestApertarPovoarDeNovoNaoLotaOTanqueSozinho(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	for _, cash := range []int64{500_000, 1_000_000, 2_183_221, 4_000_000} {
+		for _, debt := range []sim.Coins{0, b.Credit.MaxPrincipal / 2, b.Credit.MaxPrincipal} {
+			s := sim.NewState(1, 0, 0)
+			s.Cash, s.Debt = sim.Coins(cash), debt
+
+			id, ok := s.AddTank(&b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+			if !ok {
+				t.Fatal("sem tanque")
+			}
+
+			capacity := s.Tanks[0].Capacity(&b)
+
+			first, perFish := s.StockAdvice(&b, id)
+			if first <= 0 {
+				continue
+			}
+
+			s.StockTank(id, first, b.Growth.FingerlingMass, sim.Coins(int64(first))*perFish)
+			s.Cash -= sim.Coins(int64(first)) * perFish
+
+			if again, _ := s.StockAdvice(&b, id); again > 0 {
+				t.Errorf("caixa %d divida %d: povoou %d de %d e o conselho ainda manda povoar mais %d",
+					cash, debt, first, capacity, again)
+			}
+		}
+	}
+}
