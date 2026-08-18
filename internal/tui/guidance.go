@@ -81,10 +81,40 @@ func current(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
+// creditRoom reports whether any tank can still borrow: with the limit maxed out, telling
+// the player to take credit points at an option that does nothing.
+func creditRoom(s client.Snapshot) bool {
+	for i := range s.Tanks {
+		if s.Tanks[i].LoanAdvice > 0 {
+			return true
+		}
+	}
+
+	return false
+}
+
+// thinAdvice is the way out when credit is gone: selling part of the batch buys feed for
+// the rest. It returns false when there is no batch big enough to thin.
+func thinAdvice(t *client.Tank) (string, bool) {
+	count := int64(t.BatchFish) * thinPercent / fullPercent
+	if count <= 0 || t.MeanGrams <= 0 || t.PriceKgCents <= 0 {
+		return "", false
+	}
+
+	revenue := count * t.MeanGrams * t.PriceKgCents / gramsPerKg
+
+	return fmt.Sprintf("Sem espaco no credito: raleie o tanque %d com [z] e venda %d peixes de %d g por ~%s",
+		t.ID, count, t.MeanGrams, coins(revenue)), true
+}
+
 func farmGoal(s client.Snapshot) string {
 	tank := s.Tanks[0]
 	if tank.Fish == 0 {
 		if s.CashCents < s.Prices.FingerlingCents*minStock {
+			if !creditRoom(s) {
+				return "Tanque vazio, sem grana e sem credito: so recomecando com [b]"
+			}
+
 			return "Tanque vazio e sem grana para povoar. Pegue um emprestimo com [g]"
 		}
 
@@ -113,6 +143,15 @@ func underStocked(s client.Snapshot) (advice, bool) {
 			return advice{text: fmt.Sprintf(
 				"O tanque %d so paga a manutencao com %d peixes e tem %d. Povoe com [s]",
 				t.ID, t.BreakEven, t.Fish), urgent: true, tank: t.ID, key: "s"}, true
+		}
+
+		if !creditRoom(s) {
+			text, ok := thinAdvice(t)
+			if !ok {
+				continue
+			}
+
+			return advice{text: text, urgent: true, tank: t.ID, key: "z"}, true
 		}
 
 		return advice{text: fmt.Sprintf(
@@ -163,6 +202,15 @@ func shortRunway(s client.Snapshot) (advice, bool) {
 		t := &s.Tanks[i]
 		if t.Fish == 0 || t.Decision.HoldDays <= s.RunwayDays {
 			continue
+		}
+
+		if !creditRoom(s) {
+			text, ok := thinAdvice(t)
+			if !ok {
+				continue
+			}
+
+			return advice{text: text, urgent: true, tank: t.ID, key: "z"}, true
 		}
 
 		return advice{text: fmt.Sprintf(

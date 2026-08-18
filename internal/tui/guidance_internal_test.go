@@ -15,6 +15,8 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
+const blockNoCredit = "no_credit"
+
 var offeredKey = regexp.MustCompile(`\[(\w|\.)\]`)
 
 func adviceCases() map[string]func(client.Snapshot) client.Snapshot {
@@ -172,6 +174,53 @@ func TestTodaAcaoDeTanqueDizEmQualTanqueCaiu(t *testing.T) {
 
 			if !strings.Contains(said, want) {
 				t.Errorf("a tecla %q confirmou com %q, sem dizer %q", key, said, want)
+			}
+		})
+	}
+}
+
+func semCreditoNenhum(s client.Snapshot) client.Snapshot {
+	for i := range s.Tanks {
+		s.Tanks[i].LoanAdvice, s.Tanks[i].LoanBlock = 0, blockNoCredit
+	}
+
+	return s
+}
+
+func TestConselhoNaoMandaPegarCreditoComOLimiteEstourado(t *testing.T) {
+	t.Parallel()
+
+	casos := map[string]func(client.Snapshot) client.Snapshot{
+		"abaixo do break-even": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[0].Fish, s.Tanks[0].BreakEven, s.Tanks[0].StockAdvice = 10, 1_800, 0
+			s.Tanks[1].Fish, s.Tanks[1].BreakEven = 1_400, 100
+
+			return s
+		},
+		"folego menor que o ciclo": func(s client.Snapshot) client.Snapshot {
+			s.RunwayDays = 1
+			s.Tanks[0].Decision.HoldDays = 60
+
+			return s
+		},
+		"tanque vazio e sem grana": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[0].Fish, s.Tanks[0].BatchFish = 0, 0
+			s.Tanks[1].Fish, s.Tanks[1].BatchFish = 0, 0
+			s.CashCents = 0
+
+			return s
+		},
+	}
+
+	for name, mutate := range casos {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := semCreditoNenhum(mutate(tankScopedAdvice(t)))
+
+			text, _ := objective(snap, snap.Tanks[0].ID)
+			if strings.Contains(text, "[g]") {
+				t.Errorf("o conselho manda pegar credito com o limite estourado: %q", text)
 			}
 		})
 	}

@@ -310,8 +310,15 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 func creditItems(s client.Snapshot, t client.Tank) []menuItem {
 	loan := t.LoanAdvice
 
+	// Sem espaco no limite a linha vira o motivo: "Pegar emprestimo de 0,00" e uma opcao
+	// que nunca faz nada, mas sumir com ela deixaria a recusa sem explicacao.
+	label := "Pegar emprestimo de " + coins(loan)
+	if loan <= 0 {
+		label = "Emprestimo indisponivel"
+	}
+
 	items := []menuItem{{
-		label:   "Pegar emprestimo de " + coins(loan),
+		label:   label,
 		hint:    loanHint(t),
 		enabled: loan > 0,
 		status:  "pegando emprestimo",
