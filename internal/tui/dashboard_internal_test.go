@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"charm.land/lipgloss/v2"
+
+	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
 func TestClipToCortaPorColunaENaoPorByte(t *testing.T) {
@@ -53,6 +55,49 @@ func TestAheadOlhaParaOsQuatroLados(t *testing.T) {
 		x, y := a.ahead()
 		if x != want[0] || y != want[1] {
 			t.Errorf("ahead() olhando para %d = (%d,%d), queria (%d,%d)", look, x, y, want[0], want[1])
+		}
+	}
+}
+
+func TestQuemLevaOMarcadorDeMelhorNegocio(t *testing.T) {
+	t.Parallel()
+
+	casos := map[string]struct {
+		hold, sell int64
+		want       bool
+	}{
+		"segurar ganha por um centavo":           {hold: 1_001, sell: 1_000, want: true},
+		"vender ganha por um centavo":            {hold: 1_000, sell: 1_001, want: false},
+		"empate vai para vender agora":           {hold: 1_000, sell: 1_000, want: false},
+		"segurar no vermelho, vender pior ainda": {hold: -100, sell: -500, want: true},
+		"os dois no vermelho, vender menos pior": {hold: -500, sell: -100, want: false},
+	}
+
+	for name, tc := range casos {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			got := holdWins(client.Decision{HoldMargin: tc.hold, SellNowMargin: tc.sell})
+			if got != tc.want {
+				t.Errorf("holdWins(segurar %d, vender %d) = %v, queria %v", tc.hold, tc.sell, got, tc.want)
+			}
+		})
+	}
+}
+
+func TestCustoMaiorDeSegurarNuncaMelhoraOVeredito(t *testing.T) {
+	t.Parallel()
+
+	for hold := int64(-3); hold <= 3; hold++ {
+		for sell := int64(-3); sell <= 3; sell++ {
+			for extra := int64(1); extra <= 5; extra++ {
+				before := client.Decision{HoldMargin: hold, SellNowMargin: sell}
+				after := client.Decision{HoldMargin: hold - extra, SellNowMargin: sell}
+
+				if !holdWins(before) && holdWins(after) {
+					t.Fatalf("segurar %d custando %d a mais passou a ganhar de vender %d", hold, extra, sell)
+				}
+			}
 		}
 	}
 }

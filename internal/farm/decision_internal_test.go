@@ -38,6 +38,11 @@ func checkCoherent(t *testing.T, step string, tv TankView) {
 		}
 	}
 
+	if want := d.HoldCents - tv.CostCents - d.HoldCostCents; d.HoldMargin != want {
+		t.Errorf("%s: hold_margin = %d, mas %d de venda menos %d de custo menos %d de gasto dao %d",
+			step, d.HoldMargin, d.HoldCents, tv.CostCents, d.HoldCostCents, want)
+	}
+
 	kilos := int64(tv.BatchFish) * tv.MeanGrams / gramsPerKilo
 	if want := tv.PriceKgCents * kilos; d.SellNowCents != want {
 		t.Errorf("%s: sell_now_cents = %d, mas %d kg a %d c/kg dao %d",

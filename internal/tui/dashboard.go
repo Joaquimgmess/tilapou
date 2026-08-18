@@ -246,7 +246,7 @@ func (m Model) renderDecision() string {
 
 	if d.HoldToGrams > 0 && d.HoldReached {
 		better := ""
-		if d.HoldMargin > d.SellNowMargin {
+		if holdWins(d) {
 			better = okStyle.Render("  <<")
 		}
 		lines = append(lines,
@@ -294,6 +294,12 @@ func renderStocking(tank client.Tank) string {
 	}
 
 	return line + okStyle.Render("  no azul")
+}
+
+// holdWins says whether holding beats selling now. A tie goes to selling: money today is
+// worth more than the same money after weeks of feeding.
+func holdWins(d client.Decision) bool {
+	return d.HoldMargin > d.SellNowMargin
 }
 
 func (m Model) renderMarket() string {
