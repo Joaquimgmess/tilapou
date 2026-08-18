@@ -314,3 +314,37 @@ func TestMontarAViewNaoSimulaUmCicloPorTanque(t *testing.T) {
 			s.TankCount, took, budget)
 	}
 }
+
+// O zero value de sim.Plans vale "nenhum ciclo fecha", e com ele o peao de despesca vende no
+// peso minimo em vez do peso de melhor margem. Nada no compilador cobra que a sessao encha os
+// planos antes de adiantar a simulacao, entao e cobrado aqui.
+func TestASessaoEnviaOPlanoDeCadaTanqueQueAFazendaTem(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	s := sim.NewState(1, 0, 0)
+	s.Cash = 50_000_000
+
+	owned := []sim.TankKind{sim.TankEarthPond, sim.TankBiofloc}
+	for _, kind := range owned {
+		if _, ok := s.AddTank(&b, kind, b.Tanks[kind].Litres); !ok {
+			t.Fatalf("sem tanque do tipo %s", kind)
+		}
+	}
+
+	sessions := &Sessions{balance: &b, plans: newPlans()}
+
+	got := sessions.planFor(&s, s.Tick)
+	for _, kind := range owned {
+		if got[kind].Days <= 0 {
+			t.Errorf("o tanque %s foi sem plano: o peao vai vender no peso minimo", kind)
+		}
+	}
+	if got[sim.TankNetCage].Days != 0 {
+		t.Error("foi plano de um tipo de tanque que a fazenda nao tem: cada um custa duas simulacoes de ciclo")
+	}
+}

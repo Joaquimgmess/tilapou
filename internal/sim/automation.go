@@ -63,7 +63,7 @@ func (t *Tank) grant(k AutoKind) {
 	t.Upgrades |= 1 << k
 }
 
-func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
+func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink, plans Plans) {
 	if t.Owns(AutoAerator) {
 		t.Aerating = wantsAeration(t, b) && s.Cash > 0
 	}
@@ -74,7 +74,7 @@ func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
 	}
 
 	if t.Owns(AutoHarvester) {
-		harvestReady(s, b, t, tick, sink)
+		harvestReady(s, b, t, tick, sink, plans[t.Kind])
 	}
 }
 
@@ -136,16 +136,19 @@ func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
 // HarvestPoint is where the hired hand sells: the tank's best margin-per-day mass, never
 // below the harvest weight. Selling at the minimum throws away most of the margin in the
 // tanks that grow fastest.
-func HarvestPoint(b *Balance, kind TankKind, tick Tick, zone ZoneOffset) Micrograms {
-	if plan := b.CycleAt(kind, tick, zone); plan.Mass > b.Growth.HarvestMass {
+//
+// O plano vem pronto porque isto roda dentro do tick: calcula-lo aqui custaria duas
+// simulacoes de ciclo por tanque a cada minuto de jogo.
+func HarvestPoint(b *Balance, plan CyclePlan) Micrograms {
+	if plan.Mass > b.Growth.HarvestMass {
 		return plan.Mass
 	}
 
 	return b.Growth.HarvestMass
 }
 
-func harvestReady(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
-	at := HarvestPoint(b, t.Kind, tick, s.Zone)
+func harvestReady(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink, plan CyclePlan) {
+	at := HarvestPoint(b, plan)
 
 	for i := range t.BatchCount {
 		batch := &t.Batches[i]

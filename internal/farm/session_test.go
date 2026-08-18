@@ -2,6 +2,7 @@ package farm_test
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -13,7 +14,10 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
+// O teste dirige dois escritores ao mesmo tempo, entao o dobro precisa aguentar o que o
+// Store de verdade aguenta: sem a trava, o -race pega o fake e nao o codigo sob teste.
 type memoryStore struct {
+	mu       sync.Mutex
 	farm     farm.Farm
 	actions  map[sim.ActionID]sim.Outcome
 	saves    int
@@ -21,16 +25,25 @@ type memoryStore struct {
 }
 
 func (m *memoryStore) ByPlayer(context.Context, uuid.UUID) (farm.Farm, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	return m.farm, nil
 }
 
 func (m *memoryStore) Insert(_ context.Context, f farm.Farm) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.farm = f
 
 	return nil
 }
 
 func (m *memoryStore) Save(_ context.Context, f farm.Farm, _ []sim.Event, outcome *sim.Outcome) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	if err := m.failNext; err != nil {
 		m.failNext = nil
 
@@ -60,6 +73,9 @@ func (*memoryStore) Events(context.Context, farm.ID, int32) ([]farm.StoredEvent,
 }
 
 func (m *memoryStore) AppliedOutcome(_ context.Context, _ farm.ID, key sim.ActionID) (sim.Outcome, bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	out, ok := m.actions[key]
 
 	return out, ok, nil
@@ -292,7 +308,10 @@ func TestAWriteLostToAnotherWriterReplaysWithoutDeadlocking(t *testing.T) {
 		if got.snap.Outcome.ID != 9 {
 			t.Errorf("o replay devolveu o outcome %d, esperado o 9 gravado pelo outro writer", got.snap.Outcome.ID)
 		}
-	case <-time.After(5 * time.Second):
+	// Folgado de caso pensado: o primeiro Act do dia monta o plano do ciclo, que sao duas
+	// simulacoes, e sob -race isso passa de cinco segundos. Aqui o que se cobra e trava, e
+	// nao tempo.
+	case <-time.After(30 * time.Second):
 		t.Fatal("Act travou: o retry pede o mutex da fazenda que ele mesmo ja segura")
 	}
 }

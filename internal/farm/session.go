@@ -29,6 +29,7 @@ type Sessions struct {
 	balance  *sim.Balance
 	clock    Clock
 	registry *metrics.Registry
+	plans    *plans
 
 	mu    sync.Mutex
 	locks map[ID]*sync.Mutex
@@ -47,6 +48,7 @@ func NewSessions(store Store, balance *sim.Balance, clock Clock, registry *metri
 		clock:    clock,
 		locks:    make(map[ID]*sync.Mutex),
 		registry: registry,
+		plans:    newPlans(),
 	}
 }
 
@@ -76,6 +78,18 @@ func (s *Sessions) Sync(ctx context.Context, playerID uuid.UUID) (Snapshot, erro
 // the already recorded result.
 func (s *Sessions) Act(ctx context.Context, playerID uuid.UUID, action sim.Action) (Snapshot, error) {
 	return s.withFarm(ctx, playerID, &action)
+}
+
+// planFor monta o plano de cada tipo de tanque que a fazenda tem. So os que ela tem: cada
+// plano que falta no cache custa duas simulacoes de ciclo.
+func (s *Sessions) planFor(state *sim.State, at sim.Tick) sim.Plans {
+	var out sim.Plans
+	for i := range state.TankCount {
+		kind := state.Tanks[i].Kind
+		out[kind] = s.plans.at(s.balance, kind, at, state.Zone)
+	}
+
+	return out
 }
 
 func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim.Action) (Snapshot, error) {
@@ -130,7 +144,10 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 
 	started := s.clock()
 
-	out, err := sim.Advance(sim.Input{State: f.State, Until: now, Balance: s.balance, Actions: actions})
+	out, err := sim.Advance(sim.Input{
+		State: f.State, Until: now, Balance: s.balance, Actions: actions,
+		Plans: s.planFor(&f.State, now),
+	})
 	if err != nil {
 		return Snapshot{}, err
 	}

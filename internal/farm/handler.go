@@ -201,7 +201,9 @@ type actionInput struct {
 // RegisterRoutes publishes GET /farm and POST /farm/actions, which return the
 // already advanced snapshot.
 func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.Balance) {
-	p := newPlans()
+	// O mesmo cache que a sessao usa para adiantar a simulacao: dois caches pagariam duas
+	// vezes a primeira simulacao de cada dia.
+	p := sessions.plans
 
 	huma.Register(api, huma.Operation{
 		OperationID: "get-farm",

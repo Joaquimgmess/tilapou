@@ -1,12 +1,20 @@
 package sim
 
+// Plans carries one cycle plan per tank kind, indexed by TankKind.
+type Plans [tankKindCount]CyclePlan
+
 // Input starts from State and runs until Until applying Actions sorted by tick.
 // Budget limits the work per call; if it is not positive, nothing is truncated.
+//
+// Plans e o plano de ciclo de cada tipo de tanque, e quem orquestra e que enche: monta-lo
+// custa duas simulacoes de ciclo, alto demais para refazer dentro do tick. O zero value vale
+// "nenhum ciclo fecha", e ai o peao de despesca vende no peso minimo.
 type Input struct {
 	State   State
 	Until   Tick
 	Balance *Balance
 	Actions []Action
+	Plans   Plans
 	Budget  int64
 }
 
@@ -73,7 +81,7 @@ func Advance(in Input) (Output, error) {
 		due, pending = actionsDue(pending, tick)
 		outcomes = applyDue(&state, in.Balance, due, tick, sink, outcomes)
 
-		step(&state, in.Balance, tick, sink)
+		step(&state, in.Balance, tick, sink, in.Plans)
 		closeWindows(&state, tick, sink)
 	}
 

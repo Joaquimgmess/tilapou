@@ -16,7 +16,7 @@ func massFromRoot(root int64) Micrograms {
 	return Micrograms(mulDivFloor(root*root, root, rootCubeUnit))
 }
 
-func step(s *State, b *Balance, tick Tick, sink *eventSink) {
+func step(s *State, b *Balance, tick Tick, sink *eventSink, plans Plans) {
 	accrueInterest(s, b)
 
 	if bankrupt(s, b, tick, sink) {
@@ -35,7 +35,7 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 		}
 
 		t.Oxygen = oxygenAt(b, t, tick, s.Zone)
-		automate(s, b, t, tick, sink)
+		automate(s, b, t, tick, sink, plans)
 		payEnergy(s, b, t)
 		chargeUpkeep(s, b, t)
 

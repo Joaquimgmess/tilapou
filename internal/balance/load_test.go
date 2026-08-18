@@ -2,6 +2,7 @@ package balance_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Joaquimgmess/tilapou/internal/balance"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
@@ -150,7 +151,7 @@ func TestOPeaoVendeNoPontoDeMargemDeCadaTanque(t *testing.T) {
 		sim.TankEarthPond, sim.TankNetCage, sim.TankBiofloc, sim.TankRecirculation,
 	} {
 		plan := b.CycleAt(kind, 0, 0)
-		point := sim.HarvestPoint(&b, kind, 0, 0)
+		point := sim.HarvestPoint(&b, plan)
 
 		if point < b.Growth.HarvestMass {
 			t.Errorf("%s: o peao venderia a %d g, antes do peso de abate", kind, point.Grams())
@@ -330,4 +331,39 @@ func cycleProfit(t *testing.T, b *sim.Balance, fish sim.FishCount, seed sim.Seed
 
 func mulKg(micrograms, perKg int64) int64 {
 	return micrograms / int64(sim.MicrogramsPerKilogram) * perKg
+}
+
+// O peao de despesca decide a que peso vender, e esse peso sai de um plano de ciclo: duas
+// simulacoes de ate 600 dias. Se ele refizer esse plano a cada tick, um dia de jogo custa
+// mais que a fazenda inteira, e o Advance deixa de caber numa requisicao.
+func TestOPeaoDeDespescaNaoRefazOPlanoACadaTick(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	s := sim.NewState(1, 0, 0)
+	s.Cash = 50_000_000
+
+	id, ok := s.AddTank(&b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	s.StockTank(id, 500, b.Growth.FingerlingMass, 40_000)
+	s.SeedOxygen(&b)
+
+	s.Tanks[0].Upgrades = 1<<sim.AutoFeeder | 1<<sim.AutoHarvester
+
+	start := time.Now()
+	if _, advErr := sim.Advance(sim.Input{State: s, Until: sim.TicksPerDay, Balance: &b}); advErr != nil {
+		t.Fatal(advErr)
+	}
+
+	const budget = 200 * time.Millisecond
+	if took := time.Since(start); took > budget {
+		t.Errorf("um dia com o peao de despesca levou %s, acima de %s: o plano esta sendo refeito dentro do tick",
+			took, budget)
+	}
 }
