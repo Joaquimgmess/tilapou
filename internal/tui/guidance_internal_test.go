@@ -274,10 +274,11 @@ func TestAcontecimentoNovoVeioParaATela(t *testing.T) {
 		event client.Event
 		want  string
 	}{
-		"falencia":   {event: client.Event{Seq: 9, Kind: "bankrupt", CashCents: 4_500_000}, want: "quebrou"},
-		"doenca":     {event: client.Event{Seq: 9, Kind: "disease", Tank: 2}, want: "tanque 2"},
-		"mortandade": {event: client.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 449}, want: "449"},
-		"tilapada":   {event: client.Event{Seq: 9, Kind: "prestiged"}, want: "tilap"},
+		"falencia":       {event: client.Event{Seq: 9, Kind: "bankrupt", CashCents: 4_500_000}, want: "quebrou"},
+		"doenca":         {event: client.Event{Seq: 9, Kind: "disease", Tank: 2}, want: "tanque 2"},
+		"mortandade":     {event: client.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 449}, want: "449 peixes"},
+		"morte de um so": {event: client.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 1}, want: "1 peixe do tanque 1 morreu"},
+		"tilapada":       {event: client.Event{Seq: 9, Kind: "prestiged"}, want: "tilap"},
 	}
 
 	for name, tc := range casos {
@@ -372,5 +373,46 @@ func TestConfirmacaoSobreviveAoProximoPasso(t *testing.T) {
 				t.Errorf("apertar %q no mesmo quadro apagou a confirmacao %q, sobrou %q", key, said, got)
 			}
 		})
+	}
+}
+
+func TestOAvisoEhDoAcontecimentoMaisNovo(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	// Como chega da API: do mais novo para o mais velho, e a fome enche o historico.
+	snap.Events = []client.Event{
+		{Seq: 12, Kind: "disease", Tank: 2},
+		{Seq: 11, Kind: "starvation_deaths", Tank: 1, Fish: 3},
+		{Seq: 10, Kind: "starvation_deaths", Tank: 1, Fish: 2},
+	}
+
+	told, ok := headline(snap, 9)
+	if !ok {
+		t.Fatal("nenhum acontecimento virou aviso")
+	}
+	if !strings.Contains(told, "Surto") {
+		t.Errorf("o aviso foi %q: o surto ficou escondido atras da fome mais velha", told)
+	}
+}
+
+func TestOSurtoNaoSeAfogaNaEnxurradaDeFome(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	snap.Events = []client.Event{{Seq: 500, Kind: "disease", Tank: 2}}
+
+	// A fome emite uma linha por tick e enterra o surto que veio antes.
+	for seq := uint64(499); seq > 400; seq-- {
+		snap.Events = append([]client.Event{{Seq: seq + 100, Kind: "starvation_deaths", Tank: 1, Fish: 1}},
+			snap.Events...)
+	}
+
+	told, ok := headline(snap, 400)
+	if !ok {
+		t.Fatal("nenhum acontecimento virou aviso")
+	}
+	if !strings.Contains(told, "Surto") {
+		t.Errorf("o aviso foi %q: o surto que decide o lote perdeu para a enesima linha de fome", told)
 	}
 }

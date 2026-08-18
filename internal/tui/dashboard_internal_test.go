@@ -80,6 +80,13 @@ func TestQuemLevaOMarcadorDeMelhorNegocio(t *testing.T) {
 		"ganho pequeno, mas em poucos dias": {
 			hold: 1_700_000, sell: 1_602_698, holdDays: 10, cycleDays: 185, want: true,
 		},
+		// Com as duas no vermelho, comparar perda por dia elegia a perda mais lenta.
+		"os dois no vermelho, segurar perde mais": {
+			hold: -131_760, sell: -104_019, holdDays: 104, cycleDays: 196, want: false,
+		},
+		"os dois no vermelho, segurar perde menos": {
+			hold: -104_019, sell: -131_760, holdDays: 104, cycleDays: 196, want: true,
+		},
 	}
 
 	for name, tc := range casos {

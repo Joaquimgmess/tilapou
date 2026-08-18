@@ -28,18 +28,66 @@ type advice struct {
 // what the farm did while nobody was watching, and without this they only ever existed in
 // the database: the farm could go bankrupt and the screen would say nothing.
 func headline(s client.Snapshot, seen uint64) (string, bool) {
+	var (
+		pick *client.Event
+		best int
+	)
+
 	for i := range s.Events {
 		e := &s.Events[i]
 		if e.Seq <= seen {
 			continue
 		}
 
-		if text, ok := eventHeadline(e); ok {
-			return text, true
+		// Por peso, e nao por recencia: a fome emite uma linha por tick e soterraria o
+		// surto ou a falencia que decidem o lote.
+		if weight := eventWeight(e.Kind); weight > best {
+			pick, best = e, weight
 		}
 	}
 
-	return "", false
+	if pick == nil {
+		return "", false
+	}
+
+	return eventHeadline(pick)
+}
+
+// How much an event deserves the one line the screen has for it.
+const (
+	weightNone = iota
+	weightLoss
+	weightThreat
+	weightTurningPoint
+)
+
+func eventWeight(kind string) int {
+	switch kind {
+	case "bankrupt", "prestiged", "restarted":
+		return weightTurningPoint
+	case "disease", "disease_deaths":
+		return weightThreat
+	case "starvation_deaths", "hypoxia_deaths", "feed_exhausted":
+		return weightLoss
+	}
+
+	return weightNone
+}
+
+func fishCount(fish int32) string {
+	if fish == 1 {
+		return "1 peixe"
+	}
+
+	return fmt.Sprintf("%d peixes", fish)
+}
+
+func died(fish int32) string {
+	if fish == 1 {
+		return "morreu"
+	}
+
+	return "morreram"
 }
 
 // newestEvent is the highest sequence the player has now been shown.
@@ -63,11 +111,11 @@ func eventHeadline(e *client.Event) (string, bool) {
 	case "disease":
 		return fmt.Sprintf("Surto de doenca no tanque %d: trate com [z] ou aceite as perdas", e.Tank), true
 	case "disease_deaths":
-		return fmt.Sprintf("A doenca matou %d peixes no tanque %d", e.Fish, e.Tank), true
+		return fmt.Sprintf("A doenca matou %s no tanque %d", fishCount(e.Fish), e.Tank), true
 	case "starvation_deaths":
-		return fmt.Sprintf("%d peixes do tanque %d morreram de fome", e.Fish, e.Tank), true
+		return fmt.Sprintf("%s do tanque %d %s de fome", fishCount(e.Fish), e.Tank, died(e.Fish)), true
 	case "hypoxia_deaths":
-		return fmt.Sprintf("%d peixes do tanque %d morreram sem oxigenio", e.Fish, e.Tank), true
+		return fmt.Sprintf("%s do tanque %d %s sem oxigenio", fishCount(e.Fish), e.Tank, died(e.Fish)), true
 	case "feed_exhausted":
 		return fmt.Sprintf("A racao do tanque %d acabou", e.Tank), true
 	}
