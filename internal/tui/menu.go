@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
@@ -47,7 +48,7 @@ func (m *menu) current() (menuItem, bool) {
 
 // tankMenu acts on one batch of the tank: the actions that carry a batch id use it, and the
 // tank-wide ones ignore it.
-func tankMenu(s client.Snapshot, t client.Tank, batch client.Batch) *menu {
+func tankMenu(s api.Snapshot, t api.Tank, batch api.Batch) *menu {
 	items := make([]menuItem, 0, len(t.Upgrades)+fixedTankItems)
 	items = append(items,
 		feedItem(t),
@@ -73,7 +74,7 @@ func tankMenu(s client.Snapshot, t client.Tank, batch client.Batch) *menu {
 	return &menu{title: fmt.Sprintf("TANQUE %d", t.ID), items: items}
 }
 
-func feedItem(t client.Tank) menuItem {
+func feedItem(t api.Tank) menuItem {
 	item := menuItem{
 		label:   "Servir o trato",
 		enabled: t.FeedKg > 0 && t.Fish > 0,
@@ -95,7 +96,7 @@ func feedItem(t client.Tank) menuItem {
 	return item
 }
 
-func buyFeedItem(s client.Snapshot, t client.Tank) menuItem {
+func buyFeedItem(s api.Snapshot, t api.Tank) menuItem {
 	price := feedPurchaseKg * s.Prices.FeedKgCents
 
 	item := menuItem{
@@ -112,7 +113,7 @@ func buyFeedItem(s client.Snapshot, t client.Tank) menuItem {
 	return item
 }
 
-func aeratorItem(t client.Tank) menuItem {
+func aeratorItem(t api.Tank) menuItem {
 	label, hint := "Ligar o aerador", "gasta energia enquanto ligado"
 	amount := int64(1)
 
@@ -132,7 +133,7 @@ func aeratorItem(t client.Tank) menuItem {
 	}
 }
 
-func harvestItem(t client.Tank, batch client.Batch) menuItem {
+func harvestItem(t api.Tank, batch api.Batch) menuItem {
 	item := menuItem{
 		label:   "Despescar o lote",
 		enabled: batch.Fish > 0,
@@ -152,7 +153,7 @@ func harvestItem(t client.Tank, batch client.Batch) menuItem {
 	return item
 }
 
-func thinItem(t client.Tank, batch client.Batch) menuItem {
+func thinItem(t api.Tank, batch api.Batch) menuItem {
 	count := int64(batch.Fish) * thinPercent / fullPercent
 	revenue := count * batch.MeanGrams * batch.PriceKgCents / gramsPerKg
 
@@ -170,7 +171,7 @@ func thinItem(t client.Tank, batch client.Batch) menuItem {
 	return item
 }
 
-func treatItem(t client.Tank, batch client.Batch) menuItem {
+func treatItem(t api.Tank, batch api.Batch) menuItem {
 	item := menuItem{
 		label:   "Tratar o lote",
 		enabled: batch.Sick,
@@ -185,7 +186,7 @@ func treatItem(t client.Tank, batch client.Batch) menuItem {
 	return item
 }
 
-func loanHint(t client.Tank) string {
+func loanHint(t api.Tank) string {
 	switch t.LoanBlock {
 	case "no_credit":
 		return "sem espaco no limite de credito: pague o que deve antes"
@@ -211,7 +212,7 @@ func loanHint(t client.Tank) string {
 	return fmt.Sprintf("cobre o que falta para encher o tanque %d", t.ID)
 }
 
-func stockBlocked(t client.Tank) string {
+func stockBlocked(t api.Tank) string {
 	tank := strconv.FormatInt(int64(t.ID), 10)
 
 	switch {
@@ -226,7 +227,7 @@ func stockBlocked(t client.Tank) string {
 	return "Sem grana para povoar: o caixa nao paga o alevino mais a racao ate a despesca"
 }
 
-func stockItem(s client.Snapshot, t client.Tank) menuItem {
+func stockItem(s api.Snapshot, t api.Tank) menuItem {
 	amount := t.StockAdvice
 	room := t.Capacity - int64(t.Fish)
 
@@ -248,7 +249,7 @@ func stockItem(s client.Snapshot, t client.Tank) menuItem {
 	return item
 }
 
-func upgradeItem(s client.Snapshot, t client.Tank, upgrade client.Upgrade) menuItem {
+func upgradeItem(s api.Snapshot, t api.Tank, upgrade api.Upgrade) menuItem {
 	item := menuItem{
 		label:   "Instalar " + upgrade.Kind,
 		enabled: !upgrade.Owned && s.CashCents >= upgrade.CostCents,
@@ -286,7 +287,7 @@ func automationHint(kind string) string {
 	return "automacao"
 }
 
-func shedMenu(s client.Snapshot, t client.Tank) *menu {
+func shedMenu(s api.Snapshot, t api.Tank) *menu {
 	loads := []int64{feedPurchaseKg, feedPurchaseKg * 5}
 
 	items := make([]menuItem, 0, len(loads)+1)
@@ -312,7 +313,7 @@ func shedMenu(s client.Snapshot, t client.Tank) *menu {
 	return &menu{title: shedTitle, items: items}
 }
 
-func tankItem(s client.Snapshot) menuItem {
+func tankItem(s api.Snapshot) menuItem {
 	price := s.NextTankCents
 	hint := "amplia a fazenda, e cada tanque sai mais caro que o anterior"
 
@@ -329,7 +330,7 @@ func tankItem(s client.Snapshot) menuItem {
 	}
 }
 
-func creditItems(s client.Snapshot, t client.Tank) []menuItem {
+func creditItems(s api.Snapshot, t api.Tank) []menuItem {
 	loan := t.LoanAdvice
 
 	// Sem espaco no limite a linha vira o motivo: "Pegar emprestimo de 0,00" e uma opcao

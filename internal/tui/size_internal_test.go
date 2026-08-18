@@ -6,42 +6,42 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
-func sizedSnapshot() client.Snapshot {
-	return client.Snapshot{
+func sizedSnapshot() api.Snapshot {
+	return api.Snapshot{
 		FarmID: "x", CashCents: 1_234_567, Debt: 500_000, InterestDay: 2_250, RunwayDays: 18,
 		Fish: 3_400, Tick: 47 * 24 * 60, Hour: 4, TempMilliC: 26_500,
-		Prices: client.Prices{FishKgCents: 942, FeedKgCents: 318, RatioPPM: 1_850_000, ViablePPM: 1_250_000},
-		Series: client.Series{
+		Prices: api.Prices{FishKgCents: 942, FeedKgCents: 318, RatioPPM: 1_850_000, ViablePPM: 1_250_000},
+		Series: api.Series{
 			FishKgCents: []int64{900, 910, 880, 940, 960, 942, 930, 915, 950, 970, 942},
 			FeedKgCents: []int64{320, 318, 322, 315, 310, 318, 325, 319, 316, 312, 318},
 		},
-		Tanks: []client.Tank{
+		Tanks: []api.Tank{
 			{
 				ID: 1, Kind: "viveiro_escavado", Fish: 2_000, FeedKg: 180,
 				OxygenUgL: 5_400, DensityMilli: 600, Capacity: 5_000, ServedFor: 240,
 				BreakEven: 967, StockAdvice: 1_240,
 				BatchCount: 1, MaxBatches: 4,
-				Batches: []client.Batch{{
+				Batches: []api.Batch{{
 					ID: 3, Fish: 2_000, MeanGrams: 306,
 					PriceKgCents: 678, ValueCents: 414_936, CostCents: 393_600, MarginCents: 21_336,
 					CostPerKg: 674, ClassPPM: 720_000, NextClassGrams: 600, NextClassGain: 220_000,
-					Decision: client.Decision{
+					Decision: api.Decision{
 						SellNowCents: 414_936, SellNowMargin: 21_336, HoldToGrams: 600, HoldDays: 62,
 						HoldCents: 994_800, HoldMargin: 167_440, HoldCostCents: 574_560, HoldReached: true,
 						BreakEvenPerKg: 674, GainPerDayMg: 2_800, FeedPerDayG: 17_100,
 						CostPerDay: 5_472, DaysOfFeed: 4, CycleDays: 189,
 					},
 				}},
-				Upgrades: []client.Upgrade{{Kind: "comedouro", CostCents: 80_000}},
+				Upgrades: []api.Upgrade{{Kind: "comedouro", CostCents: 80_000}},
 			},
 			{
 				ID: 2, Kind: "tanque_rede", Fish: 1_400, FeedKg: 0,
 				OxygenUgL: 1_900, Capacity: 960, BreakEven: 1_820, StockAdvice: 0,
 				BatchCount: 1, MaxBatches: 4,
-				Batches: []client.Batch{{
+				Batches: []api.Batch{{
 					ID: 4, Fish: 1_400, MeanGrams: 612, PriceKgCents: 829,
 					ValueCents: 754_120, MarginCents: 298_004, ClassPPM: 880_000, NextClassGrams: 900,
 					NextClassGain: 140_000,
@@ -51,8 +51,8 @@ func sizedSnapshot() client.Snapshot {
 	}
 }
 
-func everyUpgrade() []client.Upgrade {
-	return []client.Upgrade{
+func everyUpgrade() []api.Upgrade {
+	return []api.Upgrade{
 		{Kind: "comedouro", CostCents: 80_000}, {Kind: "aerador", CostCents: 180_000},
 		{Kind: "peao", CostCents: 800_000}, {Kind: "tecnico", CostCents: 1_600_000},
 		{Kind: "contrato", CostCents: 3_200_000},

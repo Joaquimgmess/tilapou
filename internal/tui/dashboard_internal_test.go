@@ -7,7 +7,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
-	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
 func TestClipToCortaPorColunaENaoPorByte(t *testing.T) {
@@ -95,7 +95,7 @@ func TestQuemLevaOMarcadorDeMelhorNegocio(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			t.Parallel()
 
-			got := holdWins(client.Decision{
+			got := holdWins(api.Decision{
 				HoldMargin: tc.hold, SellNowMargin: tc.sell,
 				HoldDays: tc.holdDays, CycleDays: tc.cycleDays,
 			})
@@ -113,8 +113,8 @@ func TestCustoMaiorDeSegurarNuncaMelhoraOVeredito(t *testing.T) {
 	for hold := int64(-3); hold <= 3; hold++ {
 		for sell := int64(-3); sell <= 3; sell++ {
 			for extra := int64(1); extra <= 5; extra++ {
-				before := client.Decision{HoldMargin: hold, SellNowMargin: sell, HoldDays: 10, CycleDays: 100}
-				after := client.Decision{HoldMargin: hold - extra, SellNowMargin: sell, HoldDays: 10, CycleDays: 100}
+				before := api.Decision{HoldMargin: hold, SellNowMargin: sell, HoldDays: 10, CycleDays: 100}
+				after := api.Decision{HoldMargin: hold - extra, SellNowMargin: sell, HoldDays: 10, CycleDays: 100}
 
 				if !holdWins(before) && holdWins(after) {
 					t.Fatalf("segurar %d custando %d a mais passou a ganhar de vender %d", hold, extra, sell)
@@ -127,8 +127,8 @@ func TestCustoMaiorDeSegurarNuncaMelhoraOVeredito(t *testing.T) {
 func TestTanqueVazioNaoEntraEmAlerta(t *testing.T) {
 	t.Parallel()
 
-	tank := client.Tank{ID: 1, Fish: 0, FeedKg: 0, ServedFor: 0, OxygenUgL: 6_000}
-	vazio := client.Batch{ID: 1, Fish: 0}
+	tank := api.Tank{ID: 1, Fish: 0, FeedKg: 0, ServedFor: 0, OxygenUgL: 6_000}
+	vazio := api.Batch{ID: 1, Fish: 0}
 
 	label, alert := rowState(&tank, &vazio)
 	if alert {
@@ -143,7 +143,7 @@ func TestTanqueVazioNaoAnunciaProximaClasse(t *testing.T) {
 	t.Parallel()
 
 	// Lote sem peixe nao tem proxima classe para anunciar.
-	vazio := client.Batch{ID: 1, Fish: 0, MeanGrams: 0, NextClassGrams: 0}
+	vazio := api.Batch{ID: 1, Fish: 0, MeanGrams: 0, NextClassGrams: 0}
 
 	if got := nextClass(&vazio); got != "no topo" {
 		t.Errorf("lote de 0 g anuncia %q", got)
@@ -153,9 +153,9 @@ func TestTanqueVazioNaoAnunciaProximaClasse(t *testing.T) {
 func TestLotacaoNaoDizNoAzulComOLoteNoVermelho(t *testing.T) {
 	t.Parallel()
 
-	tank := client.Tank{
+	tank := api.Tank{
 		ID: 1, Fish: 718, Capacity: 5_000, BreakEven: 376,
-		Batches: []client.Batch{{ID: 1, Fish: 718, MarginCents: -104_019}},
+		Batches: []api.Batch{{ID: 1, Fish: 718, MarginCents: -104_019}},
 	}
 
 	if got := ansi.Strip(renderStocking(tank)); strings.Contains(got, "no azul") {
@@ -166,9 +166,9 @@ func TestLotacaoNaoDizNoAzulComOLoteNoVermelho(t *testing.T) {
 func TestLotacaoDizNoAzulQuandoOLoteEstaNoAzul(t *testing.T) {
 	t.Parallel()
 
-	tank := client.Tank{
+	tank := api.Tank{
 		ID: 1, Fish: 718, Capacity: 5_000, BreakEven: 376,
-		Batches: []client.Batch{{ID: 1, Fish: 718, MarginCents: 21_336}},
+		Batches: []api.Batch{{ID: 1, Fish: 718, MarginCents: 21_336}},
 	}
 
 	if got := ansi.Strip(renderStocking(tank)); !strings.Contains(got, "no azul") {

@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/balance"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
-func viewOfStocked(t *testing.T, b *sim.Balance) (TankView, SnapshotView) {
+func viewOfStocked(t *testing.T, b *sim.Balance) (api.Tank, api.Snapshot) {
 	t.Helper()
 
 	s := sim.NewState(1, 0, 0)
@@ -31,8 +32,8 @@ func viewOfStocked(t *testing.T, b *sim.Balance) (TankView, SnapshotView) {
 	return view.Tanks[0], view
 }
 
-// frontBatch is the batch the old TankView used to flatten into itself.
-func frontBatch(t *testing.T, tank TankView) BatchView {
+// frontBatch is the batch the old api.Tank used to flatten into itself.
+func frontBatch(t *testing.T, tank api.Tank) api.Batch {
 	t.Helper()
 
 	if len(tank.Batches) == 0 {
@@ -42,7 +43,7 @@ func frontBatch(t *testing.T, tank TankView) BatchView {
 	return tank.Batches[0]
 }
 
-func brokeView(t *testing.T, b *sim.Balance) SnapshotView {
+func brokeView(t *testing.T, b *sim.Balance) api.Snapshot {
 	t.Helper()
 
 	s := sim.NewState(1, 0, 0)

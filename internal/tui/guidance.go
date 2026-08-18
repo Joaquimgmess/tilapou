@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
 const (
@@ -26,9 +26,9 @@ type advice struct {
 // headline turns the newest event past seen into a line the player reads. The events are
 // what the farm did while nobody was watching, and without this they only ever existed in
 // the database: the farm could go bankrupt and the screen would say nothing.
-func headline(s client.Snapshot, seen uint64) (string, bool) {
+func headline(s api.Snapshot, seen uint64) (string, bool) {
 	var (
-		pick *client.Event
+		pick *api.Event
 		best int
 	)
 
@@ -90,7 +90,7 @@ func died(fish int32) string {
 }
 
 // newestEvent is the highest sequence the player has now been shown.
-func newestEvent(s client.Snapshot, seen uint64) uint64 {
+func newestEvent(s api.Snapshot, seen uint64) uint64 {
 	for i := range s.Events {
 		seen = max(seen, s.Events[i].Seq)
 	}
@@ -98,7 +98,7 @@ func newestEvent(s client.Snapshot, seen uint64) uint64 {
 	return seen
 }
 
-func eventHeadline(e *client.Event) (string, bool) {
+func eventHeadline(e *api.Event) (string, bool) {
 	switch e.Kind {
 	case "bankrupt":
 		return "A fazenda quebrou: a divida de " + coins(e.CashCents) +
@@ -123,7 +123,7 @@ func eventHeadline(e *client.Event) (string, bool) {
 }
 
 // adviceTank returns the tank the current advice is about, or zero when it is about the farm.
-func adviceTank(s client.Snapshot) uint32 {
+func adviceTank(s api.Snapshot) uint32 {
 	found, ok := current(s)
 	if !ok {
 		return 0
@@ -134,7 +134,7 @@ func adviceTank(s client.Snapshot) uint32 {
 
 // objective returns the advice for the farm, already worded for the tank in focus: a
 // tank-scoped key is only offered when it would act on the tank the advice names.
-func objective(s client.Snapshot, focused uint32) (text string, urgent bool) {
+func objective(s api.Snapshot, focused uint32) (text string, urgent bool) {
 	if len(s.Tanks) == 0 {
 		return "Compre um tanque com [t] para comecar", false
 	}
@@ -151,12 +151,12 @@ func objective(s client.Snapshot, focused uint32) (text string, urgent bool) {
 	return found.text, found.urgent
 }
 
-func current(s client.Snapshot) (advice, bool) {
+func current(s api.Snapshot) (advice, bool) {
 	if len(s.Tanks) == 0 {
 		return advice{}, false
 	}
 
-	checks := []func(client.Snapshot) (advice, bool){
+	checks := []func(api.Snapshot) (advice, bool){
 		broke,
 		suffocating,
 		sickBatch,
@@ -181,7 +181,7 @@ func current(s client.Snapshot) (advice, bool) {
 
 // creditRoom reports whether any tank can still borrow: with the limit maxed out, telling
 // the player to take credit points at an option that does nothing.
-func creditRoom(s client.Snapshot) bool {
+func creditRoom(s api.Snapshot) bool {
 	for i := range s.Tanks {
 		if s.Tanks[i].LoanAdvice > 0 {
 			return true
@@ -193,7 +193,7 @@ func creditRoom(s client.Snapshot) bool {
 
 // anyBatch reports whether some batch in the tank answers yes: the alert is about the tank,
 // and one sick or ready batch is enough to raise it.
-func anyBatch(t *client.Tank, yes func(*client.Batch) bool) bool {
+func anyBatch(t *api.Tank, yes func(*api.Batch) bool) bool {
 	for i := range t.Batches {
 		if yes(&t.Batches[i]) {
 			return true
@@ -205,7 +205,7 @@ func anyBatch(t *client.Tank, yes func(*client.Batch) bool) bool {
 
 // thinAdvice is the way out when credit is gone: selling part of the batch buys feed for
 // the rest. It returns false when there is no batch big enough to thin.
-func thinAdvice(t *client.Tank) (string, bool) {
+func thinAdvice(t *api.Tank) (string, bool) {
 	if len(t.Batches) == 0 {
 		return "", false
 	}
@@ -223,7 +223,7 @@ func thinAdvice(t *client.Tank) (string, bool) {
 		t.ID, count, batch.MeanGrams, coins(revenue)), true
 }
 
-func farmGoal(s client.Snapshot) string {
+func farmGoal(s api.Snapshot) string {
 	tank := s.Tanks[0]
 	if tank.Fish == 0 {
 		// A mesma conta que a tecla usa, e nao uma parecida: o conselho ja desconta o custo
@@ -251,7 +251,7 @@ func farmGoal(s client.Snapshot) string {
 		front.MeanGrams)
 }
 
-func underStocked(s client.Snapshot) (advice, bool) {
+func underStocked(s api.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.Fish == 0 || t.BreakEven <= 0 || int64(t.Fish) >= t.BreakEven {
@@ -282,7 +282,7 @@ func underStocked(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func broke(s client.Snapshot) (advice, bool) {
+func broke(s api.Snapshot) (advice, bool) {
 	if !s.Broke {
 		return advice{}, false
 	}
@@ -290,7 +290,7 @@ func broke(s client.Snapshot) (advice, bool) {
 	return advice{text: "A fazenda quebrou: sem peixe, sem caixa e sem credito. Recomece do zero com [b]", urgent: true}, true
 }
 
-func suffocating(s client.Snapshot) (advice, bool) {
+func suffocating(s api.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.Fish == 0 {
@@ -304,10 +304,10 @@ func suffocating(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func sickBatch(s client.Snapshot) (advice, bool) {
+func sickBatch(s api.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
-		if anyBatch(t, func(b *client.Batch) bool { return b.Sick }) {
+		if anyBatch(t, func(b *api.Batch) bool { return b.Sick }) {
 			return advice{text: fmt.Sprintf(
 				"Doenca no tanque %d. Abra [z] e trate, ou aceite as perdas", t.ID), urgent: true, tank: t.ID, key: "z"}, true
 		}
@@ -316,7 +316,7 @@ func sickBatch(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func shortRunway(s client.Snapshot) (advice, bool) {
+func shortRunway(s api.Snapshot) (advice, bool) {
 	if s.RunwayDays < 0 || s.RunwayDays >= shortRunwayDays {
 		return advice{}, false
 	}
@@ -345,7 +345,7 @@ func shortRunway(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func crushingDebt(s client.Snapshot) (advice, bool) {
+func crushingDebt(s api.Snapshot) (advice, bool) {
 	if s.Debt > 0 && s.CashCents == 0 {
 		return advice{text: "Sem caixa e com divida: os juros estao crescendo. Venda peixe", urgent: true}, true
 	}
@@ -353,7 +353,7 @@ func crushingDebt(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func outOfFeed(s client.Snapshot) (advice, bool) {
+func outOfFeed(s api.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.Fish == 0 || t.FeedKg > 0 {
@@ -370,7 +370,7 @@ func outOfFeed(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func unfed(s client.Snapshot) (advice, bool) {
+func unfed(s api.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.Fish > 0 && t.ServedFor <= 0 && !owns(t, feederIndex) {
@@ -381,10 +381,10 @@ func unfed(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func readyToHarvest(s client.Snapshot) (advice, bool) {
+func readyToHarvest(s api.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
-		if anyBatch(t, func(b *client.Batch) bool { return b.Ready }) {
+		if anyBatch(t, func(b *api.Batch) bool { return b.Ready }) {
 			return advice{text: fmt.Sprintf("O lote do tanque %d esta no ponto de abate. Despesque com [h]", t.ID), tank: t.ID, key: "h"}, true
 		}
 	}
@@ -392,7 +392,7 @@ func readyToHarvest(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func affordableAutomation(s client.Snapshot) (advice, bool) {
+func affordableAutomation(s api.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		// Automacao em tanque vazio nao muda rotina nenhuma: primeiro tem de haver peixe.
@@ -412,7 +412,7 @@ func affordableAutomation(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func prestigeReady(s client.Snapshot) (advice, bool) {
+func prestigeReady(s api.Snapshot) (advice, bool) {
 	if s.PrestigeNow > s.Prestige {
 		return advice{text: fmt.Sprintf("Voce pode tilapar com [p] e ganhar %d matrizes", s.PrestigeNow-s.Prestige)}, true
 	}
@@ -420,7 +420,7 @@ func prestigeReady(s client.Snapshot) (advice, bool) {
 	return advice{}, false
 }
 
-func owns(t *client.Tank, index int) bool {
+func owns(t *api.Tank, index int) bool {
 	if index < 0 || index >= len(t.Upgrades) {
 		return false
 	}
@@ -428,7 +428,7 @@ func owns(t *client.Tank, index int) bool {
 	return t.Upgrades[index].Owned
 }
 
-func affords(s client.Snapshot, t *client.Tank, index int) bool {
+func affords(s api.Snapshot, t *api.Tank, index int) bool {
 	if index < 0 || index >= len(t.Upgrades) {
 		return false
 	}
@@ -485,7 +485,7 @@ func rejectMessage(reason string) (string, bool) {
 	return "", false
 }
 
-func explain(outcome *client.Outcome, cash int64) string {
+func explain(outcome *api.Outcome, cash int64) string {
 	if outcome == nil || outcome.Applied {
 		return ""
 	}

@@ -12,6 +12,7 @@ import (
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
@@ -99,12 +100,12 @@ func TestOMenuCabeNoTamanhoMinimo(t *testing.T) {
 	}
 }
 
-func snapshotComDoisLotes() client.Snapshot {
+func snapshotComDoisLotes() api.Snapshot {
 	snap := sizedSnapshot()
 	tank := &snap.Tanks[0]
 	tank.Fish, tank.BatchCount = 423, 2
 	tank.Batches[0].Fish, tank.Batches[0].MeanGrams = 276, 450
-	tank.Batches = append(tank.Batches, client.Batch{ID: 7, Fish: 147, MeanGrams: 120})
+	tank.Batches = append(tank.Batches, api.Batch{ID: 7, Fish: 147, MeanGrams: 120})
 
 	return snap
 }

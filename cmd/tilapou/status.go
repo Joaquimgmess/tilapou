@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
@@ -61,7 +62,7 @@ func runStatus(args []string) error {
 	return nil
 }
 
-func readyBatch(t *client.Tank) bool {
+func readyBatch(t *api.Tank) bool {
 	for i := range t.Batches {
 		if t.Batches[i].Ready {
 			return true

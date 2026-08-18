@@ -3,6 +3,7 @@ package farm
 import (
 	"testing"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/balance"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
@@ -76,10 +77,10 @@ func TestDecisaoRecalculaDepoisQueODiaVira(t *testing.T) {
 
 	p := newPlans()
 	calls := 0
-	compute := func() DecisionView {
+	compute := func() api.Decision {
 		calls++
 
-		return DecisionView{SellNowCents: 1}
+		return api.Decision{SellNowCents: 1}
 	}
 
 	today := decisionInput{batch: 1, day: 0}
@@ -100,10 +101,10 @@ func TestDecisaoDoMesmoDiaSoCalculaUmaVez(t *testing.T) {
 
 	p := newPlans()
 	calls := 0
-	compute := func() DecisionView {
+	compute := func() api.Decision {
 		calls++
 
-		return DecisionView{SellNowCents: 1}
+		return api.Decision{SellNowCents: 1}
 	}
 
 	key := decisionInput{batch: 1, day: 0}

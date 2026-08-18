@@ -3,6 +3,7 @@ package farm
 import (
 	"sync"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
@@ -125,17 +126,17 @@ type plans struct {
 	day       int64
 	zone      sim.ZoneOffset
 	cache     map[sim.TankKind]sim.CyclePlan
-	decisions map[decisionInput]DecisionView
+	decisions map[decisionInput]api.Decision
 }
 
 func newPlans() *plans {
 	return &plans{
 		cache:     make(map[sim.TankKind]sim.CyclePlan),
-		decisions: make(map[decisionInput]DecisionView),
+		decisions: make(map[decisionInput]api.Decision),
 	}
 }
 
-func (p *plans) decision(key decisionInput, compute func() DecisionView) DecisionView {
+func (p *plans) decision(key decisionInput, compute func() api.Decision) api.Decision {
 	p.mu.Lock()
 	if view, ok := p.decisions[key]; ok {
 		p.mu.Unlock()

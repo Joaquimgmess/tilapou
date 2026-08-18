@@ -6,7 +6,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/tui/gb"
 )
 
@@ -243,7 +243,7 @@ func (m Model) dialogue() string {
 		dimStyle.Render("ande com as setas ate o viveiro ou o galpao, z abre as opcoes")
 }
 
-func tankHeadline(t client.Tank) string {
+func tankHeadline(t api.Tank) string {
 	front, ok := frontBatch(t)
 	if !ok {
 		return fmt.Sprintf("TANQUE %d: vazio", t.ID)
@@ -259,15 +259,15 @@ func tankHeadline(t client.Tank) string {
 
 // frontBatch is the batch the map talks about: the tank has one line, so it speaks for the
 // oldest batch, which is the one closest to being sold.
-func frontBatch(t client.Tank) (client.Batch, bool) {
+func frontBatch(t api.Tank) (api.Batch, bool) {
 	if len(t.Batches) == 0 {
-		return client.Batch{}, false
+		return api.Batch{}, false
 	}
 
 	return t.Batches[0], true
 }
 
-func tankAdvice(t client.Tank) string {
+func tankAdvice(t api.Tank) string {
 	front, ok := frontBatch(t)
 	if !ok {
 		return "tanque vazio: " + emptyTankAdvice(t)

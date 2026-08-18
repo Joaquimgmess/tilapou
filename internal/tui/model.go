@@ -12,6 +12,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
@@ -30,7 +31,7 @@ const waitFrames = `|/-\`
 const staleFreeze = int(callTimeout / refreshEvery)
 
 type snapshotMsg struct {
-	snapshot client.Snapshot
+	snapshot api.Snapshot
 	err      error
 	seq      uint64
 }
@@ -68,7 +69,7 @@ type Model struct {
 	restarting bool
 	menu       *menu
 	client     *client.Client
-	snapshot   client.Snapshot
+	snapshot   api.Snapshot
 	err        error
 	nextKey    uint64
 	inFlight   flight
@@ -505,7 +506,7 @@ func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {
 	said := m.say(status)
 	said.nextKey = m.nextKey + 1
 
-	return said.launch(flightAction, status, func(ctx context.Context, c *client.Client) (client.Snapshot, error) {
+	return said.launch(flightAction, status, func(ctx context.Context, c *client.Client) (api.Snapshot, error) {
 		return c.Act(ctx, act)
 	})
 }
@@ -517,7 +518,7 @@ func (m Model) fetching() (Model, tea.Cmd) {
 		return m, nil
 	}
 
-	return m.launch(flightRefresh, "", func(ctx context.Context, c *client.Client) (client.Snapshot, error) {
+	return m.launch(flightRefresh, "", func(ctx context.Context, c *client.Client) (api.Snapshot, error) {
 		return c.Snapshot(ctx)
 	})
 }
@@ -525,7 +526,7 @@ func (m Model) fetching() (Model, tea.Cmd) {
 // launch poe um pedido no ar. A acao passa na frente do refresh automatico e cancela ele: o
 // refresh e descartavel, nasce outro em um segundo, e a tecla do jogador nao.
 func (m Model) launch(kind flight, what string,
-	call func(context.Context, *client.Client) (client.Snapshot, error),
+	call func(context.Context, *client.Client) (api.Snapshot, error),
 ) (Model, tea.Cmd) {
 	if kind == flightAction && m.cancel != nil {
 		m.cancel()
@@ -674,20 +675,20 @@ func (m Model) jumpToAdvice() Model {
 	return m
 }
 
-func (m Model) tank() (client.Tank, bool) {
+func (m Model) tank() (api.Tank, bool) {
 	r, ok := m.current()
 	if !ok {
-		return client.Tank{}, false
+		return api.Tank{}, false
 	}
 
 	return m.snapshot.Tanks[r.tank], true
 }
 
 // batch is the batch the selected row points at; ok is false on an empty tank.
-func (m Model) batch() (client.Batch, bool) {
+func (m Model) batch() (api.Batch, bool) {
 	r, ok := m.current()
 	if !ok || r.batch < 0 {
-		return client.Batch{}, false
+		return api.Batch{}, false
 	}
 
 	return m.snapshot.Tanks[r.tank].Batches[r.batch], true

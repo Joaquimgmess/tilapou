@@ -11,18 +11,19 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"github.com/charmbracelet/x/exp/teatest/v2"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 	"github.com/Joaquimgmess/tilapou/internal/tui"
 )
 
-func fakeDaemon(t *testing.T, snapshot client.Snapshot) *httptest.Server {
+func fakeDaemon(t *testing.T, snapshot api.Snapshot) *httptest.Server {
 	t.Helper()
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodPost {
 			var action client.Action
 			_ = json.NewDecoder(r.Body).Decode(&action)
-			snapshot.LastOutcome = &client.Outcome{Applied: true}
+			snapshot.LastOutcome = &api.Outcome{Applied: true}
 			snapshot.Tanks[0].Aerating = action.Kind == "aerate" && action.Amount != 0
 		}
 
@@ -34,8 +35,8 @@ func fakeDaemon(t *testing.T, snapshot client.Snapshot) *httptest.Server {
 	return server
 }
 
-func sampleSnapshot() client.Snapshot {
-	return client.Snapshot{
+func sampleSnapshot() api.Snapshot {
+	return api.Snapshot{
 		FarmID:       "f0000000-0000-0000-0000-000000000001",
 		Name:         "Tilapou",
 		Tick:         4_321,
@@ -44,12 +45,12 @@ func sampleSnapshot() client.Snapshot {
 		CashCents:    123_456,
 		BiomassGrams: 612_000,
 		Fish:         2_000,
-		Tanks: []client.Tank{{
+		Tanks: []api.Tank{{
 			ID: 1, Kind: "viveiro_escavado", Fish: 2_000,
 			FeedKg: 180, OxygenUgL: 1_900, DensityMilli: 600,
 			Capacity: 5_000, ServedFor: 120, BatchCount: 1, MaxBatches: 4,
-			Batches: []client.Batch{{ID: 1, Fish: 2_000, MeanGrams: 306}},
-			Upgrades: []client.Upgrade{
+			Batches: []api.Batch{{ID: 1, Fish: 2_000, MeanGrams: 306}},
+			Upgrades: []api.Upgrade{
 				{Kind: "comedouro", CostCents: 250_000},
 				{Kind: "aerador", CostCents: 600_000},
 				{Kind: "peao", CostCents: 2_000_000},
@@ -57,7 +58,7 @@ func sampleSnapshot() client.Snapshot {
 				{Kind: "contrato", CostCents: 25_000_000},
 			},
 		}},
-		Events: []client.Event{
+		Events: []api.Event{
 			{Seq: 2, Kind: "hypoxia_deaths", Tank: 1, Fish: 47},
 			{Seq: 1, Kind: "feed_bought", Tank: 1, MassGrams: 100_000, CashCents: 32_000},
 		},

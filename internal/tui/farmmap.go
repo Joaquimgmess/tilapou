@@ -3,7 +3,7 @@ package tui
 import (
 	"strings"
 
-	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/tui/gb"
 )
 
@@ -206,7 +206,7 @@ func (a avatar) ahead() (x, y int) {
 	return a.x, a.y
 }
 
-func renderMap(m farmMap, a avatar, snapshot client.Snapshot, frame int) string {
+func renderMap(m farmMap, a avatar, snapshot api.Snapshot, frame int) string {
 	canvas := gb.NewCanvas(m.cols*gb.TileSize, m.rows*gb.TileSize)
 
 	for y := range m.rows {
@@ -246,7 +246,7 @@ func spriteFor(kind tileKind) gb.Sprite {
 	return gb.Grass
 }
 
-func drawPondContents(canvas *gb.Canvas, snapshot client.Snapshot, frame int) {
+func drawPondContents(canvas *gb.Canvas, snapshot api.Snapshot, frame int) {
 	for i := range snapshot.Tanks {
 		tank := &snapshot.Tanks[i]
 		if i >= maxPonds {
@@ -267,7 +267,7 @@ func drawPondContents(canvas *gb.Canvas, snapshot client.Snapshot, frame int) {
 	}
 }
 
-func mapLegend(snapshot client.Snapshot) string {
+func mapLegend(snapshot api.Snapshot) string {
 	if len(snapshot.Tanks) == 0 {
 		return "sem tanques"
 	}

@@ -9,6 +9,7 @@ import (
 	"github.com/danielgtaylor/huma/v2"
 	"github.com/google/uuid"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/platform/logging"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
@@ -19,156 +20,8 @@ const (
 	gramsPerKilo   = 1_000
 )
 
-// BatchView is one batch inside a tank: money in cents, weight in grams, ratios in PPM.
-// A tank holds up to sim.MaxBatchesPerTank of them, and every one is a decision of its own.
-type BatchView struct {
-	ID             uint32       `json:"batch_id"`
-	Fish           int32        `json:"fish"`
-	MeanGrams      int64        `json:"mean_grams"`
-	Ready          bool         `json:"ready_to_harvest"`
-	Sick           bool         `json:"sick"`
-	PriceKgCents   int64        `json:"price_kg_cents"`
-	ValueCents     int64        `json:"value_cents"`
-	CostCents      int64        `json:"cost_cents"`
-	MarginCents    int64        `json:"margin_cents"`
-	CostPerKg      int64        `json:"cost_per_kg_cents"`
-	ClassPPM       int64        `json:"class_ppm"`
-	NextClassGrams int64        `json:"next_class_grams"`
-	NextClassGain  int64        `json:"next_class_gain_ppm"`
-	Decision       DecisionView `json:"decision"`
-}
-
-// TankView is the tank in the API: money in cents, weight in grams, oxygen in
-// micrograms per litre, density in thousandths of kg/m3 and ratios in PPM. What belongs to
-// a batch lives in Batches, so a tank with four of them does not hide three.
-type TankView struct {
-	ID           uint32 `json:"id"`
-	Kind         string `json:"kind"`
-	Fish         int32  `json:"fish"`
-	FeedKg       int64  `json:"feed_kg"`
-	OxygenUgL    int32  `json:"oxygen_ugl"`
-	Aerating     bool   `json:"aerating"`
-	DensityMilli int64  `json:"density_milli_kg_m3"`
-
-	Batches     []BatchView   `json:"batches"`
-	Capacity    int64         `json:"capacity_fish"`
-	StockAdvice int64         `json:"stock_advice_fish"`
-	BatchCount  int32         `json:"batch_count"`
-	MaxBatches  int32         `json:"max_batches"`
-	BreakEven   int64         `json:"break_even_fish"`
-	LoanAdvice  int64         `json:"loan_advice_cents"`
-	LoanFish    int64         `json:"loan_advice_fish"`
-	LoanBlock   string        `json:"loan_block"`
-	ServedFor   int64         `json:"served_for_ticks"`
-	Upgrades    []UpgradeView `json:"upgrades"`
-}
-
-// EventView is the event in the API, with mass in grams and cash in cents.
-type EventView struct {
-	Seq       uint64 `json:"seq"`
-	Kind      string `json:"kind"`
-	From      int64  `json:"from_tick"`
-	To        int64  `json:"to_tick"`
-	Tank      uint32 `json:"tank_id"`
-	Fish      int32  `json:"fish"`
-	MassGrams int64  `json:"mass_grams"`
-	CashCents int64  `json:"cash_cents"`
-	Reason    string `json:"reason"`
-}
-
-// UpgradeView carries the automation cost in cents.
-type UpgradeView struct {
-	Kind      string `json:"kind"`
-	Owned     bool   `json:"owned"`
-	CostCents int64  `json:"cost_cents"`
-}
-
-// OutcomeView carries the reason for the refusal and the cash that was missing, in cents.
-type OutcomeView struct {
-	Applied    bool   `json:"applied"`
-	Reason     string `json:"reason"`
-	NeededCash int64  `json:"needed_cents"`
-}
-
-// PriceView carries the current tick's prices in cents and the feed-to-fish exchange in PPM.
-type PriceView struct {
-	FeedKgCents     int64 `json:"feed_kg_cents"`
-	FingerlingCents int64 `json:"fingerling_cents"`
-	FishKgCents     int64 `json:"fish_kg_cents"`
-	RatioPPM        int64 `json:"equivalence_ppm"`
-	ViablePPM       int64 `json:"equivalence_viable_ppm"`
-}
-
-// CycleView closes the last cycle: mass in grams, values in cents and feed
-// conversion in PPM.
-type CycleView struct {
-	Fish         int32 `json:"fish"`
-	MassGrams    int64 `json:"mass_grams"`
-	RevenueCents int64 `json:"revenue_cents"`
-	CostCents    int64 `json:"cost_cents"`
-	MarginCents  int64 `json:"margin_cents"`
-	CostPerKg    int64 `json:"cost_per_kg_cents"`
-	PricePerKg   int64 `json:"price_per_kg_cents"`
-	FCRPPM       int64 `json:"fcr_ppm"`
-}
-
-// DecisionView compares selling now with holding to the next weight class:
-// cents, daily gain in milligrams, daily feed in grams.
-type DecisionView struct {
-	SellNowCents  int64 `json:"sell_now_cents"`
-	SellNowMargin int64 `json:"sell_now_margin_cents"`
-	HoldToGrams   int64 `json:"hold_to_grams"`
-	HoldDays      int64 `json:"hold_days"`
-	HoldCents     int64 `json:"hold_cents"`
-	HoldMargin    int64 `json:"hold_margin_cents"`
-	HoldCostCents int64 `json:"hold_cost_cents"`
-	// HoldReached diz que a projecao alcanca o alvo dentro do teto de dias, e nao que o
-	// peixe ja chegou la: com 30 g e alvo de 400 g ela e verdadeira e correta.
-	HoldReached    bool  `json:"hold_reached"`
-	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
-	GainPerDayMg   int64 `json:"gain_per_day_mg"`
-	FeedPerDayG    int64 `json:"feed_per_day_grams"`
-	CostPerDay     int64 `json:"cost_per_day_cents"`
-	DaysOfFeed     int64 `json:"days_of_feed"`
-	CycleDays      int64 `json:"cycle_days"`
-}
-
-// SeriesView carries prices in cents per kilo, one point every StepTicks.
-type SeriesView struct {
-	FishKgCents []int64 `json:"fish_kg_cents"`
-	FeedKgCents []int64 `json:"feed_kg_cents"`
-	StepTicks   int64   `json:"step_ticks"`
-}
-
-// SnapshotView is the farm in the API: cents, grams and thousandths of a degree, with
-// RunwayDays at -1 when there is no daily cost.
-type SnapshotView struct {
-	FarmID        string       `json:"farm_id"`
-	Name          string       `json:"name"`
-	Tick          int64        `json:"tick"`
-	Hour          int32        `json:"hour"`
-	TempMilliC    int32        `json:"temp_milli_c"`
-	CashCents     int64        `json:"cash_cents"`
-	LifetimeCents int64        `json:"lifetime_cents"`
-	BiomassGrams  int64        `json:"biomass_grams"`
-	Fish          int32        `json:"fish"`
-	Prestige      uint32       `json:"prestige"`
-	Tanks         []TankView   `json:"tanks"`
-	PrestigeNow   uint32       `json:"prestige_available"`
-	NextTankCents int64        `json:"next_tank_cents"`
-	Prices        PriceView    `json:"prices"`
-	Debt          int64        `json:"debt_cents"`
-	LastCycle     CycleView    `json:"last_cycle"`
-	Series        SeriesView   `json:"series"`
-	InterestDay   int64        `json:"interest_per_day_cents"`
-	RunwayDays    int64        `json:"runway_days"`
-	Broke         bool         `json:"broke"`
-	Events        []EventView  `json:"events"`
-	LastOutcome   *OutcomeView `json:"last_outcome,omitempty"`
-}
-
 type snapshotOutput struct {
-	Body SnapshotView
+	Body api.Snapshot
 }
 
 type tankKindName string
@@ -201,12 +54,12 @@ type actionInput struct {
 
 // RegisterRoutes publishes GET /farm and POST /farm/actions, which return the
 // already advanced snapshot.
-func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.Balance) {
+func RegisterRoutes(router huma.API, sessions *Sessions, player uuid.UUID, b *sim.Balance) {
 	// O mesmo cache que a sessao usa para adiantar a simulacao: dois caches pagariam duas
 	// vezes a primeira simulacao de cada dia.
 	p := sessions.plans
 
-	huma.Register(api, huma.Operation{
+	huma.Register(router, huma.Operation{
 		OperationID: "get-farm",
 		Method:      http.MethodGet,
 		Path:        "/farm",
@@ -221,7 +74,7 @@ func RegisterRoutes(api huma.API, sessions *Sessions, player uuid.UUID, b *sim.B
 		return &snapshotOutput{Body: viewOf(snap, b, p)}, nil
 	})
 
-	huma.Register(api, huma.Operation{
+	huma.Register(router, huma.Operation{
 		OperationID:   "act-on-farm",
 		Method:        http.MethodPost,
 		Path:          "/farm/actions",
@@ -293,11 +146,11 @@ func needsTank(kind sim.ActionKind) bool {
 	return false
 }
 
-func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
+func viewOf(snap Snapshot, b *sim.Balance, p *plans) api.Snapshot {
 	state := &snap.Farm.State
 	market := sim.MarketAt(b, state.Tick)
 
-	view := SnapshotView{
+	view := api.Snapshot{
 		FarmID:        snap.Farm.ID.String(),
 		Name:          snap.Farm.Name,
 		Tick:          int64(snap.Projection.Tick),
@@ -308,14 +161,14 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		BiomassGrams:  snap.Projection.Biomass.Grams(),
 		Fish:          int32(snap.Projection.Fish),
 		Prestige:      snap.Projection.Prestige,
-		Tanks:         make([]TankView, 0, state.TankCount),
+		Tanks:         make([]api.Tank, 0, state.TankCount),
 		PrestigeNow:   sim.PrestigePointsFor(state.LifetimeEarned, b.Progression.PrestigeDivisor),
 		NextTankCents: int64(state.NextTankCost(b, sim.TankEarthPond)),
 		Series:        seriesOf(state, b),
 		InterestDay:   int64(state.Debt) * int64(b.Credit.DailyRatePPM) / int64(sim.UnitPPM),
 		RunwayDays:    runwayDays(state, b),
 		Broke:         state.Broke(b, p.forFarm(b, state)),
-		Prices: PriceView{
+		Prices: api.Prices{
 			FeedKgCents:     int64(market.FeedKg),
 			FingerlingCents: int64(b.Economy.FingerlingPrice),
 			FishKgCents:     int64(market.FishKg),
@@ -323,7 +176,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			ViablePPM:       int64(b.Market.ViableRatioPPM),
 		},
 		Debt: int64(state.Debt),
-		LastCycle: CycleView{
+		LastCycle: api.Cycle{
 			Fish:         int32(state.LastCycle.Fish),
 			MassGrams:    state.LastCycle.Mass.Grams(),
 			RevenueCents: int64(state.LastCycle.Revenue),
@@ -333,11 +186,11 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			PricePerKg:   int64(state.LastCycle.PricePerKg),
 			FCRPPM:       int64(state.LastCycle.FCRPPM),
 		},
-		Events: make([]EventView, 0, len(snap.Events)),
+		Events: make([]api.Event, 0, len(snap.Events)),
 	}
 
 	if snap.Outcome != nil {
-		view.LastOutcome = &OutcomeView{
+		view.LastOutcome = &api.Outcome{
 			Applied:    snap.Outcome.Applied,
 			Reason:     snap.Outcome.Reason.String(),
 			NeededCash: int64(snap.Outcome.Needed),
@@ -350,7 +203,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		fish, _ := state.StockAdvice(b, tank.ID, plan)
 		advice := int64(fish)
 		loan := state.LoanAdvice(b, tank.ID, plan)
-		tv := TankView{
+		tv := api.Tank{
 			ID:          uint32(tank.ID),
 			Kind:        tank.Kind.String(),
 			Fish:        int32(tank.Fish()),
@@ -379,7 +232,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 	}
 
 	for _, e := range snap.Events {
-		view.Events = append(view.Events, EventView{
+		view.Events = append(view.Events, api.Event{
 			Seq:       e.Seq,
 			Kind:      e.Kind,
 			From:      int64(e.From),
@@ -395,8 +248,8 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 	return view
 }
 
-func batchViewOf(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, p *plans) BatchView {
-	bv := BatchView{
+func batchViewOf(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, p *plans) api.Batch {
+	bv := api.Batch{
 		ID:           uint32(batch.ID),
 		Fish:         int32(batch.Fish),
 		MeanGrams:    batch.MeanMass.Grams(),
@@ -421,7 +274,7 @@ func batchViewOf(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 
 	in := newDecisionInput(state, tank, batch)
 
-	bv.Decision = p.decision(in, func() DecisionView { return decisionFor(b, in) })
+	bv.Decision = p.decision(in, func() api.Decision { return decisionFor(b, in) })
 	bv.Decision.SellNowCents = bv.ValueCents
 	bv.Decision.SellNowMargin = bv.MarginCents
 	bv.Decision.BreakEvenPerKg = bv.CostPerKg
@@ -433,8 +286,8 @@ func batchViewOf(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 
 // decisionFor projects the batch; the sell-now cents are filled by the caller on every
 // request, because they follow the price of the tick and must not be cached by day.
-func decisionFor(b *sim.Balance, in decisionInput) DecisionView {
-	var view DecisionView
+func decisionFor(b *sim.Balance, in decisionInput) api.Decision {
+	var view api.Decision
 
 	tank := in.tank
 	// newDecisionInput quantiza o lote da chave para a posicao 0: e o unico lote que o
@@ -467,10 +320,10 @@ func decisionFor(b *sim.Balance, in decisionInput) DecisionView {
 	return view
 }
 
-func seriesOf(state *sim.State, b *sim.Balance) SeriesView {
+func seriesOf(state *sim.State, b *sim.Balance) api.Series {
 	fish, feed := state.Series(b, seriesPoints, sim.TicksPerDay)
 
-	view := SeriesView{
+	view := api.Series{
 		FishKgCents: make([]int64, 0, len(fish)),
 		FeedKgCents: make([]int64, 0, len(feed)),
 		StepTicks:   int64(sim.TicksPerDay),
@@ -507,10 +360,10 @@ var upgradeOrder = [5]sim.AutoKind{
 
 var _ [len(upgradeOrder) - sim.AutoKindCount]struct{}
 
-func upgradesOf(tank *sim.Tank, b *sim.Balance) []UpgradeView {
-	views := make([]UpgradeView, 0, len(upgradeOrder))
+func upgradesOf(tank *sim.Tank, b *sim.Balance) []api.Upgrade {
+	views := make([]api.Upgrade, 0, len(upgradeOrder))
 	for _, kind := range upgradeOrder {
-		views = append(views, UpgradeView{
+		views = append(views, api.Upgrade{
 			Kind:      kind.String(),
 			Owned:     tank.Owns(kind),
 			CostCents: int64(b.Automation[kind].Cost),

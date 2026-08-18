@@ -3,6 +3,7 @@ package farm
 import (
 	"testing"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/balance"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
@@ -26,7 +27,7 @@ func stockedForDecision(t *testing.T, b *sim.Balance) sim.State {
 
 // checkCoherent holds for every view: the derived fields must match the raw fields of the
 // same payload, whatever the cache did.
-func checkCoherent(t *testing.T, step string, tv TankView) {
+func checkCoherent(t *testing.T, step string, tv api.Tank) {
 	t.Helper()
 
 	if len(tv.Batches) == 0 {

@@ -12,6 +12,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
@@ -19,34 +20,34 @@ const blockNoCredit = "no_credit"
 
 var offeredKey = regexp.MustCompile(`\[(\w|\.)\]`)
 
-func adviceCases() map[string]func(client.Snapshot) client.Snapshot {
-	return map[string]func(client.Snapshot) client.Snapshot{
-		"sem oxigenio": func(s client.Snapshot) client.Snapshot {
+func adviceCases() map[string]func(api.Snapshot) api.Snapshot {
+	return map[string]func(api.Snapshot) api.Snapshot{
+		"sem oxigenio": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[1].OxygenUgL, s.Tanks[1].Aerating = 900, false
 
 			return s
 		},
-		"doente": func(s client.Snapshot) client.Snapshot {
+		"doente": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[1].Batches[0].Sick = true
 
 			return s
 		},
-		"sem racao": func(s client.Snapshot) client.Snapshot {
+		"sem racao": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[1].FeedKg = 0
 
 			return s
 		},
-		"sem trato": func(s client.Snapshot) client.Snapshot {
+		"sem trato": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[1].ServedFor = 0
 
 			return s
 		},
-		"no ponto de abate": func(s client.Snapshot) client.Snapshot {
+		"no ponto de abate": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[1].Batches[0].Ready = true
 
 			return s
 		},
-		"automacao ao alcance": func(s client.Snapshot) client.Snapshot {
+		"automacao ao alcance": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[0].Upgrades = everyUpgrade()
 			s.Tanks[0].Upgrades[feederIndex].Owned = true
 			s.Tanks[0].Upgrades[aeratorIndex].Owned = true
@@ -55,7 +56,7 @@ func adviceCases() map[string]func(client.Snapshot) client.Snapshot {
 
 			return s
 		},
-		"abaixo do break-even": func(s client.Snapshot) client.Snapshot {
+		"abaixo do break-even": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[1].Fish, s.Tanks[1].BreakEven, s.Tanks[1].StockAdvice = 10, 1_800, 5_000
 
 			return s
@@ -63,7 +64,7 @@ func adviceCases() map[string]func(client.Snapshot) client.Snapshot {
 	}
 }
 
-func tankScopedAdvice(t *testing.T) client.Snapshot {
+func tankScopedAdvice(t *testing.T) api.Snapshot {
 	t.Helper()
 
 	s := sizedSnapshot()
@@ -179,7 +180,7 @@ func TestTodaAcaoDeTanqueDizEmQualTanqueCaiu(t *testing.T) {
 	}
 }
 
-func semCreditoNenhum(s client.Snapshot) client.Snapshot {
+func semCreditoNenhum(s api.Snapshot) api.Snapshot {
 	for i := range s.Tanks {
 		s.Tanks[i].LoanAdvice, s.Tanks[i].LoanBlock = 0, blockNoCredit
 	}
@@ -190,20 +191,20 @@ func semCreditoNenhum(s client.Snapshot) client.Snapshot {
 func TestConselhoNaoMandaPegarCreditoComOLimiteEstourado(t *testing.T) {
 	t.Parallel()
 
-	casos := map[string]func(client.Snapshot) client.Snapshot{
-		"abaixo do break-even": func(s client.Snapshot) client.Snapshot {
+	casos := map[string]func(api.Snapshot) api.Snapshot{
+		"abaixo do break-even": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[0].Fish, s.Tanks[0].BreakEven, s.Tanks[0].StockAdvice = 10, 1_800, 0
 			s.Tanks[1].Fish, s.Tanks[1].BreakEven = 1_400, 100
 
 			return s
 		},
-		"folego menor que o ciclo": func(s client.Snapshot) client.Snapshot {
+		"folego menor que o ciclo": func(s api.Snapshot) api.Snapshot {
 			s.RunwayDays = 1
 			s.Tanks[0].Batches[0].Decision.HoldDays = 60
 
 			return s
 		},
-		"tanque vazio e sem grana": func(s client.Snapshot) client.Snapshot {
+		"tanque vazio e sem grana": func(s api.Snapshot) api.Snapshot {
 			s.Tanks[0].Fish, s.Tanks[0].Batches[0].Fish = 0, 0
 			s.Tanks[1].Fish, s.Tanks[1].Batches[0].Fish = 0, 0
 			s.CashCents = 0
@@ -271,14 +272,14 @@ func TestAcontecimentoNovoVeioParaATela(t *testing.T) {
 	t.Parallel()
 
 	casos := map[string]struct {
-		event client.Event
+		event api.Event
 		want  string
 	}{
-		"falencia":       {event: client.Event{Seq: 9, Kind: "bankrupt", CashCents: 4_500_000}, want: "quebrou"},
-		"doenca":         {event: client.Event{Seq: 9, Kind: "disease", Tank: 2}, want: "tanque 2"},
-		"mortandade":     {event: client.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 449}, want: "449 peixes"},
-		"morte de um so": {event: client.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 1}, want: "1 peixe do tanque 1 morreu"},
-		"tilapada":       {event: client.Event{Seq: 9, Kind: "prestiged"}, want: "tilap"},
+		"falencia":       {event: api.Event{Seq: 9, Kind: "bankrupt", CashCents: 4_500_000}, want: "quebrou"},
+		"doenca":         {event: api.Event{Seq: 9, Kind: "disease", Tank: 2}, want: "tanque 2"},
+		"mortandade":     {event: api.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 449}, want: "449 peixes"},
+		"morte de um so": {event: api.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 1}, want: "1 peixe do tanque 1 morreu"},
+		"tilapada":       {event: api.Event{Seq: 9, Kind: "prestiged"}, want: "tilap"},
 	}
 
 	for name, tc := range casos {
@@ -286,7 +287,7 @@ func TestAcontecimentoNovoVeioParaATela(t *testing.T) {
 			t.Parallel()
 
 			snap := sizedSnapshot()
-			snap.Events = []client.Event{tc.event}
+			snap.Events = []api.Event{tc.event}
 
 			told, ok := headline(snap, 0)
 			if !ok {
@@ -303,7 +304,7 @@ func TestAcontecimentoJaVistoNaoVoltaAAvisar(t *testing.T) {
 	t.Parallel()
 
 	snap := sizedSnapshot()
-	snap.Events = []client.Event{{Seq: 7, Kind: "bankrupt"}}
+	snap.Events = []api.Event{{Seq: 7, Kind: "bankrupt"}}
 
 	if _, ok := headline(snap, 7); ok {
 		t.Error("o mesmo acontecimento avisou de novo depois de ja ter sido mostrado")
@@ -317,7 +318,7 @@ func TestOHistoricoDaAberturaNaoViraNovidade(t *testing.T) {
 	t.Parallel()
 
 	snap := sizedSnapshot()
-	snap.Events = []client.Event{{Seq: 3, Kind: "bankrupt"}}
+	snap.Events = []api.Event{{Seq: 3, Kind: "bankrupt"}}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -333,7 +334,7 @@ func TestOHistoricoDaAberturaNaoViraNovidade(t *testing.T) {
 		t.Errorf("o historico da abertura foi anunciado como novidade: %q", said)
 	}
 
-	snap.Events = []client.Event{{Seq: 4, Kind: "bankrupt", CashCents: 100}, {Seq: 3, Kind: "bankrupt"}}
+	snap.Events = []api.Event{{Seq: 4, Kind: "bankrupt", CashCents: 100}, {Seq: 3, Kind: "bankrupt"}}
 	d.refresh()
 
 	if said := d.model.(Model).message; !strings.Contains(said, "quebrou") {
@@ -381,7 +382,7 @@ func TestOAvisoEhDoAcontecimentoMaisNovo(t *testing.T) {
 
 	snap := sizedSnapshot()
 	// Como chega da API: do mais novo para o mais velho, e a fome enche o historico.
-	snap.Events = []client.Event{
+	snap.Events = []api.Event{
 		{Seq: 12, Kind: "disease", Tank: 2},
 		{Seq: 11, Kind: "starvation_deaths", Tank: 1, Fish: 3},
 		{Seq: 10, Kind: "starvation_deaths", Tank: 1, Fish: 2},
@@ -400,11 +401,11 @@ func TestOSurtoNaoSeAfogaNaEnxurradaDeFome(t *testing.T) {
 	t.Parallel()
 
 	snap := sizedSnapshot()
-	snap.Events = []client.Event{{Seq: 500, Kind: "disease", Tank: 2}}
+	snap.Events = []api.Event{{Seq: 500, Kind: "disease", Tank: 2}}
 
 	// A fome emite uma linha por tick e enterra o surto que veio antes.
 	for seq := uint64(499); seq > 400; seq-- {
-		snap.Events = append([]client.Event{{Seq: seq + 100, Kind: "starvation_deaths", Tank: 1, Fish: 1}},
+		snap.Events = append([]api.Event{{Seq: seq + 100, Kind: "starvation_deaths", Tank: 1, Fish: 1}},
 			snap.Events...)
 	}
 
@@ -473,10 +474,10 @@ func TestOObjetivoNaoMandaPovoarQuandoOConselhoEZero(t *testing.T) {
 
 	// Caixa alto o bastante para os alevinos, mas nao para o custo fixo do ciclo: e assim
 	// que o conselho volta zero com o caixa parecendo cheio.
-	s := client.Snapshot{
+	s := api.Snapshot{
 		CashCents: 79_998,
-		Prices:    client.Prices{FingerlingCents: 80},
-		Tanks: []client.Tank{{
+		Prices:    api.Prices{FingerlingCents: 80},
+		Tanks: []api.Tank{{
 			ID: 1, Fish: 0, Capacity: 5_000, StockAdvice: 0,
 		}},
 	}

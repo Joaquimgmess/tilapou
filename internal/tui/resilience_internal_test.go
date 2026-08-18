@@ -8,7 +8,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
 var (
@@ -190,7 +190,7 @@ func TestEveryRejectReasonHasAMessage(t *testing.T) {
 	}
 
 	for _, reason := range reasons {
-		got := explain(&client.Outcome{Reason: reason}, 0)
+		got := explain(&api.Outcome{Reason: reason}, 0)
 		if strings.Contains(got, reason) {
 			t.Errorf("o motivo %q chega cru na tela: %q", reason, got)
 		}

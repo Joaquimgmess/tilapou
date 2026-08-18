@@ -7,7 +7,7 @@ import (
 
 	"charm.land/lipgloss/v2"
 
-	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
 const (
@@ -148,7 +148,7 @@ func (m Model) waitMark() string {
 // emptyTankAdvice diz o que fazer com um tanque vazio. Sai do conselho de lotacao, e nao de
 // uma regra propria: e o mesmo numero que a tecla consome, entao a tela nao manda apertar o
 // que o jogo vai recusar.
-func emptyTankAdvice(t client.Tank) string {
+func emptyTankAdvice(t api.Tank) string {
 	if t.StockAdvice <= 0 {
 		return "sem caixa para o ciclo: veja o credito com [g]"
 	}
@@ -257,7 +257,7 @@ func (m Model) decorateRow(index int, row string, alert bool) string {
 	return "  " + dimStyle.Render(row)
 }
 
-func nextClass(batch *client.Batch) string {
+func nextClass(batch *api.Batch) string {
 	if batch.NextClassGrams <= batch.MeanGrams {
 		return "no topo"
 	}
@@ -267,7 +267,7 @@ func nextClass(batch *client.Batch) string {
 
 // rowState mixes the two levels the row shows: doenca e do lote, oxigenio e racao sao do
 // tanque. Sem peixe no lote nada disso e urgencia.
-func rowState(t *client.Tank, batch *client.Batch) (label string, alert bool) {
+func rowState(t *api.Tank, batch *api.Batch) (label string, alert bool) {
 	switch {
 	case batch.Fish == 0:
 		return "vazio", false
@@ -335,7 +335,7 @@ func (m Model) renderDecision() string {
 	return strings.Join(append(lines, renderBreakEven(batch), renderStocking(tank)), "\n")
 }
 
-func renderBreakEven(batch client.Batch) string {
+func renderBreakEven(batch api.Batch) string {
 	price := batch.PriceKgCents
 	breakEven := batch.Decision.BreakEvenPerKg
 
@@ -355,7 +355,7 @@ func renderBreakEven(batch client.Batch) string {
 		labelStyle.Render("mercado"), coins(price), verdict)
 }
 
-func renderStocking(tank client.Tank) string {
+func renderStocking(tank api.Tank) string {
 	if tank.BreakEven <= 0 {
 		return ""
 	}
@@ -399,7 +399,7 @@ func (m Model) keyBar() string {
 	return m.renderKeys()
 }
 
-func tankMargin(tank client.Tank) int64 {
+func tankMargin(tank api.Tank) int64 {
 	var total int64
 	for i := range tank.Batches {
 		total += tank.Batches[i].MarginCents
@@ -412,7 +412,7 @@ func tankMargin(tank client.Tank) int64 {
 // because waiting weeks for a bit more loses to starting the cycle over — but only after
 // checking there is a gain at all: on two losses, per-day would elect the slower loss.
 // A tie goes to selling: money today is worth more than the same money weeks of feed later.
-func holdWins(d client.Decision) bool {
+func holdWins(d api.Decision) bool {
 	gain := d.HoldMargin - d.SellNowMargin
 	if gain <= 0 {
 		return false
