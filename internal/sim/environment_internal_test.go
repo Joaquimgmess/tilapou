@@ -60,7 +60,7 @@ func TestRenovacaoRecuperaODeficitSemPassarDaLinhaDeBase(t *testing.T) {
 	tank := &s.Tanks[0]
 	empty := Tank{ID: tank.ID, Kind: tank.Kind, Litres: tank.Litres}
 
-	for tick := range Tick(TicksPerDay) {
+	for tick := range TicksPerDay {
 		// O tanque vazio da o oxigenio do ambiente naquela hora, que e o teto da renovacao:
 		// agua nova nao traz mais oxigenio do que a agua de fora tem.
 		ambient := oxygenAt(b, &empty, tick, s.Zone)
