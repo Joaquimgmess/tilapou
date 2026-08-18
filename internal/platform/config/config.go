@@ -17,6 +17,7 @@ import (
 //	LogLevel        LOG_LEVEL, default info
 //	DBMaxConns      DB_MAX_CONNS, default 10
 //	DBTimeout       DB_TIMEOUT, default 3s
+//	Env             ENV, default "dev"
 //	RequestTimeout  REQUEST_TIMEOUT, default 30s
 //	TrustedProxies  TRUSTED_PROXIES, default 0
 //	ReadTimeout     READ_TIMEOUT, default 10s
@@ -25,6 +26,7 @@ import (
 type Config struct {
 	Addr            string
 	DatabaseURL     string
+	Env             string
 	LogLevel        slog.Level
 	DBMaxConns      int32
 	DBTimeout       time.Duration
@@ -53,6 +55,7 @@ func Load() (Config, error) {
 	cfg := Config{
 		Addr:        env("ADDR", ":8080"),
 		DatabaseURL: os.Getenv("DATABASE_URL"),
+		Env:         env("ENV", "dev"),
 	}
 
 	if cfg.DatabaseURL == "" {

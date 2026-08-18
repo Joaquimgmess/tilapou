@@ -26,6 +26,8 @@ import (
 var errNotReady = errors.New("service is not ready")
 
 const (
+	serviceName        = "tilapou"
+	serviceVersion     = "1.0.0"
 	readHeaderTimeout  = 5 * time.Second
 	errorDocsPrefix    = "https://github.com/Joaquimgmess/tilapou/blob/main/docs/errors.md#"
 	localPlayer        = "00000000-0000-0000-0000-000000000001"
@@ -43,8 +45,11 @@ func runServe(args []string) error {
 		return err
 	}
 
-	logger := logging.New(cfg.LogLevel)
-	slog.SetDefault(logger)
+	logger := logging.New(cfg.LogLevel, logging.Service{
+		Name:    serviceName,
+		Env:     cfg.Env,
+		Version: serviceVersion,
+	})
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
@@ -71,7 +76,7 @@ func runServe(args []string) error {
 
 	sessions := farm.NewSessions(farm.NewDB(pool, cfg.DBTimeout), &rules, time.Now)
 
-	router, api := httpx.NewAPI(logger, "Tilapou", "1.0.0", "/v1", cfg.RequestTimeout,
+	router, api := httpx.NewAPI(logger, "Tilapou", serviceVersion, "/v1", cfg.RequestTimeout,
 		httpx.WithTrustedProxies(int(cfg.TrustedProxies)),
 		httpx.WithErrorDocs(errorDocsPrefix),
 	)

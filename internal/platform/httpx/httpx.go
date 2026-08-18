@@ -108,7 +108,7 @@ func observe(logger *slog.Logger, m *metrics) func(http.Handler) http.Handler {
 				slog.String("route", route),
 				slog.String("path", r.URL.Path),
 				slog.Int("status", ww.Status()),
-				slog.Duration("duration", elapsed),
+				slog.Int64("duration_ms", elapsed.Milliseconds()),
 			)
 		})
 	}

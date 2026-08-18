@@ -80,3 +80,33 @@ func TestNoTestWritesToTheOwnerDatabase(t *testing.T) {
 		}
 	}
 }
+
+func TestZapNeverLeavesTheLoggingPackage(t *testing.T) {
+	t.Parallel()
+
+	const (
+		zap     = "go.uber.org/zap"
+		allowed = module + "/internal/platform/logging"
+	)
+
+	cmd := exec.CommandContext(t.Context(), "go", "list", "-f", "{{.ImportPath}} {{join .Imports \",\"}}", "./...")
+	cmd.Dir = "../.."
+
+	out, err := cmd.Output()
+	if err != nil {
+		t.Fatalf("go list imports: %v", err)
+	}
+
+	for line := range strings.SplitSeq(strings.TrimSpace(string(out)), "\n") {
+		pkg, imports, _ := strings.Cut(line, " ")
+		if pkg == allowed {
+			continue
+		}
+
+		for imported := range strings.SplitSeq(imports, ",") {
+			if strings.HasPrefix(imported, zap) {
+				t.Errorf("%s importa %q: zap e a implementacao do logging, o resto do repo fala slog", pkg, imported)
+			}
+		}
+	}
+}

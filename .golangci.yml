@@ -84,6 +84,13 @@ linters:
               desc: o client fala HTTP; banco e do daemon, do outro lado do fio
             - pkg: github.com/Joaquimgmess/tilapou/internal/platform/postgres
               desc: o client roda na maquina do jogador e nao alcanca o banco
+        zap-so-no-logging:
+          files:
+            - "**/*.go"
+            - "!**/internal/platform/logging/*.go"
+          deny:
+            - pkg: go.uber.org/zap
+              desc: zap e a implementacao do logging; o resto do repo fala slog
         balance-e-tabela:
           files:
             - "**/internal/balance/**"
