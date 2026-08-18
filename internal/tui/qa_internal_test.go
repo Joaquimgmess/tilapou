@@ -204,3 +204,41 @@ func TestPularDiasSoAceitaBancoDeTeste(t *testing.T) {
 		}
 	}
 }
+
+func TestApertarZNoSegundoViveiroTrocaOTanqueSelecionado(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(sizedSnapshot())
+	}))
+	t.Cleanup(server.Close)
+
+	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.run(d.model.(Model).fetch())
+
+	if got := d.model.(Model).mode; got != ModeGameBoy {
+		t.Fatalf("o jogo abre no modo %v, queria a tela GameBoy", got)
+	}
+	if got := d.model.(Model).selected; got != 0 {
+		t.Fatalf("o jogo comeca com o tanque %d selecionado, queria 0", got)
+	}
+
+	for range pondCols + 1 {
+		d.press(keyRight)
+	}
+	d.press(keyUp)
+	d.press("z")
+
+	m, ok := d.model.(Model)
+	if !ok {
+		t.Fatal("o driver perdeu o Model")
+	}
+	if m.selected != 1 {
+		t.Fatalf("apertar z de frente para o segundo viveiro deixou selected em %d, queria 1", m.selected)
+	}
+	if m.menu == nil {
+		t.Fatal("apertar z de frente para o viveiro nao abriu o menu do tanque")
+	}
+}
