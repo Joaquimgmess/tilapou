@@ -8,8 +8,9 @@ type Sprite struct {
 	rows [TileSize]string
 }
 
-// NewSprite builds a sprite of TileSize rows where each digit '0' to '3' is a Shade.
-// Any other character stays transparent, without warning.
+// NewSprite builds a sprite of TileSize rows where each digit '0' to '3' is a Shade and
+// '.' leaves the pixel transparent. Note that '0' paints the lightest shade, it does not
+// clear: padding a sprite with '0' draws a pale block over the scenery.
 func NewSprite(rows [TileSize]string) Sprite {
 	return Sprite{rows: rows}
 }
@@ -106,20 +107,20 @@ var (
 	})
 
 	Fence = NewSprite([TileSize]string{
-		"03000030",
-		"03000030",
+		".3....3.",
+		".3....3.",
 		"33333333",
-		"03000030",
-		"03000030",
+		".3....3.",
+		".3....3.",
 		"33333333",
-		"03000030",
-		"03000030",
+		".3....3.",
+		".3....3.",
 	})
 
 	Shed = NewSprite([TileSize]string{
-		"00033000",
-		"00333300",
-		"03333330",
+		"...33...",
+		"..3333..",
+		".333333.",
 		"33333333",
 		"31111113",
 		"31002213",
@@ -128,57 +129,57 @@ var (
 	})
 
 	Aerator = NewSprite([TileSize]string{
-		"00300300",
-		"03033030",
-		"00333300",
+		"..3..3..",
+		".3.33.3.",
+		"..3333..",
 		"33322333",
 		"33322333",
-		"00333300",
-		"03033030",
-		"00300300",
+		"..3333..",
+		".3.33.3.",
+		"..3..3..",
 	})
 
 	Fish = NewSprite([TileSize]string{
-		"00000000",
-		"00000000",
-		"00033300",
-		"30333330",
-		"33333030",
-		"30333330",
-		"00033300",
-		"00000000",
+		"........",
+		"........",
+		"...333..",
+		"3.33333.",
+		"3333303.",
+		"3.33333.",
+		"...333..",
+		"........",
 	})
 
 	PlayerDown = NewSprite([TileSize]string{
-		"00333300",
-		"03333330",
-		"01311310",
-		"00111100",
+		"..3333..",
+		".333333.",
+		".131131.",
+		"..1111..",
 		"12222221",
-		"02222220",
-		"00333300",
-		"03300330",
+		".222222.",
+		"..3333..",
+		".33..33.",
 	})
 
 	PlayerUp = NewSprite([TileSize]string{
-		"00333300",
-		"03333330",
-		"01111110",
-		"00333300",
+		"..3333..",
+		".333333.",
+		".111111.",
+		"..3333..",
 		"12222221",
-		"02222220",
-		"00333300",
-		"03300330",
+		".222222.",
+		"..3333..",
+		".33..33.",
 	})
 
 	PlayerSide = NewSprite([TileSize]string{
-		"00333300",
-		"03333330",
-		"00113100",
-		"00111100",
-		"00222211",
-		"00222200",
-		"00333300",
-		"00330330",
+		"..3333..",
+		".333333.",
+		"..1131..",
+		"..1111..",
+		"..222211",
+		"..2222..",
+		"..3333..",
+		"..33.33.",
 	})
 )
