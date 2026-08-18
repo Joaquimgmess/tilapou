@@ -3,7 +3,7 @@ export
 
 TILAPOU_DAEMON ?= http://localhost:$(or $(API_PORT),8080)
 
-.PHONY: build run play status test lint fmt tidy check up down golden migrate-create vuln dead
+.PHONY: build run play status test test-db lint fmt tidy check up down golden migrate-create vuln dead
 
 BIN := bin/tilapou
 
@@ -23,6 +23,12 @@ test:
 	go test ./... -race
 	go test ./... -cover
 
+# test-db roda tambem a integracao do farm/database.go, que pula sem esta variavel.
+# Aponta para o Postgres do compose (5433) e nunca para o banco do jogador.
+test-db: export TILAPOU_TEST_DATABASE_URL = postgres://$(or $(POSTGRES_USER),tilapou):$(or $(POSTGRES_PASSWORD),tilapou)@localhost:5433/tilapou_qa?sslmode=disable
+test-db:
+	go test ./internal/farm/ -race -count=1
+
 lint:
 	golangci-lint config verify
 	golangci-lint run ./...
@@ -33,7 +39,7 @@ fmt:
 tidy:
 	go mod tidy
 
-check: fmt lint test build vuln dead
+check: fmt lint test test-db build vuln dead
 
 up:
 	docker compose up -d --build
