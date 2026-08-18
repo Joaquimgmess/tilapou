@@ -44,8 +44,10 @@ func (m Model) renderDashboard() string {
 	case m.menu != nil:
 		rows = append(rows, panel(m.effectiveWidth()-panelInset, renderMenu(m.menu)))
 	case wide:
+		// A decisao fica com o que sobra: com largura fixa ela quebra a frase enquanto
+		// dezenas de colunas ficam vazias a direita.
 		rows = append(rows, lipgloss.JoinHorizontal(lipgloss.Top,
-			panel(decisionCol, m.renderDecision()),
+			panel(max(m.effectiveWidth()-marketCol-panelInset, decisionCol), m.renderDecision()),
 			panel(marketCol, m.renderMarket()),
 		))
 	default:
@@ -53,9 +55,21 @@ func (m Model) renderDashboard() string {
 			panel(m.effectiveWidth()-panelInset, m.renderMarket()))
 	}
 
-	rows = append(rows, m.renderKeys())
+	return m.withKeysAtTheBottom(rows)
+}
 
-	return strings.Join(rows, "\n")
+// withKeysAtTheBottom pushes the key bar to the last line, so the eye knows where the
+// information ends instead of finding it stranded in the middle of an empty screen.
+func (m Model) withKeysAtTheBottom(rows []string) string {
+	body := strings.Join(rows, "\n")
+	keys := m.renderKeys()
+
+	blank := m.height - lipgloss.Height(body) - lipgloss.Height(keys)
+	if m.height <= 0 || blank <= 0 {
+		return body + "\n" + keys
+	}
+
+	return body + strings.Repeat("\n", blank+1) + keys
 }
 
 func (m Model) renderTooSmall() string {

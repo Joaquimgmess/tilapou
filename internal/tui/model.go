@@ -148,6 +148,16 @@ func (m Model) resizedFarm(tanks int) farmMap {
 	return newFarmMap(tanks, cols, rows)
 }
 
+// clearStale drops the message unless it was posted in this very frame: walking right
+// after acting would otherwise wipe the confirmation before it could be read.
+func (m Model) clearStale() Model {
+	if m.frame != m.messageAt {
+		m.message = ""
+	}
+
+	return m
+}
+
 func (m Model) say(text string) Model {
 	m.message, m.messageAt = text, m.frame
 
@@ -512,9 +522,9 @@ func (m Model) jumpToAdvice() Model {
 	target := adviceTank(m.snapshot)
 	for i := range m.snapshot.Tanks {
 		if m.snapshot.Tanks[i].ID == target {
-			m.selected, m.message = i, ""
+			m.selected = i
 
-			return m
+			return m.clearStale()
 		}
 	}
 

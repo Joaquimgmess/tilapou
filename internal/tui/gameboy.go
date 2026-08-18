@@ -240,7 +240,5 @@ func (m Model) move(dx, dy int, look facing) Model {
 		m.you.x += dx
 		m.you.y += dy
 	}
-	m.message = ""
-
-	return m
+	return m.clearStale()
 }

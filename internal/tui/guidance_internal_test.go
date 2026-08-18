@@ -339,3 +339,38 @@ func TestOHistoricoDaAberturaNaoViraNovidade(t *testing.T) {
 		t.Errorf("o acontecimento novo nao foi anunciado: %q", said)
 	}
 }
+
+func TestConfirmacaoSobreviveAoProximoPasso(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	for _, key := range []string{keyUp, keyDown, keyLeft, keyRight, jumpKey} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+
+			d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+			d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+			d.run(d.model.(Model).fetch())
+
+			d.press("f")
+
+			said := d.model.(Model).message
+			if said == "" {
+				t.Fatal("servir o trato nao confirmou nada")
+			}
+
+			d.press(key)
+
+			if got := d.model.(Model).message; got != said {
+				t.Errorf("apertar %q no mesmo quadro apagou a confirmacao %q, sobrou %q", key, said, got)
+			}
+		})
+	}
+}
