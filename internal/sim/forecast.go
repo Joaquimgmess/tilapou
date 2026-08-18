@@ -195,7 +195,7 @@ func (s *State) Series(b *Balance, points int, step Tick) (fish, feed []Coins) {
 }
 
 // StockAdvice suggests fingerlings that fit the tank and the cash, with the cost per fish in cents up to grow-out.
-func (s *State) StockAdvice(b *Balance, tank TankID) (fish FishCount, perFish Coins) {
+func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) (fish FishCount, perFish Coins) {
 	t := s.tank(tank)
 	if t == nil {
 		return 0, 0
@@ -213,7 +213,7 @@ func (s *State) StockAdvice(b *Balance, tank TankID) (fish FishCount, perFish Co
 
 	// O que sobra depois de guardar o custo fixo do ciclo: povoar com o caixa inteiro deixa
 	// o lote sem racao no meio do caminho, e ai ele morre de fome em vez de crescer.
-	spendable := int64(s.Cash) - int64(s.fixedCost(b, t))
+	spendable := int64(s.Cash) - int64(s.fixedCost(b, t, plan))
 	if spendable <= 0 {
 		return 0, perFish
 	}
@@ -223,8 +223,10 @@ func (s *State) StockAdvice(b *Balance, tank TankID) (fish FishCount, perFish Co
 
 // fixedCost is the upkeep and the interest that run while the batch grows, whether or not
 // the player does anything.
-func (s *State) fixedCost(b *Balance, t *Tank) Coins {
-	plan := b.CycleAt(t.Kind, s.Tick, s.Zone)
+//
+// O plano vem de fora: monta-lo custa duas simulacoes de ciclo, e so quem orquestra sabe
+// quando vale pagar por isso e por quanto tempo um plano do dia anterior ainda serve.
+func (s *State) fixedCost(b *Balance, t *Tank, plan CyclePlan) Coins {
 	if plan.Days <= 0 {
 		return 0
 	}
@@ -276,7 +278,7 @@ func (l LoanBlock) String() string {
 }
 
 // LoanAdvice suggests how much to borrow in cents up to the break-even stocking, or 0 with the reason for the block.
-func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) (Coins, LoanBlock) {
+func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) (Coins, LoanBlock) {
 	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
 	if room <= 0 {
 		return 0, LoanNoCredit
@@ -290,12 +292,12 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) (Coins,
 		return 0, LoanNoRoom
 	}
 
-	fish, perFish := s.StockAdvice(b, tank)
+	fish, perFish := s.StockAdvice(b, tank, plan)
 	if perFish <= 0 {
 		return room, LoanOpen
 	}
 
-	goal := int64(breakEven)
+	goal := int64(plan.BreakEven)
 	if int64(t.Fish())+int64(fish) >= goal {
 		goal = t.Capacity(b)
 	}

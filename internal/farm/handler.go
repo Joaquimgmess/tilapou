@@ -342,10 +342,10 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 
 	for i := range state.TankCount {
 		tank := &state.Tanks[i]
-		fish, cost := state.StockAdvice(b, tank.ID)
-		advice, perFish := int64(fish), int64(cost)
 		plan := p.at(b, tank.Kind, state.Tick, state.Zone)
-		loan, block := state.LoanAdvice(b, tank.ID, plan.BreakEven)
+		fish, cost := state.StockAdvice(b, tank.ID, plan)
+		advice, perFish := int64(fish), int64(cost)
+		loan, block := state.LoanAdvice(b, tank.ID, plan)
 		tv := TankView{
 			ID:          uint32(tank.ID),
 			Kind:        tank.Kind.String(),

@@ -3,6 +3,7 @@ package farm
 import (
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/Joaquimgmess/tilapou/internal/balance"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
@@ -269,5 +270,47 @@ func TestTodoLoteDoTanqueApareceNaView(t *testing.T) {
 
 	if fish != tank.Fish {
 		t.Errorf("os lotes somam %d peixes e o tanque diz %d: a view esconde lote", fish, tank.Fish)
+	}
+}
+
+// Todo snapshot monta a view, e a view pede conselho de lotacao por tanque. Se esse conselho
+// simular um ciclo inteiro por tanque, cada requisicao HTTP paga segundos de simulacao —
+// tempo que o cache de planos da fatia existe justamente para nao pagar duas vezes.
+func TestMontarAViewNaoSimulaUmCicloPorTanque(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	s := sim.NewState(1, 0, 0)
+	s.Cash = 50_000_000
+
+	for _, kind := range []sim.TankKind{
+		sim.TankEarthPond, sim.TankNetCage, sim.TankBiofloc, sim.TankRecirculation,
+	} {
+		id, ok := s.AddTank(&b, kind, b.Tanks[kind].Litres)
+		if !ok {
+			t.Fatalf("sem tanque do tipo %s", kind)
+		}
+		s.StockTank(id, 100, b.Growth.FingerlingMass, 8_000)
+	}
+	s.SeedOxygen(&b)
+
+	snap := Snapshot{Farm: Farm{State: s}, Projection: sim.Project(&s)}
+	p := newPlans()
+
+	// O caminho quente e o snapshot repetido: o primeiro ainda pode simular para montar o
+	// plano do dia, o segundo tem de sair do cache.
+	viewOf(snap, &b, p)
+
+	start := time.Now()
+	viewOf(snap, &b, p)
+
+	const budget = 50 * time.Millisecond
+	if took := time.Since(start); took > budget {
+		t.Errorf("montar a view de %d tanques levou %s, acima de %s: alguem esta simulando um ciclo fora do cache",
+			s.TankCount, took, budget)
 	}
 }

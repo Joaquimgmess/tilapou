@@ -186,7 +186,7 @@ func TestEmprestimoOferecidoCobreUmSacoDeRacao(t *testing.T) {
 	// dimensionado por esses doze peixes, que nao paga nem racao.
 	s.StockTank(id, plan.BreakEven-12, 450*sim.MicrogramsPerGram, 1_000)
 
-	loan, block := s.LoanAdvice(&b, id, plan.BreakEven)
+	loan, block := s.LoanAdvice(&b, id, plan)
 	if block != sim.LoanOpen {
 		t.Fatalf("o credito esta bloqueado por %v com o limite quase todo livre", block)
 	}
@@ -222,8 +222,9 @@ func TestApertarPovoarDeNovoNaoLotaOTanqueSozinho(t *testing.T) {
 			}
 
 			capacity := s.Tanks[0].Capacity(&b)
+			plan := b.CycleAt(sim.TankEarthPond, s.Tick, s.Zone)
 
-			first, perFish := s.StockAdvice(&b, id)
+			first, perFish := s.StockAdvice(&b, id, plan)
 			if first <= 0 {
 				continue
 			}
@@ -231,7 +232,7 @@ func TestApertarPovoarDeNovoNaoLotaOTanqueSozinho(t *testing.T) {
 			s.StockTank(id, first, b.Growth.FingerlingMass, sim.Coins(int64(first))*perFish)
 			s.Cash -= sim.Coins(int64(first)) * perFish
 
-			if again, _ := s.StockAdvice(&b, id); again > 0 {
+			if again, _ := s.StockAdvice(&b, id, plan); again > 0 {
 				t.Errorf("caixa %d divida %d: povoou %d de %d e o conselho ainda manda povoar mais %d",
 					cash, debt, first, capacity, again)
 			}

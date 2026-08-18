@@ -126,7 +126,7 @@ func TestStockAdviceRefusesATankWithNoRoomForAnotherBatch(t *testing.T) {
 		t.Fatalf("o cenario precisa de espaco de densidade sobrando, sobrou %d", room)
 	}
 
-	if fish, _ := s.StockAdvice(b, id); fish != 0 {
+	if fish, _ := s.StockAdvice(b, id, b.CycleAt(TankEarthPond, s.Tick, s.Zone)); fish != 0 {
 		t.Errorf("com %d lotes o tanque nao aceita povoar, mas a sugestao foi de %d alevinos",
 			tank.BatchCount, fish)
 	}
@@ -198,7 +198,7 @@ func TestLoanAdviceSaysWhyItOffersNothing(t *testing.T) {
 		s.Cash = 1 << 40
 		id := tc.setup(&s)
 
-		loan, block := s.LoanAdvice(b, id, 968)
+		loan, block := s.LoanAdvice(b, id, CyclePlan{BreakEven: 968})
 		if block != tc.block {
 			t.Errorf("%s: motivo %v, queria %v", tc.name, block, tc.block)
 		}
@@ -295,18 +295,18 @@ func TestPovoarDeixaCaixaParaOCustoFixoDoCiclo(t *testing.T) {
 		t.Fatal("sem tanque")
 	}
 
-	fish, perFish := s.StockAdvice(b, id)
+	plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+	if plan.Days <= 0 {
+		t.Fatal("o ciclo do viveiro nao tem plano")
+	}
+
+	fish, perFish := s.StockAdvice(b, id, plan)
 	if fish <= 0 {
 		t.Fatal("o conselho nao sugeriu povoar nada")
 	}
 
 	spent := Coins(int64(fish)) * perFish
 	left := s.Cash - spent
-
-	plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
-	if plan.Days <= 0 {
-		t.Fatal("o ciclo do viveiro nao tem plano")
-	}
 
 	fixed := Coins(plan.Days) * (b.Tanks[TankEarthPond].UpkeepPerDay +
 		Coins(mulDivCeil(int64(s.Debt), int64(b.Credit.DailyRatePPM), int64(UnitPPM))))
