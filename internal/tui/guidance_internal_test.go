@@ -465,3 +465,23 @@ func TestZNoVazioDizQueNaoTemNada(t *testing.T) {
 		t.Error("o z no vazio nao respondeu nada, e a caixa promete que ele abre as opcoes")
 	}
 }
+
+// O objetivo e a tecla precisam sair da mesma conta: mandar povoar quando povoar recusa deixa
+// o jogador apertando uma tecla que o proprio jogo acabou de anunciar.
+func TestOObjetivoNaoMandaPovoarQuandoOConselhoEZero(t *testing.T) {
+	t.Parallel()
+
+	// Caixa alto o bastante para os alevinos, mas nao para o custo fixo do ciclo: e assim
+	// que o conselho volta zero com o caixa parecendo cheio.
+	s := client.Snapshot{
+		CashCents: 79_998,
+		Prices:    client.Prices{FingerlingCents: 80},
+		Tanks: []client.Tank{{
+			ID: 1, Fish: 0, Capacity: 5_000, StockAdvice: 0,
+		}},
+	}
+
+	if goal := farmGoal(s); strings.Contains(goal, "Povoe com [s]") {
+		t.Errorf("com o conselho em zero o objetivo ainda manda povoar: %q", goal)
+	}
+}

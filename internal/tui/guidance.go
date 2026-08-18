@@ -12,7 +12,6 @@ const (
 	feederIndex       = 0
 	aeratorIndex      = 1
 	minRestockKg      = 10
-	minStock          = 100
 	shortRunwayDays   = 20
 	jumpKey           = "."
 )
@@ -227,7 +226,9 @@ func thinAdvice(t *client.Tank) (string, bool) {
 func farmGoal(s client.Snapshot) string {
 	tank := s.Tanks[0]
 	if tank.Fish == 0 {
-		if s.CashCents < s.Prices.FingerlingCents*minStock {
+		// A mesma conta que a tecla usa, e nao uma parecida: o conselho ja desconta o custo
+		// fixo do ciclo, e mandar povoar por fora dele manda apertar o que vai ser recusado.
+		if tank.StockAdvice <= 0 {
 			if !creditRoom(s) {
 				return "Tanque vazio, sem grana e sem credito: so recomecando com [b]"
 			}
