@@ -65,11 +65,13 @@ func New(c *client.Client) Model {
 	var seed [8]byte
 	_, _ = rand.Read(seed[:])
 
+	farm := newFarmMap(1, minMapCols, minMapRows)
+
 	return Model{
 		client:  c,
 		nextKey: binary.BigEndian.Uint64(seed[:]),
-		farm:    newFarmMap(1),
-		you:     newAvatar(),
+		farm:    farm,
+		you:     newAvatar(farm),
 	}
 }
 
@@ -83,6 +85,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+		m.farm = m.resizedFarm(len(m.snapshot.Tanks))
+		m.you = m.you.clampedTo(m.farm)
 
 		return m, nil
 
@@ -113,7 +117,7 @@ func (m Model) onSnapshot(msg snapshotMsg) Model {
 	}
 
 	m.snapshot, m.staleTicks = msg.snapshot, 0
-	m.farm = newFarmMap(len(msg.snapshot.Tanks))
+	m.farm = m.resizedFarm(len(msg.snapshot.Tanks))
 	m.selected = min(m.selected, max(len(msg.snapshot.Tanks)-1, 0))
 
 	if failure := explain(msg.snapshot.LastOutcome, msg.snapshot.CashCents); failure != "" {
@@ -122,6 +126,13 @@ func (m Model) onSnapshot(msg snapshotMsg) Model {
 	m.menu = m.refreshedMenu()
 
 	return m
+}
+
+// resizedFarm rebuilds the map for the current terminal, so the grass grows with the screen.
+func (m Model) resizedFarm(tanks int) farmMap {
+	cols, rows := mapSizeFor(m.width, m.height)
+
+	return newFarmMap(tanks, cols, rows)
 }
 
 func (m Model) say(text string) Model {

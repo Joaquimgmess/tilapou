@@ -26,28 +26,24 @@ var (
 			BorderForeground(lipgloss.Color(gb.Hex(gb.Dark))).
 			Background(lipgloss.Color(gb.Hex(gb.Lightest))).
 			Foreground(lipgloss.Color(gb.Hex(gb.Darkest))).
-			Padding(0, 1).
-			Width(mapCols*gb.TileSize - boxPadding)
+			Padding(0, 1)
 
 	hudStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color(gb.Hex(gb.Dark))).
 			Foreground(lipgloss.Color(gb.Hex(gb.Lightest))).
 			Bold(true).
-			Padding(0, 1).
-			Width(mapCols * gb.TileSize)
+			Padding(0, 1)
 
 	urgentStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color(gb.Hex(gb.Darkest))).
 			Foreground(lipgloss.Color(gb.Hex(gb.Lightest))).
 			Bold(true).
-			Padding(0, 1).
-			Width(mapCols * gb.TileSize)
+			Padding(0, 1)
 
 	goalStyle = lipgloss.NewStyle().
 			Background(lipgloss.Color(gb.Hex(gb.Light))).
 			Foreground(lipgloss.Color(gb.Hex(gb.Darkest))).
-			Padding(0, 1).
-			Width(mapCols * gb.TileSize)
+			Padding(0, 1)
 
 	pickedStyle = lipgloss.NewStyle().Bold(true).Underline(true)
 )
@@ -55,9 +51,19 @@ var (
 const (
 	dialogueRows = 4
 	gbChromeRows = 7
-	gbCols       = mapCols * gb.TileSize
-	gbRows       = mapRows*gb.TileSize/2 + gbChromeRows
+	gbCols       = minMapCols * gb.TileSize
+	gbRows       = minMapRows*gb.TileSize/2 + gbChromeRows
 )
+
+// mapScreenRows is how many terminal rows are left for the map after the chrome.
+func (m Model) mapScreenRows(chrome int) int {
+	drawn := m.farm.rows * gb.TileSize / rowsPerCell
+	if m.height <= 0 {
+		return drawn
+	}
+
+	return max(min(drawn, m.height-chrome), 1)
+}
 
 func cropTo(frame string, rows int) string {
 	lines := strings.Split(frame, "\n")
@@ -87,26 +93,32 @@ func (m Model) renderGameBoy() string {
 		debt = "   divida " + coins(snapshot.Debt)
 	}
 
-	hud := hudStyle.Render(fmt.Sprintf("TILAPOU   %s%s   peixe %s/kg   equiv %s   dia %d",
+	width := m.farm.cols * gb.TileSize
+
+	hud := hudStyle.Width(width).Render(fmt.Sprintf("TILAPOU   %s%s   peixe %s/kg   equiv %s   dia %d",
 		coins(snapshot.CashCents), debt, coins(snapshot.Prices.FishKgCents),
 		ratio(snapshot.Prices.RatioPPM), snapshot.Tick/(hoursPerDay*minutesPerHour)))
 
 	goal, urgent := objective(snapshot, m.tankID())
-	banner := goalStyle.Render("OBJETIVO: " + goal)
+	banner := goalStyle.Width(width).Render("OBJETIVO: " + goal)
 	if urgent {
-		banner = urgentStyle.Render("! " + goal)
+		banner = urgentStyle.Width(width).Render("! " + goal)
 	}
 
-	body := boxStyle.Render(m.dialogue())
+	box := boxStyle.Width(width - boxPadding)
+
+	body := box.Render(m.dialogue())
 	if m.menu != nil {
-		body = boxStyle.Render(renderMenu(m.menu))
+		body = box.Render(renderMenu(m.menu))
 	}
+
+	chrome := lipgloss.Height(hud) + lipgloss.Height(banner) + lipgloss.Height(body) +
+		lipgloss.Height(m.renderGameBoyKeys())
 
 	return strings.Join([]string{
 		hud,
 		banner,
-		cropTo(renderMap(m.farm, m.you, snapshot, m.frame),
-			gbRows-gbChromeRows+dialogueRows-lipgloss.Height(body)),
+		cropTo(renderMap(m.farm, m.you, snapshot, m.frame), m.mapScreenRows(chrome)),
 		body,
 		m.renderGameBoyKeys(),
 	}, "\n")
@@ -142,7 +154,7 @@ func (m Model) dialogue() string {
 
 		return tankHeadline(tank) + "\n" + tankAdvice(tank) + dimStyle.Render("   [z] opcoes")
 	}
-	if x == shedX && y == shedY {
+	if x == m.farm.shedX() && y == m.farm.shedY() {
 		return "GALPAO DE RACAO\n" + dimStyle.Render("[z] abre as compras")
 	}
 
@@ -198,7 +210,7 @@ func (m Model) target() (index int, kind targetKind) {
 	if pond, ok := m.farm.pondAt(x, y); ok && pond < len(m.snapshot.Tanks) {
 		return pond, targetTank
 	}
-	if x == shedX && y == shedY {
+	if x == m.farm.shedX() && y == m.farm.shedY() {
 		return 0, targetShed
 	}
 

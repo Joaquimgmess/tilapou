@@ -12,14 +12,18 @@ const (
 	fishPerRow        = 1_000
 	swimDivisor       = 2
 	pathRowFromBottom = 2
-	mapCols           = 11
-	mapRows           = 7
+	fenceThickness    = 1
+	rowsPerCell       = 2
+	minMapCols        = 11
+	minMapRows        = 7
+	maxMapCols        = 21
+	maxMapRows        = 11
 	pondCols          = 4
 	pondRows          = 3
 	pondOriginX       = 1
 	pondOriginY       = 1
-	shedX             = 9
-	shedY             = 4
+	shedFromRight     = 2
+	shedFromBottom    = 3
 )
 
 type tileKind uint8
@@ -37,32 +41,47 @@ const (
 )
 
 type farmMap struct {
-	tiles [mapRows][mapCols]tileKind
+	tiles [maxMapRows][maxMapCols]tileKind
+	cols  int
+	rows  int
 }
 
-func newFarmMap(tanks int) farmMap {
-	var m farmMap
+// mapSizeFor grows the farm with the terminal, between the smallest map that still tells
+// the story and a cap that keeps a walk across it short.
+func mapSizeFor(width, height int) (cols, rows int) {
+	if width <= 0 || height <= 0 {
+		return minMapCols, minMapRows
+	}
 
-	for y := range mapRows {
-		for x := range mapCols {
+	cols = min(max(width/gb.TileSize, minMapCols), maxMapCols)
+	rows = min(max((height-gbChromeRows)*2/gb.TileSize, minMapRows), maxMapRows)
+
+	return cols, rows
+}
+
+func newFarmMap(tanks, cols, rows int) farmMap {
+	m := farmMap{cols: min(max(cols, minMapCols), maxMapCols), rows: min(max(rows, minMapRows), maxMapRows)}
+
+	for y := range m.rows {
+		for x := range m.cols {
 			m.tiles[y][x] = tileGrass
 		}
 	}
 
-	for x := range mapCols {
+	for x := range m.cols {
 		m.tiles[0][x] = tileFence
-		m.tiles[mapRows-1][x] = tileFence
+		m.tiles[m.rows-1][x] = tileFence
 	}
-	for y := range mapRows {
+	for y := range m.rows {
 		m.tiles[y][0] = tileFence
-		m.tiles[y][mapCols-1] = tileFence
+		m.tiles[y][m.cols-1] = tileFence
 	}
 
-	for x := 1; x < mapCols-1; x++ {
-		m.tiles[mapRows-pathRowFromBottom][x] = tilePath
+	for x := 1; x < m.cols-1; x++ {
+		m.tiles[m.rows-pathRowFromBottom][x] = tilePath
 	}
 
-	m.tiles[shedY][shedX] = tileShed
+	m.tiles[m.shedY()][m.shedX()] = tileShed
 
 	ponds := min(max(tanks, 1), maxPonds)
 	for i := range ponds {
@@ -75,6 +94,14 @@ func newFarmMap(tanks int) farmMap {
 	}
 
 	return m
+}
+
+func (m farmMap) shedX() int {
+	return m.cols - shedFromRight
+}
+
+func (m farmMap) shedY() int {
+	return m.rows - shedFromBottom
 }
 
 func waterTile(x, y int) tileKind {
@@ -93,7 +120,7 @@ func waterTile(x, y int) tileKind {
 }
 
 func (m farmMap) blocked(x, y int) bool {
-	if x < 0 || y < 0 || x >= mapCols || y >= mapRows {
+	if x < 0 || y < 0 || x >= m.cols || y >= m.rows {
 		return true
 	}
 
@@ -133,15 +160,29 @@ type avatar struct {
 	facing facing
 }
 
-func newAvatar() avatar {
-	return avatar{x: 1, y: mapRows - pathRowFromBottom, facing: facingDown}
+func newAvatar(m farmMap) avatar {
+	return avatar{x: 1, y: m.rows - pathRowFromBottom, facing: facingDown}
+}
+
+// clampedTo keeps the avatar inside a map that just changed size, on a tile it can stand on.
+func (a avatar) clampedTo(m farmMap) avatar {
+	a.x = min(max(a.x, fenceThickness), m.cols-fenceThickness-1)
+	a.y = min(max(a.y, fenceThickness), m.rows-fenceThickness-1)
+
+	if m.blocked(a.x, a.y) {
+		a.x, a.y = 1, m.rows-pathRowFromBottom
+	}
+
+	return a
 }
 
 func (a avatar) sprite() gb.Sprite {
 	switch a.facing {
 	case facingUp:
 		return gb.PlayerUp
-	case facingLeft, facingRight:
+	case facingLeft:
+		return gb.PlayerSide.Flipped()
+	case facingRight:
 		return gb.PlayerSide
 	case facingDown:
 		return gb.PlayerDown
@@ -166,10 +207,10 @@ func (a avatar) ahead() (x, y int) {
 }
 
 func renderMap(m farmMap, a avatar, snapshot client.Snapshot, frame int) string {
-	canvas := gb.NewCanvas(mapCols*gb.TileSize, mapRows*gb.TileSize)
+	canvas := gb.NewCanvas(m.cols*gb.TileSize, m.rows*gb.TileSize)
 
-	for y := range mapRows {
-		for x := range mapCols {
+	for y := range m.rows {
+		for x := range m.cols {
 			spriteFor(m.tiles[y][x]).Draw(canvas, x*gb.TileSize, y*gb.TileSize)
 		}
 	}
