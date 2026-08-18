@@ -175,3 +175,47 @@ func TestLotacaoDizNoAzulQuandoOLoteEstaNoAzul(t *testing.T) {
 		t.Errorf("a lotacao nao diz no azul com o lote ganhando: %q", got)
 	}
 }
+
+// A barra de teclas nao pode passar da largura da tela: o que sobra e cortado, e o que sai
+// primeiro e o fim da linha, onde mora a tecla de sair.
+func TestABarraDeTeclasCabeNaTela(t *testing.T) {
+	t.Parallel()
+
+	for _, width := range []int{40, 60, 80, 100, 120, 200} {
+		m := New(nil)
+		m.snapshot = sizedSnapshot()
+		m.width, m.height = width, 40
+
+		// Conselho apontando outro tanque: e o estado que soma a dica de pulo na barra.
+		m.snapshot.Tanks = append(m.snapshot.Tanks, m.snapshot.Tanks[0])
+		m.snapshot.Tanks[1].ID = 2
+		m.snapshot.Tanks[1].Fish = 0
+		m.snapshot.Broke = true
+		m.snapshot.PrestigeNow = m.snapshot.Prestige + 1
+
+		if got := lipgloss.Height(m.renderKeys()); got != 1 {
+			t.Errorf("em %d colunas a barra ocupa %d linhas: ela nao coube e quebrou\n%s",
+				width, got, ansi.Strip(m.renderKeys()))
+		}
+	}
+}
+
+// A tecla que tira o jogador do estado travado nao pode ser a unica que ele nao ve: hoje o
+// jogo so a cita no texto de objetivo, que ele pode nao estar lendo.
+func TestABarraAnunciaARecomecarQuandoAFazendaQuebra(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 120, 40
+
+	if bar := ansi.Strip(m.renderKeys()); strings.Contains(bar, "b recomecar") {
+		t.Errorf("a fazenda esta de pe e a barra ja oferece recomecar: %q", bar)
+	}
+
+	m.snapshot.Broke = true
+
+	if bar := ansi.Strip(m.renderKeys()); !strings.Contains(bar, "b recomecar") {
+		t.Errorf("a fazenda quebrou e a barra nao diz como recomecar: %q", bar)
+	}
+}

@@ -324,7 +324,10 @@ func (m Model) onConfirm(key string) (tea.Model, tea.Cmd) {
 	restarting := m.restarting
 	next := m.clearPrompt()
 
-	if key != "y" && key != "s" {
+	// So [y]: confirmar com [s] destruia a fazenda de quem apertasse povoar por reflexo
+	// diante do prompt. A tecla que confirma o irreversivel tem de ser morta no resto da
+	// interface, e nao a mais natural de apertar.
+	if key != "y" {
 		return next.say("cancelado"), nil
 	}
 	if restarting {
@@ -339,7 +342,10 @@ func (m Model) askPrestige() (tea.Model, tea.Cmd) {
 		return m.say("Ainda nao da para tilapar: fature mais antes"), nil
 	}
 
-	m = m.say("Tilapar zera tanques, caixa e automacoes. Confirma? [s/n]")
+	// O prompt nomeia o que se perde e o que se ganha: so a perda enviesa a decisao contra a
+	// propria mecanica de progressao do jogo.
+	m = m.say(fmt.Sprintf("Tilapar zera %d tanque(s), %s de caixa e as automacoes, e sobe o prestigio de %d para %d. Confirma? [y/n]",
+		len(m.snapshot.Tanks), coins(m.snapshot.CashCents), m.snapshot.Prestige, m.snapshot.PrestigeNow))
 	m.confirming = true
 
 	return m, nil
@@ -356,7 +362,8 @@ func (m Model) askRestart() (tea.Model, tea.Cmd) {
 		return m.say("So da para recomecar quando a fazenda quebra de vez"), nil
 	}
 
-	m = m.say("Recomecar zera a divida e devolve o lote inicial, sem ganhar prestigio. Confirma? [s/n]")
+	m = m.say(fmt.Sprintf("Recomecar zera %s de divida e devolve o lote inicial, sem ganhar prestigio. Confirma? [y/n]",
+		coins(m.snapshot.Debt)))
 	m.confirming, m.restarting = true, true
 
 	return m, nil

@@ -185,3 +185,22 @@ func (m Model) withFrame(frame int) Model {
 
 	return m
 }
+
+// Confirmacao destrutiva nao pode aceitar a tecla de uma acao comum: quem apertar povoar por
+// reflexo diante de um prompt zera tanques, caixa e automacoes.
+func TestAConfirmacaoDestrutivaNaoAceitaATeclaDePovoar(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.confirming, m.restarting = true, true
+
+	after, cmd := m.onConfirm("s")
+	if cmd != nil {
+		t.Error("a tecla de povoar confirmou o recomecar")
+	}
+
+	if next, ok := after.(Model); ok && next.confirming {
+		t.Error("o prompt continuou aberto depois da tecla")
+	}
+}

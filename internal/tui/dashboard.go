@@ -439,16 +439,47 @@ func viability(ratio, viable int64) string {
 }
 
 func (m Model) renderKeys() string {
-	keys := "j/k lote  z opcoes  g galpao  f trato  c racao  a aerador  s povoar  h despescar  tab mapa  q sair"
-	keys += m.jumpKeyHint()
-	switch {
-	case m.menu != nil:
-		keys = menuKeys
-	case m.effectiveWidth() < wideWidth:
-		keys = "j/k lote  z opcoes  g galpao  f trato  c racao  h despescar  tab mapa  q sair" + m.jumpKeyHint()
+	if m.menu != nil {
+		return keyStyle.Width(m.effectiveWidth()).Render(menuKeys)
 	}
 
-	return keyStyle.Width(m.effectiveWidth()).Render(keys)
+	// A linha quebra em duas quando nao cabe, e o rodape passa a comer uma linha do painel.
+	// Em vez de contar colunas na mao, as dicas menos urgentes saem ate caber; a de sair
+	// fica sempre, porque e a unica que o jogador precisa achar em qualquer estado.
+	hints := m.keyHints()
+	for len(hints) > 0 {
+		bar := keyStyle.Width(m.effectiveWidth()).Render(strings.Join(append(hints, "q sair"), "  "))
+		if lipgloss.Height(bar) == 1 {
+			return bar
+		}
+
+		hints = hints[:len(hints)-1]
+	}
+
+	return keyStyle.Width(m.effectiveWidth()).Render("q sair")
+}
+
+// keyHints lista as teclas da mais urgente para a menos, porque e do fim que a barra abre mao
+// quando a tela e estreita. As condicionais nascem escondidas e aparecem na hora em que
+// agem: listar sempre custa a coluna de quem esta jogando agora.
+func (m Model) keyHints() []string {
+	hints := []string{"j/k lote", "z opcoes", "g galpao", "f trato", "c racao"}
+
+	if m.snapshot.Broke {
+		// Fazenda quebrada nao tem o que povoar nem despescar: a saida dela e a unica tecla
+		// que importa, e hoje o jogo so a cita no texto de objetivo.
+		return append(hints, "b recomecar")
+	}
+
+	hints = append(hints, "h despescar")
+	if target := adviceTank(m.snapshot); target != 0 && target != m.tankID() {
+		hints = append(hints, jumpKey+" alerta")
+	}
+	if m.snapshot.PrestigeNow > m.snapshot.Prestige {
+		hints = append(hints, "p tilapar")
+	}
+
+	return append(hints, "tab mapa", "s povoar", "a aerador")
 }
 
 func sparkline(values []int64) string {
