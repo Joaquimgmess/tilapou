@@ -42,3 +42,32 @@ func TestSeasonReachesBothDiseaseBands(t *testing.T) {
 		t.Errorf("o ano nao cruza as duas faixas de doenca: verao=%v inverno=%v", summer, winter)
 	}
 }
+
+func TestRenovacaoRecuperaODeficitSemPassarDaLinhaDeBase(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	b.Tanks[TankRecirculation].RenewalPPMPerHour = 3 * UnitPPM
+
+	s := NewState(1, 0, 0)
+
+	id, ok := s.AddTank(TankRecirculation, b.Tanks[TankRecirculation].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	s.StockTank(id, 100, 500*MicrogramsPerGram, 1_000)
+
+	tank := &s.Tanks[0]
+	empty := Tank{ID: tank.ID, Kind: tank.Kind, Litres: tank.Litres}
+
+	for tick := range Tick(TicksPerDay) {
+		// O tanque vazio da o oxigenio do ambiente naquela hora, que e o teto da renovacao:
+		// agua nova nao traz mais oxigenio do que a agua de fora tem.
+		ambient := oxygenAt(b, &empty, tick, s.Zone)
+
+		if got := oxygenAt(b, tank, tick, s.Zone); got > ambient {
+			t.Fatalf("tick %d: oxigenio em %d com peixe dentro, acima dos %d do ambiente: a renovacao esta criando oxigenio",
+				tick, got, ambient)
+		}
+	}
+}

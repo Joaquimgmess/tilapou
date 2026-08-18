@@ -33,19 +33,22 @@ func oxygenAt(b *Balance, t *Tank, tick Tick, zone ZoneOffset) MicrogramsPerLite
 	swing := int64(b.Water.DailySwing)
 	shape := triangular(int64(phase.Hour), int64(b.Water.PeakHour))
 
-	level := int64(b.Water.BaselineOxygen) + mulDivFloor(swing, shape, int64(UnitPPM)) - swing/2
+	// ambient e o oxigenio da agua de fora naquela hora: e para ele que a renovacao puxa.
+	ambient := int64(b.Water.BaselineOxygen) + mulDivFloor(swing, shape, int64(UnitPPM)) - swing/2
 
-	level -= mulDivFloor(densityMilliKgPerM3(t), int64(b.Water.BiomassDrawPPM), rootScale)
+	level := ambient - mulDivFloor(densityMilliKgPerM3(t), int64(b.Water.BiomassDrawPPM), rootScale)
 
 	if t.Aerating {
 		level += int64(b.Water.AeratorRecovery)
 	}
 
+	// A renovacao recupera o deficit, e para na linha de base: agua nova nao traz mais
+	// oxigenio do que a agua tem. Sem o teto, uma renovacao acima de 100%% multiplicaria o
+	// deficit e o tanque acabaria com mais oxigenio do que o ambiente.
 	renewal := int64(b.Tanks[t.Kind].RenewalPPMPerHour)
 	if renewal > 0 {
-		deficit := int64(b.Water.BaselineOxygen) - level
-		if deficit > 0 {
-			level += mulDivFloor(deficit, renewal, int64(UnitPPM))
+		if deficit := ambient - level; deficit > 0 {
+			level = min(level+mulDivFloor(deficit, renewal, int64(UnitPPM)), ambient)
 		}
 	}
 
