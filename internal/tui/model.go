@@ -214,6 +214,9 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 	case "z", "enter":
 		return m.onInteract()
 
+	case jumpKey:
+		return m.jumpToAdvice(), nil
+
 	case "f":
 		return m.act(client.Action{Kind: "feed", Tank: m.tankID()}, "servindo o trato")
 
@@ -473,6 +476,19 @@ func (m Model) selectDelta(delta int) Model {
 	}
 
 	m.selected = (m.selected + delta + len(m.snapshot.Tanks)) % len(m.snapshot.Tanks)
+
+	return m
+}
+
+func (m Model) jumpToAdvice() Model {
+	target := adviceTank(m.snapshot)
+	for i := range m.snapshot.Tanks {
+		if m.snapshot.Tanks[i].ID == target {
+			m.selected, m.message = i, ""
+
+			return m
+		}
+	}
 
 	return m
 }

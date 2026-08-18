@@ -105,7 +105,7 @@ func (m Model) renderGoal() string {
 		return valueStyle.Render(clipTo(m.message, m.effectiveWidth()))
 	}
 
-	goal, urgent := objective(m.snapshot)
+	goal, urgent := objective(m.snapshot, m.tankID())
 	if urgent {
 		return dangerStyle.Render("! " + clipTo(goal, m.effectiveWidth()-panelInset))
 	}

@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
@@ -13,16 +14,48 @@ const (
 	minRestockKg      = 10
 	minStock          = 100
 	shortRunwayDays   = 20
+	jumpKey           = "."
 )
 
 type advice struct {
 	text   string
 	urgent bool
+	tank   uint32
+	key    string
 }
 
-func objective(s client.Snapshot) (text string, urgent bool) {
+// adviceTank returns the tank the current advice is about, or zero when it is about the farm.
+func adviceTank(s client.Snapshot) uint32 {
+	found, ok := current(s)
+	if !ok {
+		return 0
+	}
+
+	return found.tank
+}
+
+// objective returns the advice for the farm, already worded for the tank in focus: a
+// tank-scoped key is only offered when it would act on the tank the advice names.
+func objective(s client.Snapshot, focused uint32) (text string, urgent bool) {
 	if len(s.Tanks) == 0 {
 		return "Compre um tanque com [t] para comecar", false
+	}
+
+	found, ok := current(s)
+	if !ok {
+		return farmGoal(s), false
+	}
+	if found.tank != 0 && found.tank != focused {
+		return strings.Replace(found.text, "["+found.key+"]", "["+jumpKey+"]", 1) +
+			" (o " + jumpKey + " leva ate ele)", found.urgent
+	}
+
+	return found.text, found.urgent
+}
+
+func current(s client.Snapshot) (advice, bool) {
+	if len(s.Tanks) == 0 {
+		return advice{}, false
 	}
 
 	checks := []func(client.Snapshot) (advice, bool){
@@ -41,27 +74,31 @@ func objective(s client.Snapshot) (text string, urgent bool) {
 
 	for _, check := range checks {
 		if found, ok := check(s); ok {
-			return found.text, found.urgent
+			return found, true
 		}
 	}
 
+	return advice{}, false
+}
+
+func farmGoal(s client.Snapshot) string {
 	tank := s.Tanks[0]
 	if tank.Fish == 0 {
 		if s.CashCents < s.Prices.FingerlingCents*minStock {
-			return "Tanque vazio e sem grana para povoar. Pegue um emprestimo com [g]", true
+			return "Tanque vazio e sem grana para povoar. Pegue um emprestimo com [g]"
 		}
 
-		return "O tanque esta vazio. Povoe com [s]", false
+		return "O tanque esta vazio. Povoe com [s]"
 	}
 	if s.Prices.RatioPPM < s.Prices.ViablePPM {
-		return "Racao cara demais para o preco do peixe: segure a despesca e evite povoar agora", false
+		return "Racao cara demais para o preco do peixe: segure a despesca e evite povoar agora"
 	}
 	if tank.NextClassGrams > tank.MeanGrams {
 		return fmt.Sprintf("Segurar ate %d g sobe o preco por quilo (esta em %d g)",
-			tank.NextClassGrams, tank.MeanGrams), false
+			tank.NextClassGrams, tank.MeanGrams)
 	}
 
-	return fmt.Sprintf("Engorde ate 800 g (esta em %d g) e sirva o trato antes de acabar", tank.MeanGrams), false
+	return fmt.Sprintf("Engorde ate 800 g (esta em %d g) e sirva o trato antes de acabar", tank.MeanGrams)
 }
 
 func underStocked(s client.Snapshot) (advice, bool) {
@@ -73,14 +110,14 @@ func underStocked(s client.Snapshot) (advice, bool) {
 
 		missing := t.BreakEven - int64(t.Fish)
 		if t.StockAdvice >= missing {
-			return advice{fmt.Sprintf(
+			return advice{text: fmt.Sprintf(
 				"O tanque %d so paga a manutencao com %d peixes e tem %d. Povoe com [s]",
-				t.ID, t.BreakEven, t.Fish), true}, true
+				t.ID, t.BreakEven, t.Fish), urgent: true, tank: t.ID, key: "s"}, true
 		}
 
-		return advice{fmt.Sprintf(
+		return advice{text: fmt.Sprintf(
 			"O tanque %d precisa de %d peixes para pagar a manutencao e o caixa so cobre %d. Pegue credito com [g]",
-			t.ID, t.BreakEven, t.StockAdvice), true}, true
+			t.ID, t.BreakEven, t.StockAdvice), urgent: true}, true
 	}
 
 	return advice{}, false
@@ -91,14 +128,14 @@ func broke(s client.Snapshot) (advice, bool) {
 		return advice{}, false
 	}
 
-	return advice{"A fazenda quebrou: sem peixe, sem caixa e sem credito. Recomece do zero com [b]", true}, true
+	return advice{text: "A fazenda quebrou: sem peixe, sem caixa e sem credito. Recomece do zero com [b]", urgent: true}, true
 }
 
 func suffocating(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.OxygenUgL < criticalOxygenUgL && !t.Aerating {
-			return advice{fmt.Sprintf("URGENTE: o tanque %d esta sem oxigenio. Ligue o aerador com [a]", t.ID), true}, true
+			return advice{text: fmt.Sprintf("URGENTE: o tanque %d esta sem oxigenio. Ligue o aerador com [a]", t.ID), urgent: true, tank: t.ID, key: "a"}, true
 		}
 	}
 
@@ -109,8 +146,8 @@ func sickBatch(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.Sick {
-			return advice{fmt.Sprintf(
-				"Doenca no tanque %d. Abra [z] e trate, ou aceite as perdas", t.ID), true}, true
+			return advice{text: fmt.Sprintf(
+				"Doenca no tanque %d. Abra [z] e trate, ou aceite as perdas", t.ID), urgent: true, tank: t.ID, key: "z"}, true
 		}
 	}
 
@@ -128,9 +165,9 @@ func shortRunway(s client.Snapshot) (advice, bool) {
 			continue
 		}
 
-		return advice{fmt.Sprintf(
+		return advice{text: fmt.Sprintf(
 			"O caixa dura %d dias e o lote do tanque %d so fecha em %d. Pegue credito com [g]",
-			s.RunwayDays, t.ID, t.Decision.HoldDays), true}, true
+			s.RunwayDays, t.ID, t.Decision.HoldDays), urgent: true}, true
 	}
 
 	return advice{}, false
@@ -138,7 +175,7 @@ func shortRunway(s client.Snapshot) (advice, bool) {
 
 func crushingDebt(s client.Snapshot) (advice, bool) {
 	if s.Debt > 0 && s.CashCents == 0 {
-		return advice{"Sem caixa e com divida: os juros estao crescendo. Venda peixe", true}, true
+		return advice{text: "Sem caixa e com divida: os juros estao crescendo. Venda peixe", urgent: true}, true
 	}
 
 	return advice{}, false
@@ -151,11 +188,11 @@ func outOfFeed(s client.Snapshot) (advice, bool) {
 			continue
 		}
 		if s.CashCents < s.Prices.FeedKgCents*minRestockKg {
-			return advice{fmt.Sprintf(
-				"Sem racao e sem caixa. Abra [z] no tanque %d e raleie o lote para levantar dinheiro", t.ID), true}, true
+			return advice{text: fmt.Sprintf(
+				"Sem racao e sem caixa. Abra [z] no tanque %d e raleie o lote para levantar dinheiro", t.ID), urgent: true, tank: t.ID, key: "z"}, true
 		}
 
-		return advice{fmt.Sprintf("O tanque %d ficou sem racao. Compre com [c]", t.ID), true}, true
+		return advice{text: fmt.Sprintf("O tanque %d ficou sem racao. Compre com [c]", t.ID), urgent: true, tank: t.ID, key: "c"}, true
 	}
 
 	return advice{}, false
@@ -165,7 +202,7 @@ func unfed(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.Fish > 0 && t.ServedFor <= 0 && !owns(t, feederIndex) {
-			return advice{fmt.Sprintf("Os peixes do tanque %d nao comem sozinhos. Sirva o trato com [f]", t.ID), true}, true
+			return advice{text: fmt.Sprintf("Os peixes do tanque %d nao comem sozinhos. Sirva o trato com [f]", t.ID), urgent: true, tank: t.ID, key: "f"}, true
 		}
 	}
 
@@ -176,7 +213,7 @@ func readyToHarvest(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if t.Ready {
-			return advice{fmt.Sprintf("O lote do tanque %d esta no ponto de abate. Despesque com [h]", t.ID), false}, true
+			return advice{text: fmt.Sprintf("O lote do tanque %d esta no ponto de abate. Despesque com [h]", t.ID), tank: t.ID, key: "h"}, true
 		}
 	}
 
@@ -187,10 +224,12 @@ func affordableAutomation(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
 		if !owns(t, feederIndex) && affords(s, t, feederIndex) {
-			return advice{"Da para comprar o comedouro com [1]: ele serve o trato sozinho", false}, true
+			return advice{text: fmt.Sprintf(
+				"Da para comprar o comedouro do tanque %d com [1]: ele serve o trato sozinho", t.ID), tank: t.ID, key: "1"}, true
 		}
 		if !owns(t, aeratorIndex) && affords(s, t, aeratorIndex) {
-			return advice{"Da para comprar o aerador com [2]: ele liga sozinho na madrugada", false}, true
+			return advice{text: fmt.Sprintf(
+				"Da para comprar o aerador do tanque %d com [2]: ele liga sozinho na madrugada", t.ID), tank: t.ID, key: "2"}, true
 		}
 	}
 
@@ -199,7 +238,7 @@ func affordableAutomation(s client.Snapshot) (advice, bool) {
 
 func prestigeReady(s client.Snapshot) (advice, bool) {
 	if s.PrestigeNow > s.Prestige {
-		return advice{fmt.Sprintf("Voce pode tilapar com [p] e ganhar %d matrizes", s.PrestigeNow-s.Prestige), false}, true
+		return advice{text: fmt.Sprintf("Voce pode tilapar com [p] e ganhar %d matrizes", s.PrestigeNow-s.Prestige)}, true
 	}
 
 	return advice{}, false

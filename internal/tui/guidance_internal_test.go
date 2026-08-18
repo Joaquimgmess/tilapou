@@ -1,0 +1,143 @@
+package tui
+
+import (
+	"encoding/json"
+	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"regexp"
+	"strings"
+	"testing"
+	"time"
+
+	tea "charm.land/bubbletea/v2"
+
+	"github.com/Joaquimgmess/tilapou/internal/client"
+)
+
+var offeredKey = regexp.MustCompile(`\[(\w|\.)\]`)
+
+func adviceCases() map[string]func(client.Snapshot) client.Snapshot {
+	return map[string]func(client.Snapshot) client.Snapshot{
+		"sem oxigenio": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[1].OxygenUgL, s.Tanks[1].Aerating = 900, false
+
+			return s
+		},
+		"doente": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[1].Sick = true
+
+			return s
+		},
+		"sem racao": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[1].FeedKg = 0
+
+			return s
+		},
+		"sem trato": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[1].ServedFor = 0
+
+			return s
+		},
+		"no ponto de abate": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[1].Ready = true
+
+			return s
+		},
+		"automacao ao alcance": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[0].Upgrades = everyUpgrade()
+			s.Tanks[0].Upgrades[feederIndex].Owned = true
+			s.Tanks[0].Upgrades[aeratorIndex].Owned = true
+			s.Tanks[1].Upgrades = everyUpgrade()
+			s.CashCents = 10_000_000
+
+			return s
+		},
+		"abaixo do break-even": func(s client.Snapshot) client.Snapshot {
+			s.Tanks[1].Fish, s.Tanks[1].BreakEven, s.Tanks[1].StockAdvice = 10, 1_800, 5_000
+
+			return s
+		},
+	}
+}
+
+func tankScopedAdvice(t *testing.T) client.Snapshot {
+	t.Helper()
+
+	s := sizedSnapshot()
+	s.Tanks[0].OxygenUgL, s.Tanks[0].FeedKg, s.Tanks[0].ServedFor = 6_000, 400, 240
+	s.Tanks[1].OxygenUgL, s.Tanks[1].FeedKg, s.Tanks[1].ServedFor = 6_000, 400, 240
+	s.Tanks[1].Fish, s.Tanks[1].BreakEven = 1_400, 100
+	s.RunwayDays = shortRunwayDays * 10
+
+	return s
+}
+
+func TestConselhoNuncaOfereceTeclaQueAgeEmOutroTanque(t *testing.T) {
+	t.Parallel()
+
+	for name, mutate := range adviceCases() {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := mutate(tankScopedAdvice(t))
+
+			found, ok := current(snap)
+			if !ok || found.tank == 0 {
+				t.Fatalf("o cenario nao disparou conselho de tanque: %+v", found)
+			}
+			if found.tank == snap.Tanks[0].ID {
+				t.Fatal("o cenario precisa apontar para um tanque que nao e o focado")
+			}
+
+			if named := fmt.Sprintf("tanque %d", found.tank); !strings.Contains(found.text, named) {
+				t.Errorf("o conselho %q fala do tanque %d sem nomea-lo: o jogador nao sabe para onde o %s leva",
+					found.text, found.tank, jumpKey)
+			}
+
+			text, _ := objective(snap, snap.Tanks[0].ID)
+			for _, key := range offeredKey.FindAllStringSubmatch(text, -1) {
+				if key[1] != jumpKey {
+					t.Errorf("o conselho %q oferece [%s] falando do tanque %d com o %d em foco",
+						text, key[1], found.tank, snap.Tanks[0].ID)
+				}
+			}
+
+			focused, _ := objective(snap, found.tank)
+			if focused != found.text {
+				t.Errorf("com o tanque %d em foco o conselho virou %q, queria %q", found.tank, focused, found.text)
+			}
+		})
+	}
+}
+
+func TestPuloDoConselhoSelecionaOTanqueQueEleNomeia(t *testing.T) {
+	t.Parallel()
+
+	snap := adviceCases()["sem racao"](tankScopedAdvice(t))
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.run(d.model.(Model).fetch())
+
+	if got := d.model.(Model).selected; got != 0 {
+		t.Fatalf("o cenario comeca com o tanque de indice %d selecionado, queria 0", got)
+	}
+
+	d.press(jumpKey)
+
+	m, ok := d.model.(Model)
+	if !ok {
+		t.Fatal("o driver perdeu o Model")
+	}
+	if m.snapshot.Tanks[m.selected].ID != adviceTank(snap) {
+		t.Errorf("o pulo deixou o tanque %d selecionado, o conselho fala do %d",
+			m.snapshot.Tanks[m.selected].ID, adviceTank(snap))
+	}
+}

@@ -30,7 +30,7 @@ func (d *driver) line(label string) string {
 		}
 	}
 
-	goal, _ := objective(s)
+	goal, _ := objective(s, d.model.(Model).tankID())
 	note := d.model.(Model).message
 	if note != "" {
 		note = "  << " + note

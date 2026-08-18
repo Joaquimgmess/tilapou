@@ -92,7 +92,7 @@ func (m Model) renderGameBoy() string {
 		coins(snapshot.CashCents), debt, coins(snapshot.Prices.FishKgCents),
 		ratio(snapshot.Prices.RatioPPM), snapshot.Tick/(hoursPerDay*minutesPerHour)))
 
-	goal, urgent := objective(snapshot)
+	goal, urgent := objective(snapshot, m.tankID())
 	banner := goalStyle.Render("OBJETIVO: " + goal)
 	if urgent {
 		banner = urgentStyle.Render("! " + goal)
