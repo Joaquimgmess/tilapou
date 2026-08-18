@@ -170,6 +170,9 @@ preco_pct = 94.0
 [credito]
 limite_centavos = 1500000
 juros_dia_pct = 0.45
+# Passando deste multiplo do limite o juro sozinho supera qualquer ciclo: a fazenda
+# quebra em vez de ficar centenas de dias sem nenhuma acao que melhore alguma coisa.
+falencia_multiplo_do_limite = 3.0
 
 # Estreptococose acima de 27 C, francisellose abaixo de 25 C: calendarios opostos.
 # A lotacao aumenta o risco de surto.

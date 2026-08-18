@@ -144,3 +144,68 @@ func TestFazendaSemPeixeSemCaixaESemCreditoQuebraMesmoComPrestigioASacar(t *test
 		t.Error("a fazenda tem 0 peixe, 0 caixa e 0 credito e nao esta quebrada: prestigio pendente nao e liquidez")
 	}
 }
+
+func TestDividaAcimaDoTetoQuebraAFazendaSozinha(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Cash = 0
+	s.Debt = b.Credit.BankruptcyPrincipal + 1
+	s.LifetimeEarned = Coins(b.Progression.PrestigeDivisor) * 400
+
+	id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	s.StockTank(id, 900, 450*MicrogramsPerGram, 300_000)
+
+	before := s.Prestige
+
+	out, err := Advance(Input{State: s, Until: s.Tick + 1, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando: %v", err)
+	}
+
+	if out.State.Debt != 0 {
+		t.Errorf("a divida passou do teto e nao foi perdoada: %d", out.State.Debt)
+	}
+	if out.State.Cash != b.Progression.RestartCash {
+		t.Errorf("a falencia deixou o caixa em %d, queria o pacote de reinicio %d",
+			out.State.Cash, b.Progression.RestartCash)
+	}
+	if out.State.Prestige != before {
+		t.Errorf("a falencia mexeu no prestigio: %d viroou %d", before, out.State.Prestige)
+	}
+	if out.State.LifetimeEarned != s.LifetimeEarned {
+		t.Error("a falencia apagou o lifetime, que nunca desce")
+	}
+
+	var fell bool
+	for _, e := range out.Events {
+		if e.Kind == EventBankrupt {
+			fell = true
+		}
+	}
+	if !fell {
+		t.Error("a falencia nao emitiu evento: o jogador nao fica sabendo por que a fazenda mudou")
+	}
+}
+
+func TestDividaAbaixoDoTetoNaoQuebraNada(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Cash = 500_000
+	s.Debt = b.Credit.BankruptcyPrincipal - 1
+
+	out, err := Advance(Input{State: s, Until: s.Tick + 1, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando: %v", err)
+	}
+
+	if out.State.Debt == 0 {
+		t.Error("a divida abaixo do teto foi perdoada")
+	}
+}

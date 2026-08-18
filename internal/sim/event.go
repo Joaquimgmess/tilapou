@@ -26,6 +26,7 @@ const (
 	EventDisease
 	EventDiseaseDeaths
 	EventTreated
+	EventBankrupt
 	eventKindCount
 )
 
@@ -48,6 +49,7 @@ var eventKindNames = [...]string{
 	EventDisease:          "disease",
 	EventDiseaseDeaths:    "disease_deaths",
 	EventTreated:          "treated",
+	EventBankrupt:         "bankrupt",
 }
 
 var _ [len(eventKindNames) - int(eventKindCount)]struct{}

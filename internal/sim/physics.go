@@ -18,6 +18,11 @@ func massFromRoot(root int64) Micrograms {
 
 func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 	accrueInterest(s, b)
+
+	if bankrupt(s, b, tick, sink) {
+		return
+	}
+
 	temp := TemperatureAt(b, tick, s.Zone)
 	tempMult := b.TempMultiplier(temp)
 

@@ -93,6 +93,9 @@ type EconomyBalance struct {
 type CreditBalance struct {
 	MaxPrincipal Coins
 	DailyRatePPM PPM
+	// BankruptcyPrincipal is the debt that ends the farm: past it the interest alone
+	// outruns any cycle, so the farm is wound up instead of left with nothing to do.
+	BankruptcyPrincipal Coins
 }
 
 // AutomationSpec is the cost of an automation, in cents.

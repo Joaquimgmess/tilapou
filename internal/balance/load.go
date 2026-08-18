@@ -112,8 +112,9 @@ type mercadoSection struct {
 }
 
 type creditoSection struct {
-	LimiteCentavos int64   `toml:"limite_centavos"`
-	JurosDiaPct    float64 `toml:"juros_dia_pct"`
+	LimiteCentavos   int64   `toml:"limite_centavos"`
+	JurosDiaPct      float64 `toml:"juros_dia_pct"`
+	FalenciaMultiplo float64 `toml:"falencia_multiplo_do_limite"`
 }
 
 type choquesSection struct {
@@ -245,8 +246,9 @@ func convert(f file) (sim.Balance, error) {
 			ViableRatioPPM: ppmOf(f.Mercado.EquivalenciaViavel),
 		},
 		Credit: sim.CreditBalance{
-			MaxPrincipal: sim.Coins(f.Credito.LimiteCentavos),
-			DailyRatePPM: ppmOf(f.Credito.JurosDiaPct / percentScale),
+			MaxPrincipal:        sim.Coins(f.Credito.LimiteCentavos),
+			BankruptcyPrincipal: sim.Coins(float64(f.Credito.LimiteCentavos) * f.Credito.FalenciaMultiplo),
+			DailyRatePPM:        ppmOf(f.Credito.JurosDiaPct / percentScale),
 		},
 		Shock: sim.ShockBalance{
 			CheckEvery:     sim.Tick(f.Choques.ChecagemDias) * sim.TicksPerDay,

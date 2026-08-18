@@ -79,8 +79,9 @@ func testBalance(t *testing.T) *Balance {
 			ViableRatioPPM: 1_250_000,
 		},
 		Credit: CreditBalance{
-			MaxPrincipal: 1_500_000,
-			DailyRatePPM: 4_500,
+			MaxPrincipal:        1_500_000,
+			DailyRatePPM:        4_500,
+			BankruptcyPrincipal: 4_500_000,
 		},
 		Shock: ShockBalance{
 			CheckEvery:     3 * TicksPerDay,

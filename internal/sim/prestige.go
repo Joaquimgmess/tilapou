@@ -62,6 +62,22 @@ func prestige(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
 
 // rebuild also writes off the debt: the restart cash only survives a day of play while the
 // debt is under RestartCash divided by the daily rate, which any compounded debt passes.
+// bankrupt winds the farm up when the debt passes the point of no return, and reports
+// whether it fired. It hands back the same restart package as [b], so nobody is better off
+// starving the farm on purpose than going broke.
+func bankrupt(s *State, b *Balance, at Tick, sink *eventSink) bool {
+	if b.Credit.BankruptcyPrincipal <= 0 || s.Debt < b.Credit.BankruptcyPrincipal {
+		return false
+	}
+
+	forgiven := s.Debt
+	rebuild(s, b, at, s.Prestige)
+
+	sink.emit(Event{Kind: EventBankrupt, From: at, To: at, Cash: forgiven})
+
+	return true
+}
+
 func rebuild(s *State, b *Balance, at Tick, points uint32) {
 	kept := State{
 		Version:        s.Version,
