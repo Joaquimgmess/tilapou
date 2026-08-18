@@ -246,3 +246,26 @@ func TestNenhumaTelaMandaPovoarQuandoOConselhoEZero(t *testing.T) {
 		}
 	}
 }
+
+// Em terminal pequeno o painel substitui o mapa, mas o aviso disso nao pode tomar a linha do
+// conselho: quem joga em tela pequena fica sem orientacao nenhuma no estado critico.
+func TestOAvisoDeTelaPequenaNaoTomaALinhaDoConselho(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 100, 30
+
+	if m.fitsGameBoy() {
+		t.Fatal("o cenario precisa de uma tela que nao cabe o mapa")
+	}
+
+	m.snapshot.Tanks[0].Fish = 0
+	m.snapshot.Tanks[0].Batches = nil
+	m.snapshot.Tanks[0].StockAdvice = 0
+
+	goal, _ := objective(m.snapshot, m.tankID())
+	if got := ansi.Strip(m.renderGoal()); !strings.Contains(got, clipTo(goal, m.effectiveWidth()-panelInset)) {
+		t.Errorf("a linha do conselho diz %q em vez do objetivo %q", got, goal)
+	}
+}

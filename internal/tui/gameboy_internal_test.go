@@ -47,7 +47,7 @@ func TestATerminalTooSmallForTheMapFallsBackToTheNumbers(t *testing.T) {
 	if !strings.Contains(frame, "DECISAO") {
 		t.Errorf("sem espaco para o mapa deveria cair nos numeros:\n%s", frame)
 	}
-	if !strings.Contains(frame, "o mapa precisa de") {
+	if !strings.Contains(ansi.Strip(frame), "mapa precisa de") {
 		t.Errorf("a troca de tela precisa se explicar:\n%s", frame)
 	}
 }

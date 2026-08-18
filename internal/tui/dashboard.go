@@ -35,8 +35,17 @@ func (m Model) renderDashboard() string {
 	rows := []string{
 		m.renderTopBar(),
 		m.renderGoal(),
-		m.renderBatches(),
 	}
+
+	// A explicacao fica onde o mapa estaria, e nao na linha do conselho nem no cabecalho:
+	// nos dois ela disputava espaco com o que o jogador precisa para agir.
+	if m.mode == ModeGameBoy && !m.fitsGameBoy() {
+		rows = append(rows, dimStyle.Render(clipTo(
+			fmt.Sprintf("o mapa precisa de %dx%d e o terminal tem %dx%d, entao ficam os numeros",
+				gbCols, gbRows, m.width, m.height), m.effectiveWidth()-panelInset)))
+	}
+
+	rows = append(rows, m.renderBatches())
 
 	wide := m.effectiveWidth() >= wideWidth
 
@@ -86,6 +95,16 @@ func (m Model) renderTopBar() string {
 		labelStyle.Render("caixa ") + valueStyle.Render(coins(s.CashCents)),
 	}
 
+	// Da esquerda para a direita, do mais urgente ao menos: e do fim que a barra abre mao
+	// quando a tela e estreita, entao o que nao pode sumir vem antes.
+	if m.staleTicks > 1 {
+		// A saida junto com o problema: sem isso o jogador le que travou e nao le o que fazer.
+		parts = append(parts, dangerStyle.Render(fmt.Sprintf("! %ds sem resposta — r tenta, q sai",
+			m.staleTicks)))
+	}
+	if wait := m.waitMark(); wait != "" {
+		parts = append(parts, wait)
+	}
 	if s.Debt > 0 {
 		parts = append(parts, dangerStyle.Render("divida "+coins(s.Debt))+
 			dimStyle.Render(" juros "+coins(s.InterestDay)+"/d"))
@@ -97,19 +116,20 @@ func (m Model) renderTopBar() string {
 		}
 		parts = append(parts, folego)
 	}
-
 	if m.effectiveWidth() >= wideWidth {
 		parts = append(parts, dimStyle.Render(fmt.Sprintf("d%d %02dh %.1f C",
 			s.Tick/(hoursPerDay*minutesPerHour), s.Hour, float64(s.TempMilliC)/milliUnit)))
 	}
-	if wait := m.waitMark(); wait != "" {
-		parts = append(parts, wait)
-	}
-	if m.staleTicks > 1 {
-		// A barra diz a saida junto com o problema: sem isso o jogador le que travou e nao
-		// le o que fazer.
-		parts = append(parts, dangerStyle.Render(fmt.Sprintf("! %ds sem resposta — r tenta de novo, q sai",
-			m.staleTicks)))
+
+	// Mesma regra da barra de teclas: quebrar em duas linhas come uma linha do painel, entao
+	// o que esta no fim sai ate caber. O nome e o caixa ficam.
+	for len(parts) > 2 {
+		bar := barStyle.Width(m.effectiveWidth()).Render(strings.Join(parts, dimStyle.Render(" | ")))
+		if lipgloss.Height(bar) == 1 {
+			return bar
+		}
+
+		parts = parts[:len(parts)-1]
 	}
 
 	return barStyle.Width(m.effectiveWidth()).Render(strings.Join(parts, dimStyle.Render(" | ")))
@@ -148,11 +168,6 @@ func rule(title string, width int) string {
 }
 
 func (m Model) renderGoal() string {
-	if m.mode == ModeGameBoy && !m.fitsGameBoy() {
-		return dangerStyle.Render(fmt.Sprintf(
-			"o mapa precisa de %dx%d e o terminal tem %dx%d, entao ficam os numeros",
-			gbCols, gbRows, m.width, m.height))
-	}
 	if m.message != "" {
 		return valueStyle.Render(clipTo(m.message, m.effectiveWidth()))
 	}
