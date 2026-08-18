@@ -11,8 +11,7 @@ import (
 )
 
 const (
-	boxPadding = 2
-	menuKeys   = "setas escolhem   j/k move   z confirma   x fecha"
+	menuKeys = "setas escolhem   j/k move   z confirma   x fecha"
 )
 
 var (
@@ -105,7 +104,7 @@ func (m Model) renderGameBoy() string {
 		banner = urgentStyle.Width(width).Render("! " + goal)
 	}
 
-	box := boxStyle.Width(width - boxPadding)
+	box := boxStyle.Width(width)
 
 	body := box.Render(m.dialogue())
 	if m.menu != nil {
@@ -113,15 +112,15 @@ func (m Model) renderGameBoy() string {
 	}
 
 	chrome := lipgloss.Height(hud) + lipgloss.Height(banner) + lipgloss.Height(body) +
-		lipgloss.Height(m.renderGameBoyKeys())
+		lipgloss.Height(m.renderGameBoyKeys(width))
 
-	frame := strings.Join([]string{
+	frame := fillTo(width, []string{
 		hud,
 		banner,
 		cropTo(renderMap(m.farm, m.you, snapshot, m.frame), m.mapScreenRows(chrome)),
 		body,
-		m.renderGameBoyKeys(),
-	}, "\n")
+		m.renderGameBoyKeys(width),
+	})
 
 	// O mapa tem teto de tamanho, entao numa tela grande sobra faixa com o fundo do
 	// terminal em volta: centralizar e pintar mantem a ilusao de um aparelho.
@@ -131,6 +130,25 @@ func (m Model) renderGameBoy() string {
 
 	return lipgloss.PlaceHorizontal(m.width, lipgloss.Center, frame,
 		lipgloss.WithWhitespaceStyle(marginStyle))
+}
+
+// fillTo cola os blocos num quadro opaco de width colunas. Linha curta nao apaga o resto do
+// que estava ali: o terminal so reescreve as colunas que ela ocupa, e o texto do frame
+// anterior continua aparecendo depois do fim dela. Preenche com o fundo do vidro, e nao com o
+// da margem, que cortaria a tela com a cor do chassi.
+func fillTo(width int, blocks []string) string {
+	// Sem o padding do screenStyle, que alargaria em duas colunas o preenchimento que existe
+	// justamente para a linha bater na largura.
+	glass := screenStyle.UnsetPadding()
+
+	lines := strings.Split(strings.Join(blocks, "\n"), "\n")
+	for i, line := range lines {
+		if short := width - lipgloss.Width(line); short > 0 {
+			lines[i] = line + glass.Render(strings.Repeat(" ", short))
+		}
+	}
+
+	return strings.Join(lines, "\n")
 }
 
 // menuWithReply keeps the refusal visible while the menu is open: without it the answer
@@ -232,18 +250,18 @@ func tankAdvice(t client.Tank) string {
 		coins(front.PriceKgCents), t.FeedKg, minutes(t.ServedFor), next)
 }
 
-func (m Model) renderGameBoyKeys() string {
+func (m Model) renderGameBoyKeys(width int) string {
 	if m.menu != nil {
-		return screenStyle.Render(menuKeys)
+		return screenStyle.Width(width).Render(menuKeys)
 	}
 
 	// A barra do mapa cabe em 88 colunas contadas: com o alerta em outro tanque, o pulo
 	// entra no lugar do que o jogador descobre sozinho.
 	if m.jumpKeyHint() != "" {
-		return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despesca  . alerta  q sai")
+		return screenStyle.Width(width).Render("setas andam  z opcoes  f trato  c racao  a aerador  h despesca  . alerta  q sai")
 	}
 
-	return screenStyle.Render("setas andam  z opcoes  f trato  c racao  a aerador  h despescar  tab numeros  q sai")
+	return screenStyle.Width(width).Render("setas andam  z opcoes  f trato  c racao  a aerador  h despescar  tab numeros  q sai")
 }
 
 type targetKind uint8

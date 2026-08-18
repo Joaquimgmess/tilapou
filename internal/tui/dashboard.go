@@ -349,7 +349,9 @@ func (m Model) jumpKeyHint() string {
 // keyBar is the row of keys at the bottom of whichever screen is showing.
 func (m Model) keyBar() string {
 	if m.mode == ModeGameBoy {
-		return m.renderGameBoyKeys()
+		// Zero deixa a barra no tamanho do texto: quem precisa dela preenchida ate a borda
+		// e o quadro do aparelho, que passa a largura dele.
+		return m.renderGameBoyKeys(0)
 	}
 
 	return m.renderKeys()

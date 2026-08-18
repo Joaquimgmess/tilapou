@@ -51,3 +51,53 @@ func TestATerminalTooSmallForTheMapFallsBackToTheNumbers(t *testing.T) {
 		t.Errorf("a troca de tela precisa se explicar:\n%s", frame)
 	}
 }
+
+// Linha curta demais nao apaga o resto do que estava ali: o terminal so reescreve as colunas
+// que a linha nova ocupa, e o texto do frame anterior fica aparecendo depois do fim dela.
+func TestNenhumaLinhaDoQuadroFicaCurtaDemais(t *testing.T) {
+	t.Parallel()
+
+	for _, size := range [][2]int{{200, 80}, {88, 35}, {120, 40}} {
+		m := New(nil)
+		m.snapshot = sizedSnapshot()
+		m.width, m.height = size[0], size[1]
+
+		for _, message := range []string{
+			"",
+			"sem grana: custa 5247,03 TC e faltam 1702,19 TC",
+			"ok",
+		} {
+			for _, open := range []bool{false, true} {
+				m.message = message
+				m.menu = nil
+				if open {
+					m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0])
+				}
+
+				frame := m.render()
+				want := lipgloss.Width(frame)
+
+				for i, line := range strings.Split(frame, "\n") {
+					if got := lipgloss.Width(line); got != want {
+						t.Errorf("em %dx%d com a mensagem %q, menu aberto=%v, a linha %d tem %d colunas de %d: o resto dela fica com o frame anterior",
+							size[0], size[1], message, open, i, got, want)
+					}
+				}
+			}
+		}
+	}
+}
+
+// fillTo e a rede: com a caixa e a barra ja saindo na largura certa, nada no quadro de hoje
+// a exercita. Ela existe para a proxima string que encolher, entao e cobrada aqui direto.
+func TestFillToCompletaALinhaCurta(t *testing.T) {
+	t.Parallel()
+
+	frame := fillTo(10, []string{"abc", "abcdefghij", "ab\ncdefg"})
+
+	for i, line := range strings.Split(frame, "\n") {
+		if got := lipgloss.Width(line); got != 10 {
+			t.Errorf("a linha %d ficou com %d colunas de 10: %q", i, got, ansi.Strip(line))
+		}
+	}
+}
