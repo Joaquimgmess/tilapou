@@ -121,6 +121,7 @@ type Decision struct {
 	FeedPerDayG    int64 `json:"feed_per_day_grams"`
 	CostPerDay     int64 `json:"cost_per_day_cents"`
 	DaysOfFeed     int64 `json:"days_of_feed"`
+	CycleDays      int64 `json:"cycle_days"`
 }
 
 // Series are the price histories, sampled every StepTicks ticks.

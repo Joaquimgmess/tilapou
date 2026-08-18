@@ -2,10 +2,10 @@ package sim
 
 const (
 	breakEvenCapDays = 600
-	probeLow         = 1_000
-	probeHigh        = 2_000
 	probeSeed        = Seed(1)
 	probeUnlimited   = Coins(1) << 40
+	probeFloor       = 1_000
+	probeDivisor     = 8
 )
 
 // CyclePlan carries duration in days, mass in micrograms, price per kilo in cents and the stocking that pays the fixed costs.
@@ -18,6 +18,12 @@ type CyclePlan struct {
 
 // CycleAt returns the best-margin plan for the tank kind, or the zero value if no cycle completes.
 func (b *Balance) CycleAt(kind TankKind, at Tick, zone ZoneOffset) CyclePlan {
+	// As sondas acompanham a densidade do tanque: com uma lotacao fixa, o tanque caro sai
+	// sub-lotado, a margem fica negativa em todo dia e o plano volta vazio. Ficam perto uma
+	// da outra e perto do piso, senao a reta que estima o break-even extrapola de longe.
+	probeLow := max(probeStocking(b, kind)/probeDivisor, probeFloor)
+	probeHigh := probeLow * 2
+
 	low, lowMargin, ok := probeCycle(b, kind, at, zone, probeLow)
 	if !ok {
 		return CyclePlan{}
@@ -37,6 +43,12 @@ func (b *Balance) CycleAt(kind TankKind, at Tick, zone ZoneOffset) CyclePlan {
 	low.BreakEven = FishCount(min(max((fixed+perFish-1)/perFish, 0), maxInt32))
 
 	return low
+}
+
+func probeStocking(b *Balance, kind TankKind) int64 {
+	spec := b.Tanks[kind]
+
+	return spec.MaxDensityPerM3 * int64(spec.Litres) / LitresPerCubicMetre
 }
 
 func probeCycle(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish int64) (CyclePlan, int64, bool) {
@@ -73,7 +85,9 @@ func probeCycle(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish int64)
 		price := b.PriceFor(batch.MeanMass, s.Tick)
 		value := mulDivFloor(int64(price), int64(batch.Biomass()), int64(MicrogramsPerKilogram))
 
-		if now := value - int64(batch.Cost); best.Days == 0 || now > margin {
+		// Margem por dia, e nao margem total: peixe parado cobra aluguel, entao esperar
+		// mais para faturar um pouco mais e uma jogada pior que recomecar o ciclo.
+		if now := value - int64(batch.Cost); best.Days == 0 || now*best.Days > margin*(day+1) {
 			best, margin = CyclePlan{Days: day + 1, Mass: batch.MeanMass, PricePerKg: price}, now
 		}
 

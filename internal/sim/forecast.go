@@ -208,7 +208,28 @@ func (s *State) StockAdvice(b *Balance, tank TankID) (fish FishCount, perFish Co
 		return 0, perFish
 	}
 
-	return FishCount(min(room, int64(s.Cash)/int64(perFish))), perFish
+	// O que sobra depois de guardar o custo fixo do ciclo: povoar com o caixa inteiro deixa
+	// o lote sem racao no meio do caminho, e ai ele morre de fome em vez de crescer.
+	spendable := int64(s.Cash) - int64(s.fixedCost(b, t))
+	if spendable <= 0 {
+		return 0, perFish
+	}
+
+	return FishCount(min(room, spendable/int64(perFish))), perFish
+}
+
+// fixedCost is the upkeep and the interest that run while the batch grows, whether or not
+// the player does anything.
+func (s *State) fixedCost(b *Balance, t *Tank) Coins {
+	plan := b.CycleAt(t.Kind, s.Tick, s.Zone)
+	if plan.Days <= 0 {
+		return 0
+	}
+
+	daily := int64(b.Tanks[t.Kind].UpkeepPerDay) +
+		mulDivCeil(int64(s.Debt), int64(b.Credit.DailyRatePPM), int64(UnitPPM))
+
+	return Coins(mulDivCeil(daily, plan.Days, 1))
 }
 
 func feedToRaise(b *Balance, at Tick) Coins {

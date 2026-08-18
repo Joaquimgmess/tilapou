@@ -310,10 +310,15 @@ func renderStocking(tank client.Tank) string {
 	return line + okStyle.Render("  no azul")
 }
 
-// holdWins says whether holding beats selling now. A tie goes to selling: money today is
-// worth more than the same money after weeks of feeding.
+// holdWins says whether holding beats selling now, comparing gain per day and not total:
+// esperar semanas para faturar um pouco mais perde para recomecar o ciclo. A tie goes to
+// selling: money today is worth more than the same money after weeks of feeding.
 func holdWins(d client.Decision) bool {
-	return d.HoldMargin > d.SellNowMargin
+	if d.HoldDays <= 0 {
+		return d.HoldMargin > d.SellNowMargin
+	}
+
+	return (d.HoldMargin-d.SellNowMargin)/d.HoldDays > d.SellNowMargin/max(d.CycleDays, 1)
 }
 
 func (m Model) renderMarket() string {

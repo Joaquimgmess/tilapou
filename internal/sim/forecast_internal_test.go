@@ -281,3 +281,38 @@ func slicesEqual(got, want []Coins) bool {
 
 	return true
 }
+
+func TestPovoarDeixaCaixaParaOCustoFixoDoCiclo(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Cash = 2_000_000
+	s.Debt = b.Credit.MaxPrincipal
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+
+	fish, perFish := s.StockAdvice(b, id)
+	if fish <= 0 {
+		t.Fatal("o conselho nao sugeriu povoar nada")
+	}
+
+	spent := Coins(int64(fish)) * perFish
+	left := s.Cash - spent
+
+	plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+	if plan.Days <= 0 {
+		t.Fatal("o ciclo do viveiro nao tem plano")
+	}
+
+	fixed := Coins(plan.Days) * (b.Tanks[TankEarthPond].UpkeepPerDay +
+		Coins(mulDivCeil(int64(s.Debt), int64(b.Credit.DailyRatePPM), int64(UnitPPM))))
+
+	if left < fixed {
+		t.Errorf("povoar %d peixes gasta %d e sobra %d, mas o ciclo de %d dias custa %d de juro e manutencao: o lote morre de fome antes de crescer",
+			fish, spent, left, plan.Days, fixed)
+	}
+}

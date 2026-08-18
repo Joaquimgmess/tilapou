@@ -109,3 +109,55 @@ func TestShippedBalanceGrowsFishToHarvest(t *testing.T) {
 		t.Errorf("sobraram %d de 2000 peixes em 120 dias: mortalidade alta demais", fish)
 	}
 }
+
+func TestTodoTanqueDoBalanceTemPlanoDeCicloUsavel(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	for _, kind := range []sim.TankKind{
+		sim.TankEarthPond, sim.TankNetCage, sim.TankBiofloc, sim.TankRecirculation,
+	} {
+		plan := b.CycleAt(kind, 0, 0)
+
+		switch {
+		case plan.Days <= 0:
+			t.Errorf("%s nao tem plano de ciclo: o conselho de lotacao fica cego nesse tanque", kind)
+		case plan.Days > 300:
+			t.Errorf("%s planeja %d dias ate %d g: esperar tanto derruba a margem por dia",
+				kind, plan.Days, plan.Mass.Grams())
+		case plan.Mass.Grams() < b.Growth.HarvestMass.Grams():
+			t.Errorf("%s planeja vender a %d g, antes do ponto de abate de %d g",
+				kind, plan.Mass.Grams(), b.Growth.HarvestMass.Grams())
+		case plan.BreakEven <= 0:
+			t.Errorf("%s volta break-even zero, e o conselho pula tanque com break-even zero", kind)
+		}
+	}
+}
+
+func TestOPeaoVendeNoPontoDeMargemDeCadaTanque(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	for _, kind := range []sim.TankKind{
+		sim.TankEarthPond, sim.TankNetCage, sim.TankBiofloc, sim.TankRecirculation,
+	} {
+		plan := b.CycleAt(kind, 0, 0)
+		point := sim.HarvestPoint(&b, kind, 0, 0)
+
+		if point < b.Growth.HarvestMass {
+			t.Errorf("%s: o peao venderia a %d g, antes do peso de abate", kind, point.Grams())
+		}
+		if plan.Mass > b.Growth.HarvestMass && point != plan.Mass {
+			t.Errorf("%s: o peao vende a %d g e o ponto de margem do tanque e %d g: joga fora a diferenca",
+				kind, point.Grams(), plan.Mass.Grams())
+		}
+	}
+}

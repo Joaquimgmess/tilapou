@@ -121,6 +121,7 @@ type DecisionView struct {
 	FeedPerDayG    int64 `json:"feed_per_day_grams"`
 	CostPerDay     int64 `json:"cost_per_day_cents"`
 	DaysOfFeed     int64 `json:"days_of_feed"`
+	CycleDays      int64 `json:"cycle_days"`
 }
 
 // SeriesView carries prices in cents per kilo, one point every StepTicks.
@@ -407,6 +408,7 @@ func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, b
 	tv.Decision.SellNowMargin = tv.MarginCents
 	tv.Decision.BreakEvenPerKg = tv.CostPerKg
 	tv.Decision.HoldMargin = tv.Decision.HoldCents - tv.CostCents - tv.Decision.HoldCostCents
+	tv.Decision.CycleDays = p.at(b, tank.Kind, state.Tick, state.Zone).Days
 }
 
 // decisionFor projects the batch; the sell-now cents are filled by the caller on every

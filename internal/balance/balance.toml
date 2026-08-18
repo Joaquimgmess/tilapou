@@ -179,7 +179,11 @@ preco_pct = 94.0
 # Emprestimo para financiar automacao: juros correm todo dia sobre o saldo.
 [credito]
 limite_centavos = 1500000
-juros_dia_pct = 0.45
+# A 0,45%/dia o limite cheio cobrava 1.926.000 c de juros nos 184 dias ate a primeira
+# despesca, contra 1.050.797 de margem do ciclo: financiar o alevino era negativo por
+# construcao, e a fazenda ficava ~210 dias de jogo sem nenhuma acao util. A 0,10% o juro
+# fica em 29% da margem e ainda custa mais que a manutencao do viveiro.
+juros_dia_pct = 0.10
 # Passando deste multiplo do limite o juro sozinho supera qualquer ciclo: a fazenda
 # quebra em vez de ficar centenas de dias sem nenhuma acao que melhore alguma coisa.
 falencia_multiplo_do_limite = 3.0

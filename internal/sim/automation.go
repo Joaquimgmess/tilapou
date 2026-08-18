@@ -133,10 +133,23 @@ func restockFeed(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
 	sink.emit(Event{Kind: EventFeedBought, From: tick, To: tick, Tank: t.ID, Mass: mass, Cash: price})
 }
 
+// HarvestPoint is where the hired hand sells: the tank's best margin-per-day mass, never
+// below the harvest weight. Selling at the minimum throws away most of the margin in the
+// tanks that grow fastest.
+func HarvestPoint(b *Balance, kind TankKind, tick Tick, zone ZoneOffset) Micrograms {
+	if plan := b.CycleAt(kind, tick, zone); plan.Mass > b.Growth.HarvestMass {
+		return plan.Mass
+	}
+
+	return b.Growth.HarvestMass
+}
+
 func harvestReady(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink) {
+	at := HarvestPoint(b, t.Kind, tick, s.Zone)
+
 	for i := range t.BatchCount {
 		batch := &t.Batches[i]
-		if batch.Empty() || batch.MeanMass < b.Growth.HarvestMass {
+		if batch.Empty() || batch.MeanMass < at {
 			continue
 		}
 
