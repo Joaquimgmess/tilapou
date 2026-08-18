@@ -1,18 +1,7 @@
 # TILAPIA
 
-```
-                    ______
-                 _-´      `--__
-      /|      _-´   ·           `--__
-     / |   _-´                        `--_
-    /  | -´        ______                  `-_
-   /   |         -´      `-_                  \
-  <    |        ( ●  )       `-_               >
-   \   |         `-____´         `-_          /
-    \  | -_                     __-´       _-´
-     \ |    `--__          __--´      __--´
-      \|         `--______-´    `-____-´
-```
+<img width="845" height="536" alt="image" src="https://github.com/user-attachments/assets/3d3170ff-e44a-45d5-adb8-84f9be41f49e" />
+
 
 idle game de piscicultura no terminal, com cara de game boy.
 
