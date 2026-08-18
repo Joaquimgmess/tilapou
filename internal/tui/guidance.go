@@ -272,6 +272,9 @@ func broke(s client.Snapshot) (advice, bool) {
 func suffocating(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
+		if t.Fish == 0 {
+			continue
+		}
 		if t.OxygenUgL < criticalOxygenUgL && !t.Aerating {
 			return advice{text: fmt.Sprintf("URGENTE: o tanque %d esta sem oxigenio. Ligue o aerador com [a]", t.ID), urgent: true, tank: t.ID, key: "a"}, true
 		}
@@ -370,6 +373,10 @@ func readyToHarvest(s client.Snapshot) (advice, bool) {
 func affordableAutomation(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
+		// Automacao em tanque vazio nao muda rotina nenhuma: primeiro tem de haver peixe.
+		if t.Fish == 0 {
+			continue
+		}
 		if !owns(t, feederIndex) && affords(s, t, feederIndex) {
 			return advice{text: fmt.Sprintf(
 				"Da para comprar o comedouro do tanque %d com [1]: ele serve o trato sozinho", t.ID), tank: t.ID, key: "1"}, true

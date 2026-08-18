@@ -121,3 +121,27 @@ func TestCustoMaiorDeSegurarNuncaMelhoraOVeredito(t *testing.T) {
 		}
 	}
 }
+
+func TestTanqueVazioNaoEntraEmAlerta(t *testing.T) {
+	t.Parallel()
+
+	vazio := client.Tank{ID: 1, Fish: 0, FeedKg: 0, ServedFor: 0, OxygenUgL: 6_000}
+
+	label, alert := tankState(&vazio)
+	if alert {
+		t.Errorf("tanque sem um peixe entrou em alerta como %q", label)
+	}
+	if label != "vazio" {
+		t.Errorf("tanque sem peixe diz %q, queria dizer que esta vazio", label)
+	}
+}
+
+func TestTanqueVazioNaoAnunciaProximaClasse(t *testing.T) {
+	t.Parallel()
+
+	vazio := client.Tank{ID: 1, Fish: 0, MeanGrams: 0, NextClassGrams: 0}
+
+	if got := nextClass(&vazio); got == "no topo" {
+		t.Errorf("tanque vazio anuncia %q para um peixe de 0 g", got)
+	}
+}

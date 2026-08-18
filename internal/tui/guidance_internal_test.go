@@ -416,3 +416,21 @@ func TestOSurtoNaoSeAfogaNaEnxurradaDeFome(t *testing.T) {
 		t.Errorf("o aviso foi %q: o surto que decide o lote perdeu para a enesima linha de fome", told)
 	}
 }
+
+func TestFazendaSemPeixeEComCaixaMandaPovoar(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	snap.CashCents = 398_900
+
+	for i := range snap.Tanks {
+		snap.Tanks[i].Fish, snap.Tanks[i].BatchFish = 0, 0
+		snap.Tanks[i].Upgrades = everyUpgrade()
+		snap.Tanks[i].StockAdvice = 500
+	}
+
+	told, _ := objective(snap, snap.Tanks[0].ID)
+	if !strings.Contains(told, "[s]") {
+		t.Errorf("com caixa e nenhum peixe, o conselho foi %q em vez de mandar povoar", told)
+	}
+}

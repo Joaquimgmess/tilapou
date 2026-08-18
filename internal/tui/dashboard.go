@@ -206,6 +206,9 @@ func (m Model) decorateRow(index int, row string, alert bool) string {
 }
 
 func nextClass(t *client.Tank) string {
+	if t.Fish == 0 {
+		return ""
+	}
 	if t.NextClassGrams <= t.MeanGrams {
 		return "no topo"
 	}
@@ -215,6 +218,10 @@ func nextClass(t *client.Tank) string {
 
 func tankState(t *client.Tank) (label string, alert bool) {
 	switch {
+	// Tanque sem peixe nao tem do que reclamar: falta de racao ou de trato ali nao e
+	// urgencia, e vermelho gasto assim ensina o jogador a ignorar vermelho.
+	case t.Fish == 0:
+		return "vazio", false
 	case t.Sick:
 		return "DOENTE", true
 	case t.OxygenUgL < criticalOxygenUgL && !t.Aerating:
