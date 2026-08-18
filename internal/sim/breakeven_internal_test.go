@@ -7,7 +7,7 @@ func runToHarvest(t *testing.T, b *Balance, fish int64) Coins {
 
 	s := NewState(1, 0, 0)
 	s.Cash = 100_000_000
-	id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 	if !ok {
 		t.Fatal("sem tanque")
 	}

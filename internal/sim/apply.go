@@ -45,7 +45,7 @@ func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) (rea
 		return RejectNotEnoughCash, price
 	}
 
-	id, ok := s.AddTank(a.TankKind, spec.Litres)
+	id, ok := s.AddTank(b, a.TankKind, spec.Litres)
 	if !ok {
 		return RejectFarmFull, 0
 	}

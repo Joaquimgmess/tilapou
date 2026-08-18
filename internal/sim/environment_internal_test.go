@@ -51,7 +51,7 @@ func TestRenovacaoRecuperaODeficitSemPassarDaLinhaDeBase(t *testing.T) {
 
 	s := NewState(1, 0, 0)
 
-	id, ok := s.AddTank(TankRecirculation, b.Tanks[TankRecirculation].Litres)
+	id, ok := s.AddTank(b, TankRecirculation, b.Tanks[TankRecirculation].Litres)
 	if !ok {
 		t.Fatal("sem tanque")
 	}

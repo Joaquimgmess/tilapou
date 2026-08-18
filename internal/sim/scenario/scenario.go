@@ -19,7 +19,7 @@ type Scenario struct {
 	Seed    sim.Seed
 	Days    int64
 	Cash    sim.Coins
-	Setup   func(s *sim.State)
+	Setup   func(s *sim.State, b *sim.Balance)
 	Actions []sim.Action
 }
 
@@ -43,11 +43,11 @@ type Result struct {
 	Final    sim.State
 }
 
-func (s Scenario) initial() sim.State {
+func (s Scenario) initial(b *sim.Balance) sim.State {
 	state := sim.NewState(s.Seed, s.Zone, 0)
 	state.Cash = s.Cash
 	if s.Setup != nil {
-		s.Setup(&state)
+		s.Setup(&state, b)
 	}
 
 	return state
@@ -55,7 +55,7 @@ func (s Scenario) initial() sim.State {
 
 // Run advances the scenario day by day, sampling the end of each one.
 func Run(s Scenario, b *sim.Balance) (Result, error) {
-	state := s.initial()
+	state := s.initial(b)
 
 	result := Result{Scenario: s, Totals: map[string]int64{}}
 
@@ -85,7 +85,7 @@ func Run(s Scenario, b *sim.Balance) (Result, error) {
 // RunWhole advances the scenario in a single Advance, to check that the result
 // matches Run's.
 func RunWhole(s Scenario, b *sim.Balance) (sim.State, error) {
-	state := s.initial()
+	state := s.initial(b)
 
 	out, err := sim.Advance(sim.Input{
 		State:   state,

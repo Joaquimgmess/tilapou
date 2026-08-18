@@ -43,7 +43,7 @@ func probeCycle(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish int64)
 	s := NewState(probeSeed, zone, at)
 	s.Cash = probeUnlimited
 
-	id, ok := s.AddTank(kind, b.Tanks[kind].Litres)
+	id, ok := s.AddTank(b, kind, b.Tanks[kind].Litres)
 	if !ok {
 		return CyclePlan{}, 0, false
 	}

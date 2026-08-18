@@ -235,7 +235,7 @@ func TestHarvestMovesTheWholeCostOfWhatWasSold(t *testing.T) {
 		{"um decimo leva um decimo", 1_000, 100, 10_000},
 	} {
 		s := NewState(1, 0, 0)
-		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 		if !ok {
 			t.Fatal("sem tanque")
 		}

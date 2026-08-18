@@ -144,10 +144,11 @@ func testBalance(t *testing.T) *Balance {
 func stockedFarm(t *testing.T, seed Seed) State {
 	t.Helper()
 
+	b := testBalance(t)
 	s := NewState(seed, -180, 0)
 	s.Cash = 500_000
 
-	id, ok := s.AddTank(TankEarthPond, 1_000_000)
+	id, ok := s.AddTank(b, TankEarthPond, 1_000_000)
 	if !ok {
 		t.Fatal("AddTank() falhou numa fazenda vazia")
 	}

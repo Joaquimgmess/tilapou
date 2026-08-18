@@ -113,7 +113,7 @@ func TestStockAdviceRefusesATankWithNoRoomForAnotherBatch(t *testing.T) {
 	s := NewState(1, 0, 0)
 	s.Cash = 10_000_000
 
-	id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 	if !ok {
 		t.Fatal("sem tanque")
 	}
@@ -168,7 +168,7 @@ func TestLoanAdviceSaysWhyItOffersNothing(t *testing.T) {
 		block LoanBlock
 	}{
 		{"lotes cheios nao aceitam financiamento", func(s *State) TankID {
-			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			id, _ := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 			for range MaxBatchesPerTank {
 				s.StockTank(id, 10, b.Growth.FingerlingMass, 0)
 			}
@@ -176,20 +176,20 @@ func TestLoanAdviceSaysWhyItOffersNothing(t *testing.T) {
 			return id
 		}, LoanNoRoom},
 		{"tanque no limite de densidade nao aceita financiamento", func(s *State) TankID {
-			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			id, _ := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 			s.StockTank(id, 5_000, b.Growth.FingerlingMass, 0)
 
 			return id
 		}, LoanNoRoom},
 		{"caixa que ja cobre o alvo dispensa emprestimo", func(s *State) TankID {
-			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			id, _ := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 			s.StockTank(id, 100, b.Growth.FingerlingMass, 0)
 
 			return id
 		}, LoanNoNeed},
 		{"credito estourado", func(s *State) TankID {
 			s.Debt = b.Credit.MaxPrincipal
-			id, _ := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			id, _ := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 
 			return id
 		}, LoanNoCredit},
@@ -218,7 +218,7 @@ func TestPrevisaoNaoDependeDosOutrosTanques(t *testing.T) {
 		s := NewState(1, 0, 0)
 		s.Cash = 60_000
 		for range tanks {
-			id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+			id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 			if !ok {
 				t.Fatal("sem tanque")
 			}
@@ -249,7 +249,7 @@ func TestAPrevisaoSimulaSoOTanqueAlvo(t *testing.T) {
 	s.Cash = 10_000_000
 
 	for range 8 {
-		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 		if !ok {
 			t.Fatal("sem tanque")
 		}

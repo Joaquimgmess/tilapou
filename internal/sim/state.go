@@ -276,14 +276,17 @@ func (s *State) LoadFeed(id TankID, mass Micrograms, unitCost Coins) bool {
 	return true
 }
 
-// AddTank returns false, changing nothing, if the farm is already at the tank cap.
-func (s *State) AddTank(kind TankKind, litres Litres) (TankID, bool) {
+// AddTank returns false, changing nothing, if the farm is already at the tank cap. The new
+// tank starts with the oxygen of the water around it, so nothing reads it as suffocating
+// until the next tick catches up.
+func (s *State) AddTank(b *Balance, kind TankKind, litres Litres) (TankID, bool) {
 	if s.TankCount >= maxTanks {
 		return 0, false
 	}
 
 	id := s.NextTankID
 	s.Tanks[s.TankCount] = Tank{ID: id, Kind: kind, Litres: litres}
+	s.Tanks[s.TankCount].Oxygen = oxygenAt(b, &s.Tanks[s.TankCount], s.Tick, s.Zone)
 	s.TankCount++
 	s.NextTankID++
 

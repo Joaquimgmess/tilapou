@@ -37,8 +37,8 @@ type pond struct {
 	feedKg int64
 }
 
-func stock(state *sim.State, p pond) {
-	id, ok := state.AddTank(p.kind, p.litres)
+func stock(state *sim.State, b *sim.Balance, p pond) {
+	id, ok := state.AddTank(b, p.kind, p.litres)
 	if !ok {
 		return
 	}
@@ -74,8 +74,8 @@ func heranca() Scenario {
 		Seed: 1,
 		Days: 90,
 		Cash: 500_000,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 3_000})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 3_000})
 		},
 		Actions: feedEvery(schedule{everyHours: 6, forDays: 90}),
 	}
@@ -88,8 +88,8 @@ func comedouroSeca() Scenario {
 		Seed: 2,
 		Days: 60,
 		Cash: 500_000,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 40})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 40})
 		},
 		Actions: feedEvery(schedule{everyHours: 6, forDays: 60}),
 	}
@@ -102,8 +102,8 @@ func densidadeContraOxigenio() Scenario {
 		Seed: 3,
 		Days: 5,
 		Cash: 500_000,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 12_000, mass: 600 * sim.MicrogramsPerGram, feedKg: 5_000})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 12_000, mass: 600 * sim.MicrogramsPerGram, feedKg: 5_000})
 		},
 	}
 }
@@ -115,8 +115,8 @@ func aeradorSalva() Scenario {
 		Seed: 3,
 		Days: 5,
 		Cash: 500_000,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 12_000, mass: 600 * sim.MicrogramsPerGram, feedKg: 5_000})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 12_000, mass: 600 * sim.MicrogramsPerGram, feedKg: 5_000})
 		},
 		Actions: []sim.Action{
 			{ID: 1, Kind: sim.ActionAerate, At: 1, Tank: 1, Amount: 1},
@@ -131,8 +131,8 @@ func tanqueRede() Scenario {
 		Seed: 5,
 		Days: 30,
 		Cash: 500_000,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankNetCage, litres: 6_000, fish: 900, mass: 300 * sim.MicrogramsPerGram, feedKg: 2_000})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankNetCage, litres: 6_000, fish: 900, mass: 300 * sim.MicrogramsPerGram, feedKg: 2_000})
 		},
 		Actions: feedEvery(schedule{everyHours: 6, forDays: 30}),
 	}
@@ -145,8 +145,8 @@ func semTrato() Scenario {
 		Seed: 7,
 		Days: 20,
 		Cash: 500_000,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 3_000})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 3_000})
 		},
 	}
 }
@@ -158,8 +158,8 @@ func comedouroAutomatico() Scenario {
 		Seed: 6,
 		Days: 45,
 		Cash: 5_000_000,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 20})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 2_000, mass: 300 * sim.MicrogramsPerGram, feedKg: 20})
 		},
 		Actions: []sim.Action{
 			{ID: 1, Kind: sim.ActionBuyUpgrade, At: 1, Tank: 1, Auto: sim.AutoFeeder},
@@ -174,8 +174,8 @@ func acaoRejeitadaNoCatchUp() Scenario {
 		Seed: 4,
 		Days: 3,
 		Cash: 100,
-		Setup: func(s *sim.State) {
-			stock(s, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 500, mass: 200 * sim.MicrogramsPerGram, feedKg: 100})
+		Setup: func(s *sim.State, b *sim.Balance) {
+			stock(s, b, pond{kind: sim.TankEarthPond, litres: 1_000_000, fish: 500, mass: 200 * sim.MicrogramsPerGram, feedKg: 100})
 		},
 		Actions: []sim.Action{
 			{ID: 7, Kind: sim.ActionBuyTank, At: 2 * sim.TicksPerDay, TankKind: sim.TankRecirculation},

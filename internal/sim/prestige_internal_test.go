@@ -10,7 +10,7 @@ func brokeFarm(t *testing.T, b *Balance) State {
 	s.LifetimeEarned = Coins(b.Progression.PrestigeDivisor - 1)
 	s.Cash = 0
 
-	if _, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres); !ok {
+	if _, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres); !ok {
 		t.Fatal("sem tanque")
 	}
 
@@ -154,7 +154,7 @@ func TestDividaAcimaDoTetoQuebraAFazendaSozinha(t *testing.T) {
 	s.Debt = b.Credit.BankruptcyPrincipal + 1
 	s.LifetimeEarned = Coins(b.Progression.PrestigeDivisor) * 400
 
-	id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 	if !ok {
 		t.Fatal("sem tanque")
 	}

@@ -47,7 +47,7 @@ func New(id, playerID uuid.UUID, name string, epoch time.Time, zone sim.ZoneOffs
 	state.Cash = startingCash
 	state.BalanceVersion = b.Version
 
-	tank, ok := state.AddTank(sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+	tank, ok := state.AddTank(b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
 	if ok {
 		state.StockTank(tank, startingFish, startingMass, sim.RaisingCost(b, startingFish, startingMass, 0))
 		state.LoadFeed(tank, startingFeed, sim.MarketAt(b, 0).FeedKg)

@@ -309,7 +309,7 @@ func TestOAeradorSeDesligaEmVezDeEndividar(t *testing.T) {
 		s := NewState(1, 0, 0)
 		s.Cash = tc.cash
 
-		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 		if !ok {
 			t.Fatal("sem tanque")
 		}

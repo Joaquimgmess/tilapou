@@ -36,3 +36,24 @@ func TestOSegundoTanqueDoMesmoTipoCustaMais(t *testing.T) {
 		t.Fatalf("o segundo tanque custa %d, queria mais do que o primeiro (%d)", second, first)
 	}
 }
+
+func TestTanqueNovoJaNasceComOxigenio(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Tick = 300 * TicksPerDay
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+
+	tank := s.tank(id)
+	if tank.Oxygen == 0 {
+		t.Error("o tanque novo nasce com oxigenio zero: a tela acusa falta de ar que nao existe")
+	}
+	if got, want := tank.Oxygen, oxygenAt(b, tank, s.Tick, s.Zone); got != want {
+		t.Errorf("o tanque novo nasceu com %d de oxigenio, o ambiente da %d", got, want)
+	}
+}

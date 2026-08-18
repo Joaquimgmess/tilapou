@@ -22,7 +22,7 @@ func TestEventFishOnlyCountsFish(t *testing.T) {
 	s.Cash = 1 << 40
 	s.LifetimeEarned = Coins(b.Progression.PrestigeDivisor) * 400
 
-	id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 	if !ok {
 		t.Fatal("sem tanque")
 	}

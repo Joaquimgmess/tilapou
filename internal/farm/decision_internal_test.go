@@ -13,7 +13,7 @@ func stockedForDecision(t *testing.T, b *sim.Balance) sim.State {
 	s := sim.NewState(1, 0, 0)
 	s.Cash = 5_000_000
 
-	id, ok := s.AddTank(sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+	id, ok := s.AddTank(b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
 	if !ok {
 		t.Fatal("sem tanque")
 	}

@@ -7,11 +7,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Joaquimgmess/tilapou/internal/balance"
 	"github.com/Joaquimgmess/tilapou/internal/sim"
 	"github.com/Joaquimgmess/tilapou/internal/sim/save"
 )
 
-func sample() sim.State {
+func sample(t *testing.T) sim.State {
+	t.Helper()
+
 	s := sim.NewState(42, -180, 12_345)
 	s.Cash = 987_654
 	s.LifetimeEarned = 1_234_567
@@ -24,7 +27,12 @@ func sample() sim.State {
 		Cost: 111, CostPerKg: 7, PricePerKg: 9, FCRPPM: 1_500_000,
 	}
 
-	id, _ := s.AddTank(sim.TankNetCage, 6_000)
+	rules, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	id, _ := s.AddTank(&rules, sim.TankNetCage, 6_000)
 	s.StockTank(id, 900, 250*sim.MicrogramsPerGram, 5_000)
 	s.LoadFeed(id, 300*sim.MicrogramsPerKilogram, 317)
 
@@ -56,7 +64,7 @@ func sample() sim.State {
 func TestEncodeDecodeRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	want := sample()
+	want := sample(t)
 
 	raw, err := save.Encode(want)
 	if err != nil {
@@ -84,7 +92,7 @@ func TestDecodeRejectsUnknownVersion(t *testing.T) {
 func TestEncodeSkipsEmptySlots(t *testing.T) {
 	t.Parallel()
 
-	raw, err := save.Encode(sample())
+	raw, err := save.Encode(sample(t))
 	if err != nil {
 		t.Fatalf("Encode() error = %v", err)
 	}
@@ -122,10 +130,10 @@ func TestSampleTouchesEveryFieldSoTheRoundTripCanSeeThem(t *testing.T) {
 	t.Parallel()
 
 	var zeroed []string
-	leafZeros(reflect.ValueOf(sample()), "State", &zeroed)
+	leafZeros(reflect.ValueOf(sample(t)), "State", &zeroed)
 
 	if len(zeroed) > 0 {
-		t.Errorf("o round trip e cego para %d campos porque o sample() os deixa zerados:\n  %s",
+		t.Errorf("o round trip e cego para %d campos porque o sample(t) os deixa zerados:\n  %s",
 			len(zeroed), strings.Join(zeroed, "\n  "))
 	}
 }
@@ -133,7 +141,7 @@ func TestSampleTouchesEveryFieldSoTheRoundTripCanSeeThem(t *testing.T) {
 func TestDecodeRefusesATankKindOutsideTheEnum(t *testing.T) {
 	t.Parallel()
 
-	raw, err := save.Encode(sample())
+	raw, err := save.Encode(sample(t))
 	if err != nil {
 		t.Fatal(err)
 	}

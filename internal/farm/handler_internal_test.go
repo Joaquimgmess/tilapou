@@ -14,7 +14,7 @@ func viewOfStocked(t *testing.T, b *sim.Balance) (TankView, SnapshotView) {
 	s := sim.NewState(1, 0, 0)
 	s.Cash = 5_000_000
 
-	id, ok := s.AddTank(sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+	id, ok := s.AddTank(b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
 	if !ok {
 		t.Fatal("sem tanque")
 	}
@@ -37,7 +37,7 @@ func brokeView(t *testing.T, b *sim.Balance) SnapshotView {
 	s.Debt = b.Credit.MaxPrincipal
 	s.LifetimeEarned = sim.Coins(b.Progression.PrestigeDivisor - 1)
 
-	if _, ok := s.AddTank(sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres); !ok {
+	if _, ok := s.AddTank(b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres); !ok {
 		t.Fatal("sem tanque")
 	}
 
@@ -118,7 +118,7 @@ func TestTodoTipoDeTanqueSaiNaViewComNomeELotacao(t *testing.T) {
 		}
 
 		s := sim.NewState(1, 0, 0)
-		if _, ok := s.AddTank(kind, b.Tanks[kind].Litres); !ok {
+		if _, ok := s.AddTank(&b, kind, b.Tanks[kind].Litres); !ok {
 			t.Fatalf("%s: sem tanque", name)
 		}
 

@@ -25,7 +25,7 @@ func TestDeathOnTheOutbreakTickIsNotDecidedByTheOutbreakRoll(t *testing.T) {
 		s := NewState(Seed(seed+1), 0, day*TicksPerDay)
 		s.Cash = 1 << 40
 
-		id, ok := s.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 		if !ok {
 			t.Fatal("sem tanque")
 		}

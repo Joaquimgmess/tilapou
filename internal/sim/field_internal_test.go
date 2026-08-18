@@ -20,7 +20,7 @@ func raise(t *testing.T, b *Balance, from Micrograms, days int64, fish FishCount
 	t.Helper()
 
 	s := NewState(1, 0, 0)
-	id, _ := s.AddTank(TankEarthPond, 1_000_000)
+	id, _ := s.AddTank(b, TankEarthPond, 1_000_000)
 	tank := s.tank(id)
 	tank.addBatch(1, fish, from, 0)
 	tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
@@ -162,7 +162,7 @@ func TestFeedConversionStaysInTheMeasuredRange(t *testing.T) {
 	b := isothermalBalance(t, 28)
 
 	s := NewState(1, 0, 0)
-	id, _ := s.AddTank(TankEarthPond, 1_000_000)
+	id, _ := s.AddTank(b, TankEarthPond, 1_000_000)
 	tank := s.tank(id)
 	tank.addBatch(1, 1_000, 30*MicrogramsPerGram, 0)
 	tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
@@ -192,7 +192,7 @@ func TestFeedConversionWorsensInTheCold(t *testing.T) {
 		b := isothermalBalance(t, celsius)
 
 		s := NewState(1, 0, 0)
-		id, _ := s.AddTank(TankEarthPond, 1_000_000)
+		id, _ := s.AddTank(b, TankEarthPond, 1_000_000)
 		tank := s.tank(id)
 		tank.addBatch(1, 1_000, 100*MicrogramsPerGram, 0)
 		tank.FeedStock = 10_000_000 * MicrogramsPerKilogram
@@ -234,7 +234,7 @@ func TestTanqueClimatizadoIgnoraAEstacao(t *testing.T) {
 		s := NewState(1, 0, 0)
 		s.Tick = winter
 
-		id, ok := s.AddTank(kind, b.Tanks[kind].Litres)
+		id, ok := s.AddTank(b, kind, b.Tanks[kind].Litres)
 		if !ok {
 			t.Fatal("sem tanque")
 		}

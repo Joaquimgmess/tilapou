@@ -96,7 +96,7 @@ func rebuild(s *State, b *Balance, at Tick, points uint32) {
 		DebtCarry:      0,
 	}
 
-	tank, ok := kept.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	tank, ok := kept.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 	if ok {
 		target := kept.tank(tank)
 		target.addBatch(kept.NextBatchID, b.Progression.RestartFish, b.Growth.FingerlingMass, at)
