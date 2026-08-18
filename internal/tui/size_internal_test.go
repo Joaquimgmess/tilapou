@@ -22,7 +22,7 @@ func sizedSnapshot() client.Snapshot {
 			{
 				ID: 1, Kind: "viveiro_escavado", Fish: 2_000, FeedKg: 180,
 				OxygenUgL: 5_400, DensityMilli: 600, Capacity: 5_000, ServedFor: 240,
-				BreakEven: 967, StockAdvice: 1_240, CostPerFish: 599,
+				BreakEven: 967, StockAdvice: 1_240,
 				BatchCount: 1, MaxBatches: 4,
 				Batches: []client.Batch{{
 					ID: 3, Fish: 2_000, MeanGrams: 306,
@@ -39,7 +39,7 @@ func sizedSnapshot() client.Snapshot {
 			},
 			{
 				ID: 2, Kind: "tanque_rede", Fish: 1_400, FeedKg: 0,
-				OxygenUgL: 1_900, Capacity: 960, BreakEven: 1_820, StockAdvice: 0, CostPerFish: 599,
+				OxygenUgL: 1_900, Capacity: 960, BreakEven: 1_820, StockAdvice: 0,
 				BatchCount: 1, MaxBatches: 4,
 				Batches: []client.Batch{{
 					ID: 4, Fish: 1_400, MeanGrams: 612, PriceKgCents: 829,

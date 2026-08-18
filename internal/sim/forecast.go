@@ -227,12 +227,18 @@ func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) (fish FishC
 // O plano vem de fora: monta-lo custa duas simulacoes de ciclo, e so quem orquestra sabe
 // quando vale pagar por isso e por quanto tempo um plano do dia anterior ainda serve.
 func (s *State) fixedCost(b *Balance, t *Tank, plan CyclePlan) Coins {
+	return fixedCostOn(b, t, plan, s.Debt)
+}
+
+// fixedCostOn recebe a divida em vez de le-la do estado, para perguntar quanto o ciclo
+// custaria com a divida que um emprestimo deixaria.
+func fixedCostOn(b *Balance, t *Tank, plan CyclePlan, debt Coins) Coins {
 	if plan.Days <= 0 {
 		return 0
 	}
 
 	daily := int64(b.Tanks[t.Kind].UpkeepPerDay) +
-		mulDivCeil(int64(s.Debt), int64(b.Credit.DailyRatePPM), int64(UnitPPM))
+		mulDivCeil(int64(debt), int64(b.Credit.DailyRatePPM), int64(UnitPPM))
 
 	return Coins(mulDivCeil(daily, plan.Days, 1))
 }
@@ -279,24 +285,34 @@ func (l LoanBlock) String() string {
 	return loanBlockNames[l]
 }
 
-// LoanAdvice suggests how much to borrow in cents up to the break-even stocking, or 0 with the reason for the block.
-func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) (Coins, LoanBlock) {
+// LoanOffer is what taking credit now would buy: the amount in cents, the fish it makes
+// stockable and, when Cents is zero, what blocks it.
+type LoanOffer struct {
+	Cents Coins
+	Fish  FishCount
+	Block LoanBlock
+}
+
+// LoanAdvice suggests how much to borrow up to the break-even stocking, with the fish that
+// money actually stocks — nao o emprestimo dividido pelo custo do peixe, que conta como peixe
+// a parte dele que vai pagar o custo fixo do ciclo.
+func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
 	if room <= 0 {
-		return 0, LoanNoCredit
+		return LoanOffer{Block: LoanNoCredit}
 	}
 
 	t := s.tank(tank)
 	if t == nil {
-		return room, LoanOpen
+		return LoanOffer{Cents: room, Block: LoanOpen}
 	}
 	if t.BatchCount >= MaxBatchesPerTank || t.Capacity(b)-int64(t.Fish()) <= 0 {
-		return 0, LoanNoRoom
+		return LoanOffer{Block: LoanNoRoom}
 	}
 
 	fish, perFish := s.StockAdvice(b, tank, plan)
 	if perFish <= 0 {
-		return room, LoanOpen
+		return LoanOffer{Cents: room, Block: LoanOpen}
 	}
 
 	goal := int64(plan.BreakEven)
@@ -306,7 +322,7 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) (Coins, Loan
 
 	short := goal - int64(t.Fish()) - int64(fish)
 	if short <= 0 {
-		return 0, LoanNoNeed
+		return LoanOffer{Block: LoanNoNeed}
 	}
 
 	// Nunca menos que um saco de racao: um emprestimo dimensionado pelos poucos peixes que
@@ -316,10 +332,23 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) (Coins, Loan
 	if wanted > int64(room) {
 		// Oferecer o que cabe no limite seria oferecer uma jogada estritamente pior: ele
 		// nao povoa nada e ainda sobe o custo fixo do ciclo com mais juro.
-		return 0, LoanNoCycle
+		return LoanOffer{Block: LoanNoCycle}
 	}
 
-	return Coins(wanted), LoanOpen
+	// Os peixes saem sempre da inversa do dimensionamento, e nunca de short: o arredondamento
+	// para cima que dimensiona o emprestimo sobra um peixe, e prometer um a mais do que o
+	// povoar entrega e o defeito que esta conta existe para nao ter.
+	buys := min(s.fishFor(b, t, plan, Coins(wanted), perFish), short)
+
+	return LoanOffer{Cents: Coins(wanted), Fish: FishCount(min(buys, maxInt32)), Block: LoanOpen}
+}
+
+// fishFor e a mesma conta que StockAdvice fara depois do emprestimo, com a divida que ele
+// deixa: e assim que o numero prometido e o numero entregue nao podem divergir.
+func (s *State) fishFor(b *Balance, t *Tank, plan CyclePlan, loan, perFish Coins) int64 {
+	spendable := int64(s.Cash) + int64(loan) - int64(fixedCostOn(b, t, plan, s.Debt+loan))
+
+	return max(spendable/int64(perFish), 0)
 }
 
 // loanFor e quanto o jogador precisa pegar para de fato povoar short peixes. Nao basta o

@@ -255,12 +255,12 @@ func TestDicaDoEmprestimoNaoPrometeEncherOTanqueQuandoNaoDa(t *testing.T) {
 	snap := sizedSnapshot()
 	tank := snap.Tanks[0]
 	// Limite quase todo consumido: o que sobra nao enche nem cobre o que falta.
-	tank.LoanAdvice, tank.LoanBlock = 30_300, "open"
-	tank.Fish, tank.BreakEven, tank.StockAdvice, tank.CostPerFish = 100, 5_000, 0, 599
+	tank.LoanAdvice, tank.LoanBlock, tank.LoanFish = 30_300, "open", 50
+	tank.Fish, tank.BreakEven, tank.StockAdvice = 100, 5_000, 0
 
 	hint := loanHint(tank)
 	if strings.Contains(hint, "cobre") {
-		t.Errorf("a dica promete cobrir com %d de emprestimo, e faltam %d peixes a %d cada: %q",
-			tank.LoanAdvice, tank.BreakEven-int64(tank.Fish), tank.CostPerFish, hint)
+		t.Errorf("a dica promete cobrir com %d de emprestimo, que povoa %d dos %d peixes que faltam: %q",
+			tank.LoanAdvice, tank.LoanFish, tank.BreakEven-int64(tank.Fish), hint)
 	}
 }

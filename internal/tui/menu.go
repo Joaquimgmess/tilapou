@@ -198,11 +198,11 @@ func loanHint(t client.Tank) string {
 	}
 
 	short := t.BreakEven - int64(t.Fish) - t.StockAdvice
-	if short > 0 && t.CostPerFish > 0 && t.LoanAdvice < short*t.CostPerFish {
-		// Prometer que cobre o que falta e mentira quando o limite nao chega la: diga o que
-		// o dinheiro compra de verdade.
+	if short > 0 && t.LoanFish > 0 && t.LoanFish < short {
+		// Prometer que cobre o que falta e mentira quando o dinheiro nao chega la: quem sabe
+		// quantos peixes ele povoa e o daemon, que ja desconta o custo fixo do ciclo.
 		return fmt.Sprintf("da para %d dos %d peixes que faltam no tanque %d",
-			t.LoanAdvice/t.CostPerFish, short, t.ID)
+			t.LoanFish, short, t.ID)
 	}
 	if short > 0 {
 		return fmt.Sprintf("cobre os %d peixes que faltam para o tanque %d pagar a manutencao", short, t.ID)

@@ -187,7 +187,9 @@ func TestEmprestimoOferecidoCobreUmSacoDeRacao(t *testing.T) {
 	// dimensionado por esses doze peixes, que nao paga nem racao.
 	s.StockTank(id, plan.BreakEven-12, 450*sim.MicrogramsPerGram, 1_000)
 
-	loan, block := s.LoanAdvice(&b, id, plan)
+	offer := s.LoanAdvice(&b, id, plan)
+
+	loan, block := offer.Cents, offer.Block
 	if block != sim.LoanOpen {
 		t.Fatalf("o credito esta bloqueado por %v com o limite quase todo livre", block)
 	}
@@ -365,5 +367,54 @@ func TestOPeaoDeDespescaNaoRefazOPlanoACadaTick(t *testing.T) {
 	if took := time.Since(start); took > budget {
 		t.Errorf("um dia com o peao de despesca levou %s, acima de %s: o plano esta sendo refeito dentro do tick",
 			took, budget)
+	}
+}
+
+// O que o conselho de credito promete tem de ser o que o povoar entrega. Dividir o emprestimo
+// pelo custo por peixe superestima: parte dele paga o custo fixo do ciclo, e nao peixe.
+func TestOsPeixesPrometidosPeloEmprestimoSaoOsQueOPovoarEntrega(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	found := false
+
+	for _, cash := range []sim.Coins{0, 100_000, 400_000, 900_000} {
+		s := sim.NewState(1, 0, 0)
+		s.Cash = cash
+
+		id, ok := s.AddTank(&b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+
+		plan := b.CycleAt(sim.TankEarthPond, s.Tick, s.Zone)
+
+		before, _ := s.StockAdvice(&b, id, plan)
+
+		offer := s.LoanAdvice(&b, id, plan)
+		if offer.Block != sim.LoanOpen || offer.Cents <= 0 {
+			continue
+		}
+		found = true
+
+		after := s
+		after.Cash += offer.Cents
+		after.Debt += offer.Cents
+
+		// A oferta fala dos peixes que o emprestimo acrescenta, e o conselho fala do total:
+		// o que ela promete tem de caber no que o povoar passa a aceitar.
+		delivered, _ := after.StockAdvice(&b, id, plan)
+		if added := int64(delivered) - int64(before); int64(offer.Fish) > added {
+			t.Errorf("com caixa %d a oferta promete %d peixes a mais e o povoar so aceita %d",
+				cash, offer.Fish, added)
+		}
+	}
+
+	if !found {
+		t.Fatal("nenhum caixa testado abriu credito: o teste nao cobrou nada")
 	}
 }

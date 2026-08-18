@@ -198,12 +198,12 @@ func TestLoanAdviceSaysWhyItOffersNothing(t *testing.T) {
 		s.Cash = 1 << 40
 		id := tc.setup(&s)
 
-		loan, block := s.LoanAdvice(b, id, CyclePlan{BreakEven: 968})
-		if block != tc.block {
-			t.Errorf("%s: motivo %v, queria %v", tc.name, block, tc.block)
+		offer := s.LoanAdvice(b, id, CyclePlan{BreakEven: 968})
+		if offer.Block != tc.block {
+			t.Errorf("%s: motivo %v, queria %v", tc.name, offer.Block, tc.block)
 		}
-		if loan != 0 {
-			t.Errorf("%s: ofereceu %d centavos mesmo bloqueado", tc.name, loan)
+		if offer.Cents != 0 {
+			t.Errorf("%s: ofereceu %d centavos mesmo bloqueado", tc.name, offer.Cents)
 		}
 	}
 }
@@ -337,17 +337,17 @@ func TestOEmprestimoSugeridoPovoaAlgumaCoisa(t *testing.T) {
 
 		plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
 
-		loan, block := s.LoanAdvice(b, id, plan)
-		if block != LoanOpen || loan <= 0 {
+		offer := s.LoanAdvice(b, id, plan)
+		if offer.Block != LoanOpen || offer.Cents <= 0 {
 			continue
 		}
 
-		s.Cash += loan
-		s.Debt += loan
+		s.Cash += offer.Cents
+		s.Debt += offer.Cents
 
 		if fish, _ := s.StockAdvice(b, id, plan); fish <= 0 {
 			t.Errorf("com caixa %d o jogo sugeriu pegar %d de emprestimo e depois nao povoa nada",
-				cash, loan)
+				cash, offer.Cents)
 		}
 	}
 }
