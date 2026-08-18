@@ -113,13 +113,14 @@ type Cycle struct {
 
 // Decision is the recommendation to sell now or hold.
 type Decision struct {
-	SellNowCents   int64 `json:"sell_now_cents"`
-	SellNowMargin  int64 `json:"sell_now_margin_cents"`
-	HoldToGrams    int64 `json:"hold_to_grams"`
-	HoldDays       int64 `json:"hold_days"`
-	HoldCents      int64 `json:"hold_cents"`
-	HoldMargin     int64 `json:"hold_margin_cents"`
-	HoldCostCents  int64 `json:"hold_cost_cents"`
+	SellNowCents  int64 `json:"sell_now_cents"`
+	SellNowMargin int64 `json:"sell_now_margin_cents"`
+	HoldToGrams   int64 `json:"hold_to_grams"`
+	HoldDays      int64 `json:"hold_days"`
+	HoldCents     int64 `json:"hold_cents"`
+	HoldMargin    int64 `json:"hold_margin_cents"`
+	HoldCostCents int64 `json:"hold_cost_cents"`
+	// HoldReached: a projecao alcanca o alvo, nao que o peixe ja esteja nele.
 	HoldReached    bool  `json:"hold_reached"`
 	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
 	GainPerDayMg   int64 `json:"gain_per_day_mg"`

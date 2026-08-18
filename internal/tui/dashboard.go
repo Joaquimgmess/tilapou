@@ -327,7 +327,21 @@ func renderStocking(tank client.Tank) string {
 			strconv.FormatInt(tank.BreakEven-int64(tank.Fish), 10))
 	}
 
+	// Lotacao acima do break-even nao garante dinheiro: o que decide e a margem do lote.
+	if margin := tankMargin(tank); margin < 0 {
+		return line + dangerStyle.Render("  mas o lote perde "+coins(-margin))
+	}
+
 	return line + okStyle.Render("  no azul")
+}
+
+func tankMargin(tank client.Tank) int64 {
+	var total int64
+	for i := range tank.Batches {
+		total += tank.Batches[i].MarginCents
+	}
+
+	return total
 }
 
 // holdWins says whether holding beats selling now. It compares gain per day and not total,

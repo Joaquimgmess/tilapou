@@ -1,9 +1,11 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"charm.land/lipgloss/v2"
+	"github.com/charmbracelet/x/ansi"
 
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
@@ -145,5 +147,31 @@ func TestTanqueVazioNaoAnunciaProximaClasse(t *testing.T) {
 
 	if got := nextClass(&vazio); got != "no topo" {
 		t.Errorf("lote de 0 g anuncia %q", got)
+	}
+}
+
+func TestLotacaoNaoDizNoAzulComOLoteNoVermelho(t *testing.T) {
+	t.Parallel()
+
+	tank := client.Tank{
+		ID: 1, Fish: 718, Capacity: 5_000, BreakEven: 376,
+		Batches: []client.Batch{{ID: 1, Fish: 718, MarginCents: -104_019}},
+	}
+
+	if got := ansi.Strip(renderStocking(tank)); strings.Contains(got, "no azul") {
+		t.Errorf("a lotacao diz %q com o lote perdendo 1040,19 TC", got)
+	}
+}
+
+func TestLotacaoDizNoAzulQuandoOLoteEstaNoAzul(t *testing.T) {
+	t.Parallel()
+
+	tank := client.Tank{
+		ID: 1, Fish: 718, Capacity: 5_000, BreakEven: 376,
+		Batches: []client.Batch{{ID: 1, Fish: 718, MarginCents: 21_336}},
+	}
+
+	if got := ansi.Strip(renderStocking(tank)); !strings.Contains(got, "no azul") {
+		t.Errorf("a lotacao nao diz no azul com o lote ganhando: %q", got)
 	}
 }

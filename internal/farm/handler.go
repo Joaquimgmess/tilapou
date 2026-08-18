@@ -115,13 +115,15 @@ type CycleView struct {
 // DecisionView compares selling now with holding to the next weight class:
 // cents, daily gain in milligrams, daily feed in grams.
 type DecisionView struct {
-	SellNowCents   int64 `json:"sell_now_cents"`
-	SellNowMargin  int64 `json:"sell_now_margin_cents"`
-	HoldToGrams    int64 `json:"hold_to_grams"`
-	HoldDays       int64 `json:"hold_days"`
-	HoldCents      int64 `json:"hold_cents"`
-	HoldMargin     int64 `json:"hold_margin_cents"`
-	HoldCostCents  int64 `json:"hold_cost_cents"`
+	SellNowCents  int64 `json:"sell_now_cents"`
+	SellNowMargin int64 `json:"sell_now_margin_cents"`
+	HoldToGrams   int64 `json:"hold_to_grams"`
+	HoldDays      int64 `json:"hold_days"`
+	HoldCents     int64 `json:"hold_cents"`
+	HoldMargin    int64 `json:"hold_margin_cents"`
+	HoldCostCents int64 `json:"hold_cost_cents"`
+	// HoldReached diz que a projecao alcanca o alvo dentro do teto de dias, e nao que o
+	// peixe ja chegou la: com 30 g e alvo de 400 g ela e verdadeira e correta.
 	HoldReached    bool  `json:"hold_reached"`
 	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
 	GainPerDayMg   int64 `json:"gain_per_day_mg"`

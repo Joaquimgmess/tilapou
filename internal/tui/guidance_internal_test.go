@@ -434,3 +434,34 @@ func TestFazendaSemPeixeEComCaixaMandaPovoar(t *testing.T) {
 		t.Errorf("com caixa e nenhum peixe, o conselho foi %q em vez de mandar povoar", told)
 	}
 }
+
+func TestZNoVazioDizQueNaoTemNada(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.run(d.model.(Model).fetch())
+
+	// De costas para o caminho, sem viveiro nem galpao na frente.
+	d.press(keyDown)
+	d.press("z")
+
+	m, ok := d.model.(Model)
+	if !ok {
+		t.Fatal("o driver perdeu o Model")
+	}
+	if m.menu != nil {
+		t.Fatal("o z abriu menu de frente para o vazio")
+	}
+	if m.message == "" {
+		t.Error("o z no vazio nao respondeu nada, e a caixa promete que ele abre as opcoes")
+	}
+}

@@ -379,7 +379,7 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 		batch, _ := m.batch()
 		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[index], batch)
 	case targetNone:
-		return m, nil
+		return m.say("nao ha nada aqui: ande ate um viveiro ou o galpao"), nil
 	}
 
 	m.message = ""
