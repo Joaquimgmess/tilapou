@@ -29,6 +29,9 @@ const (
 	tilePath
 	tileWater
 	tileWaterTop
+	tileWaterBottom
+	tileWaterLeft
+	tileWaterRight
 	tileFence
 	tileShed
 )
@@ -66,16 +69,27 @@ func newFarmMap(tanks int) farmMap {
 		originX := pondOriginX + i*(pondCols+1)
 		for y := range pondRows {
 			for x := range pondCols {
-				kind := tileWater
-				if y == 0 {
-					kind = tileWaterTop
-				}
-				m.tiles[pondOriginY+y][originX+x] = kind
+				m.tiles[pondOriginY+y][originX+x] = waterTile(x, y)
 			}
 		}
 	}
 
 	return m
+}
+
+func waterTile(x, y int) tileKind {
+	switch {
+	case y == 0:
+		return tileWaterTop
+	case y == pondRows-1:
+		return tileWaterBottom
+	case x == 0:
+		return tileWaterLeft
+	case x == pondCols-1:
+		return tileWaterRight
+	}
+
+	return tileWater
 }
 
 func (m farmMap) blocked(x, y int) bool {
@@ -84,7 +98,7 @@ func (m farmMap) blocked(x, y int) bool {
 	}
 
 	switch m.tiles[y][x] {
-	case tileWater, tileWaterTop, tileFence, tileShed:
+	case tileWater, tileWaterTop, tileWaterBottom, tileWaterLeft, tileWaterRight, tileFence, tileShed:
 		return true
 	case tileGrass, tilePath:
 		return false
@@ -174,6 +188,12 @@ func spriteFor(kind tileKind) gb.Sprite {
 		return gb.Water
 	case tileWaterTop:
 		return gb.WaterTop
+	case tileWaterBottom:
+		return gb.WaterBottom
+	case tileWaterLeft:
+		return gb.WaterLeft
+	case tileWaterRight:
+		return gb.WaterRight
 	case tileFence:
 		return gb.Fence
 	case tileShed:
