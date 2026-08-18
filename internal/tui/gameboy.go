@@ -55,13 +55,37 @@ const (
 )
 
 // mapScreenRows is how many terminal rows are left for the map after the chrome.
-func (m Model) mapScreenRows(chrome int) int {
+// mapSpace e quantas linhas o mapa desenha e quantas sobram de vidro para o quadro nao
+// encolher quando o menu fecha.
+type mapSpace struct {
+	drawn int
+	glass int
+}
+
+// mapRows fixa a altura do quadro na altura dele em repouso — mapa inteiro mais o cromo sem
+// menu — e reparte o que sobra entre mapa e vidro.
+func (m Model) mapRows(width, chrome int) mapSpace {
 	drawn := m.farm.rows * gb.TileSize / rowsPerCell
-	if m.height <= 0 {
-		return drawn
+
+	total := drawn + m.chromeAtRest(width)
+	if m.height > 0 {
+		total = min(total, m.height)
 	}
 
-	return max(min(drawn, m.height-chrome), 1)
+	room := max(total-chrome, 1)
+
+	return mapSpace{drawn: min(drawn, room), glass: max(room-drawn, 0)}
+}
+
+// chromeAtRest mede o cromo com o menu fechado, que e a altura que o aparelho tem de manter.
+func (m Model) chromeAtRest(width int) int {
+	rest := m
+	rest.menu = nil
+
+	return lipgloss.Height(hudStyle.Width(width).Render(" ")) +
+		lipgloss.Height(goalStyle.Width(width).Render(" ")) +
+		lipgloss.Height(boxStyle.Width(width).Render(rest.dialogue())) +
+		lipgloss.Height(rest.renderGameBoyKeys(width))
 }
 
 func cropTo(frame string, rows int) string {
@@ -111,16 +135,21 @@ func (m Model) renderGameBoy() string {
 		body = box.Render(m.menuWithReply())
 	}
 
+	keys := m.renderGameBoyKeys(width)
 	chrome := lipgloss.Height(hud) + lipgloss.Height(banner) + lipgloss.Height(body) +
-		lipgloss.Height(m.renderGameBoyKeys(width))
+		lipgloss.Height(keys)
 
-	frame := fillTo(width, []string{
-		hud,
-		banner,
-		cropTo(renderMap(m.farm, m.you, snapshot, m.frame), m.mapScreenRows(chrome)),
-		body,
-		m.renderGameBoyKeys(width),
-	})
+	// O menu e conteudo, e conteudo nao muda o tamanho do aparelho: ele come linha do mapa e
+	// devolve ao fechar. Sem a altura em repouso o quadro encolheria junto com o menu, e o
+	// rodape do frame anterior ficaria na tela.
+	rows := m.mapRows(width, chrome)
+
+	blocks := []string{hud, banner, cropTo(renderMap(m.farm, m.you, snapshot, m.frame), rows.drawn)}
+	if rows.glass > 0 {
+		blocks = append(blocks, strings.Repeat("\n", rows.glass-1))
+	}
+
+	frame := fillTo(width, append(blocks, body, keys))
 
 	// O mapa tem teto de tamanho, entao numa tela grande sobra faixa com o fundo do
 	// terminal em volta: centralizar e pintar mantem a ilusao de um aparelho.

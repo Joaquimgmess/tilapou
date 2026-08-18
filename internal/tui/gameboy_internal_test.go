@@ -101,3 +101,27 @@ func TestFillToCompletaALinhaCurta(t *testing.T) {
 		}
 	}
 }
+
+// Quadro que encolhe nao apaga as linhas que ocupava: o terminal so reescreve as que o novo
+// frame tem, e o rodape do anterior fica na tela. Fechar um menu de sete linhas e voltar ao
+// painel de tres e exatamente esse caso.
+func TestOQuadroTemSempreAMesmaAltura(t *testing.T) {
+	t.Parallel()
+
+	for _, size := range [][2]int{{200, 80}, {88, 35}, {120, 40}} {
+		m := New(nil)
+		m.snapshot = sizedSnapshot()
+		m.width, m.height = size[0], size[1]
+
+		m.menu = nil
+		closed := strings.Count(m.render(), "\n")
+
+		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0])
+		open := strings.Count(m.render(), "\n")
+
+		if closed != open {
+			t.Errorf("em %dx%d o quadro tem %d linhas com o menu aberto e %d com ele fechado: a diferenca fica na tela",
+				size[0], size[1], open+1, closed+1)
+		}
+	}
+}
