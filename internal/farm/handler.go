@@ -17,7 +17,6 @@ const (
 	seriesPoints   = 21
 	microsPerMilli = 1_000
 	gramsPerKilo   = 1_000
-	ppmUnit        = 1_000_000
 )
 
 // TankView is the tank in the API: money in cents, weight in grams, oxygen in
@@ -297,7 +296,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		Tanks:         make([]TankView, 0, state.TankCount),
 		PrestigeNow:   sim.PrestigePointsFor(state.LifetimeEarned, b.Progression.PrestigeDivisor),
 		Series:        seriesOf(state, b),
-		InterestDay:   int64(state.Debt) * int64(b.Credit.DailyRatePPM) / ppmUnit,
+		InterestDay:   int64(state.Debt) * int64(b.Credit.DailyRatePPM) / int64(sim.UnitPPM),
 		RunwayDays:    runwayDays(state, b),
 		Broke:         state.Broke(b),
 		Prices: PriceView{
@@ -472,7 +471,7 @@ func seriesOf(state *sim.State, b *sim.Balance) SeriesView {
 }
 
 func runwayDays(state *sim.State, b *sim.Balance) int64 {
-	daily := int64(state.Debt) * int64(b.Credit.DailyRatePPM) / ppmUnit
+	daily := int64(state.Debt) * int64(b.Credit.DailyRatePPM) / int64(sim.UnitPPM)
 
 	for i := range state.TankCount {
 		tank := &state.Tanks[i]
