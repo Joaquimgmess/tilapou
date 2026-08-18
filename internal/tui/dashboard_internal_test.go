@@ -219,3 +219,30 @@ func TestABarraAnunciaARecomecarQuandoAFazendaQuebra(t *testing.T) {
 		t.Errorf("a fazenda quebrou e a barra nao diz como recomecar: %q", bar)
 	}
 }
+
+// Tres telas diferentes mandam povoar, e todas tem de sair do mesmo conselho que a tecla usa:
+// mandar apertar o que o jogo vai recusar e pior que nao dizer nada.
+func TestNenhumaTelaMandaPovoarQuandoOConselhoEZero(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 200, 80
+
+	for i := range m.snapshot.Tanks {
+		m.snapshot.Tanks[i].Fish = 0
+		m.snapshot.Tanks[i].Batches = nil
+		m.snapshot.Tanks[i].StockAdvice = 0
+	}
+
+	telas := map[string]string{
+		"painel de numeros":  ansi.Strip(m.renderDashboard()),
+		"conselho do tanque": tankAdvice(m.snapshot.Tanks[0]),
+	}
+
+	for name, got := range telas {
+		if strings.Contains(got, "povoe com [s]") {
+			t.Errorf("%s manda povoar com o conselho em zero", name)
+		}
+	}
+}

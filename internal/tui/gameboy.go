@@ -270,7 +270,7 @@ func frontBatch(t client.Tank) (client.Batch, bool) {
 func tankAdvice(t client.Tank) string {
 	front, ok := frontBatch(t)
 	if !ok {
-		return "tanque vazio: povoe com [s]"
+		return "tanque vazio: " + emptyTankAdvice(t)
 	}
 
 	switch {

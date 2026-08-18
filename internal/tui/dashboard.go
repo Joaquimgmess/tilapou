@@ -125,6 +125,17 @@ func (m Model) waitMark() string {
 	return dimStyle.Render(string(waitFrames[m.frame%len(waitFrames)]))
 }
 
+// emptyTankAdvice diz o que fazer com um tanque vazio. Sai do conselho de lotacao, e nao de
+// uma regra propria: e o mesmo numero que a tecla consome, entao a tela nao manda apertar o
+// que o jogo vai recusar.
+func emptyTankAdvice(t client.Tank) string {
+	if t.StockAdvice <= 0 {
+		return "sem caixa para o ciclo: veja o credito com [g]"
+	}
+
+	return "povoe com [s]"
+}
+
 // rule renders a section title followed by a line filling the width.
 func rule(title string, width int) string {
 	head := labelStyle.Render(title + " ")
@@ -196,7 +207,7 @@ func (m Model) renderBatches() string {
 		if r.batch < 0 {
 			lines = append(lines, m.decorateRow(i,
 				fmt.Sprintf("%-7s %6s %6s %11s %11s  %s",
-					fmt.Sprintf("T%d", t.ID), "-", "-", "-", "-", "vazio, povoe com [s]"), false))
+					fmt.Sprintf("T%d", t.ID), "-", "-", "-", "-", "vazio, "+emptyTankAdvice(*t)), false))
 
 			continue
 		}
@@ -277,7 +288,7 @@ func (m Model) renderDecision() string {
 	batch, ok := m.batch()
 	if !ok {
 		return rule(fmt.Sprintf("DECISAO T%d", tank.ID), decisionCol-panelInset) + "\n" +
-			dimStyle.Render("sem lote neste tanque: povoe com [s]")
+			dimStyle.Render("sem lote neste tanque: "+emptyTankAdvice(tank))
 	}
 
 	d := batch.Decision
