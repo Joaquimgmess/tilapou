@@ -3,8 +3,6 @@ package tui
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -13,21 +11,6 @@ import (
 
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
-
-func jumpDays(t *testing.T, days int) {
-	t.Helper()
-
-	seconds := days * 24 * 60
-	query := "UPDATE farms SET epoch = epoch - interval '" + strconv.Itoa(seconds) + " seconds'"
-
-	cmd := exec.CommandContext(t.Context(), "docker", "compose", "exec", "-T", "postgres",
-		"psql", "-U", "tilapou", "-d", "tilapou", "-c", query)
-	cmd.Dir = "../.."
-
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("pulando %d dias: %v: %s", days, err, out)
-	}
-}
 
 func (d *driver) line(label string) string {
 	d.t.Helper()
@@ -93,7 +76,7 @@ func TestProgression(t *testing.T) {
 	out.WriteString(d.line("povoei ate o equilibrio"))
 
 	for _, days := range []int{60, 60, 60} {
-		jumpDays(t, days)
+		qaJumpDays(t, days)
 		out.WriteString(d.line(fmt.Sprintf("+%d dias", days)))
 	}
 
