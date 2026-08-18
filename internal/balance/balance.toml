@@ -12,7 +12,10 @@ tgc = 0.0014
 temperatura_referencia_c = 26.0
 peso_maximo_mg = 1100000
 peso_alevino_mg = 30000
-peso_abate_mg = 800000
+# 800000 e o topo da classe de 100%: esperar ate la custa 100 dias a mais para receber o
+# mesmo preco por quilo. Em 600000 o primeiro faturamento cai de 112h para 74h reais e a
+# margem por dia sobe de 2410 para 3502; segurar ate 900 g continua sendo a jogada boa.
+peso_abate_mg = 600000
 
 # Multiplicador global sobre consumo e crescimento.
 # Abaixo de 18 C para de comer; letal sustentado a 13 C.
@@ -141,8 +144,10 @@ manutencao_centavos_dia = 14000
 # O mercado oscila sozinho e o preco por quilo depende da classe de peso:
 # peixe maior rende mais por quilo (rendimento de file), ate a classe de excesso.
 # Equivalencia peixe-racao = preco / (CAA x preco_racao): <1,25 inviavel, >2,00 excelente.
+# A CAA efetiva do ciclo e 2,06 e nao os 1,6 de referencia, porque a racao de manutencao
+# corre todo dia: a 900 c/kg o custo medido era 941 e todo tanque dava prejuizo.
 [mercado]
-peixe_base_centavos_kg = 900
+peixe_base_centavos_kg = 1150
 racao_base_centavos_kg = 320
 oscilacao_peixe_pct = 22.0
 oscilacao_racao_pct = 14.0
