@@ -16,30 +16,66 @@ type decisionInput struct {
 	prestige uint32
 }
 
+// tankFields and batchFields mirror sim.Tank and sim.Batch field by field. The conversions
+// below only compile while the mirrors match, so a new field there stops compiling here
+// until someone decides whether it goes raw, quantized or zeroed into the key.
+type tankFields struct {
+	ID           sim.TankID
+	Kind         sim.TankKind
+	Litres       sim.Litres
+	Batches      [sim.MaxBatchesPerTank]sim.Batch
+	BatchCount   int32
+	FeedStock    sim.Micrograms
+	ServedUntil  sim.Tick
+	Upgrades     uint32
+	Oxygen       sim.MicrogramsPerLiter
+	Aerating     bool
+	FeedCarry    int64
+	FeedUnitCost sim.Coins
+	UpkeepCarry  int64
+	CarrierUntil sim.Tick
+	Accrual      sim.Accrual
+}
+
+type batchFields struct {
+	ID              sim.BatchID
+	Fish            sim.FishCount
+	MeanMass        sim.Micrograms
+	MassRoot        int64
+	GrowthCarry     int64
+	StockedAt       sim.Tick
+	FeedEaten       sim.Micrograms
+	MassGained      sim.Micrograms
+	Cost            sim.Coins
+	CostCarry       int64
+	Sick            int32
+	HypoxiaTicks    int32
+	StarvationTicks int32
+}
+
 // newDecisionInput quantizes what churns every tick so the cache survives the day: the
 // accrued cost is left out because the projection only adds to it, and the caller
 // subtracts the current one. The
 // tank literal has no field names on purpose: a new field in sim.Tank stops compiling
 // here until someone decides whether it goes raw, quantized or zeroed.
 func newDecisionInput(state *sim.State, tank *sim.Tank, batch *sim.Batch) decisionInput {
-	//nolint:govet // composites: literal sem nomes e a trava; campo novo em sim.Tank para aqui
-	quantized := sim.Tank{
-		tank.ID,
-		tank.Kind,
-		tank.Litres,
-		quantizedBatches(batch),
-		1,
-		tank.FeedStock / sim.MicrogramsPerKilogram * sim.MicrogramsPerKilogram,
-		0,
-		tank.Upgrades,
-		tank.Oxygen,
-		tank.Aerating,
-		0,
-		tank.FeedUnitCost,
-		0,
-		tank.CarrierUntil,
-		sim.Accrual{},
-	}
+	quantized := sim.Tank(tankFields{
+		ID:           tank.ID,
+		Kind:         tank.Kind,
+		Litres:       tank.Litres,
+		Batches:      quantizedBatches(batch),
+		BatchCount:   1,
+		FeedStock:    tank.FeedStock / sim.MicrogramsPerKilogram * sim.MicrogramsPerKilogram,
+		ServedUntil:  0,
+		Upgrades:     tank.Upgrades,
+		Oxygen:       tank.Oxygen,
+		Aerating:     tank.Aerating,
+		FeedCarry:    0,
+		FeedUnitCost: tank.FeedUnitCost,
+		UpkeepCarry:  0,
+		CarrierUntil: tank.CarrierUntil,
+		Accrual:      sim.Accrual{},
+	})
 
 	return decisionInput{
 		tank:     quantized,
@@ -64,22 +100,21 @@ func (in decisionInput) forecast(b *sim.Balance, target sim.Micrograms) sim.Fore
 func quantizedBatches(batch *sim.Batch) [sim.MaxBatchesPerTank]sim.Batch {
 	var only [sim.MaxBatchesPerTank]sim.Batch
 
-	//nolint:govet // composites: literal sem nomes e a trava; campo novo em sim.Batch para aqui
-	only[0] = sim.Batch{
-		batch.ID,
-		batch.Fish,
-		batch.MeanMass / sim.MicrogramsPerGram * sim.MicrogramsPerGram,
-		0,
-		0,
-		batch.StockedAt,
-		0,
-		0,
-		0,
-		0,
-		batch.Sick,
-		0,
-		0,
-	}
+	only[0] = sim.Batch(batchFields{
+		ID:              batch.ID,
+		Fish:            batch.Fish,
+		MeanMass:        batch.MeanMass / sim.MicrogramsPerGram * sim.MicrogramsPerGram,
+		MassRoot:        0,
+		GrowthCarry:     0,
+		StockedAt:       batch.StockedAt,
+		FeedEaten:       0,
+		MassGained:      0,
+		Cost:            0,
+		CostCarry:       0,
+		Sick:            batch.Sick,
+		HypoxiaTicks:    0,
+		StarvationTicks: 0,
+	})
 	return only
 }
 
