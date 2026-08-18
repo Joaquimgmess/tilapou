@@ -89,8 +89,10 @@ func (m Model) mapRows(width, chrome int) mapSpace {
 
 // chromeAtRest mede o cromo com o menu fechado, que e a altura que o aparelho tem de manter.
 func (m Model) chromeAtRest(width int) int {
+	// Sem menu e sem mensagem: uma recusa comprida aumentaria a propria altura de
+	// referencia, e o aparelho cresceria junto com o texto em vez de cortar o texto.
 	rest := m
-	rest.menu = nil
+	rest.menu, rest.message = nil, ""
 
 	return lipgloss.Height(hudStyle.Width(width).Render(" ")) +
 		lipgloss.Height(goalStyle.Width(width).Render(" ")) +
@@ -146,12 +148,14 @@ func (m Model) renderGameBoy() string {
 	}
 
 	keys := m.renderGameBoyKeys(width)
-	chrome := lipgloss.Height(hud) + lipgloss.Height(banner) + lipgloss.Height(body) +
-		lipgloss.Height(keys)
 
 	// O menu e conteudo, e conteudo nao muda o tamanho do aparelho: ele come linha do mapa e
 	// devolve ao fechar. Sem a altura em repouso o quadro encolheria junto com o menu, e o
 	// rodape do frame anterior ficaria na tela.
+	//
+	chrome := lipgloss.Height(hud) + lipgloss.Height(banner) + lipgloss.Height(keys) +
+		lipgloss.Height(body)
+
 	rows := m.mapRows(width, chrome)
 
 	blocks := []string{hud, banner, cropTo(renderMap(m.farm, m.you, snapshot, m.animation()), rows.drawn)}

@@ -113,15 +113,31 @@ func TestOQuadroTemSempreAMesmaAltura(t *testing.T) {
 		m.snapshot = sizedSnapshot()
 		m.width, m.height = size[0], size[1]
 
-		m.menu = nil
+		m.menu, m.message = nil, ""
 		closed := strings.Count(m.render(), "\n")
 
-		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0])
-		open := strings.Count(m.render(), "\n")
+		// Todo menu que o jogo abre, com e sem mensagem: e a diferenca de altura entre dois
+		// frames que fica na tela, e cada menu tem um tamanho.
+		menus := map[string]*menu{
+			"tanque": tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0]),
+			"galpao": shedMenu(m.snapshot, m.snapshot.Tanks[0]),
+		}
 
-		if closed != open {
-			t.Errorf("em %dx%d o quadro tem %d linhas com o menu aberto e %d com ele fechado: a diferenca fica na tela",
-				size[0], size[1], open+1, closed+1)
+		for name, open := range menus {
+			for _, message := range []string{
+				"",
+				"Sem grana: custa 5247,03 TC e faltam 1702,19 TC",
+				// Recusa comprida: ela quebra em varias linhas dentro da caixa e e assim
+				// que o corpo passa do que o mapa tem para devolver.
+				strings.Repeat("o credito que sobra nao paga um ciclo inteiro: pague o que deve antes. ", 4),
+			} {
+				m.menu, m.message = open, message
+
+				if got := strings.Count(m.render(), "\n"); got != closed {
+					t.Errorf("em %dx%d o menu %q com a mensagem %q da %d linhas e o painel da %d: a diferenca fica na tela",
+						size[0], size[1], name, message, got+1, closed+1)
+				}
+			}
 		}
 	}
 }

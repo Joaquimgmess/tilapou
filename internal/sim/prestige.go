@@ -50,7 +50,12 @@ const MinStockFish = 100
 func (s *State) stuck(b *Balance, plans Plans) bool {
 	for i := range s.TankCount {
 		t := &s.Tanks[i]
-		if t.FeedStock > 0 || s.Cash >= s.cheapestCycle(b, t, plans[t.Kind]) {
+		if s.Cash >= s.cheapestCycle(b, t, plans[t.Kind]) {
+			return false
+		}
+		// Racao so e saida enquanto houver lote comendo: com o tanque vazio ela e caixa que
+		// virou estoque parado, e nao um ciclo que anda sozinho.
+		if t.FeedStock > 0 && t.Fish() > 0 {
 			return false
 		}
 

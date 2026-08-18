@@ -318,3 +318,31 @@ func TestOCaixaPresoEmDividaContaComoFazendaTravada(t *testing.T) {
 		t.Errorf("caixa %d paga o ciclo mais barato e a fazenda conta como travada", s.Cash)
 	}
 }
+
+// Racao no tanque so e saida enquanto houver lote comendo: com o tanque vazio ela e caixa que
+// virou estoque parado, e tratar isso como fazenda viva desliga o resgate justamente para
+// quem gastou o ultimo centavo se preparando para um ciclo que nao comecou.
+func TestRacaoSemLoteNaoContaComoSaida(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	s := NewState(1, 0, 0)
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	s.LoadFeed(id, 2_700*MicrogramsPerKilogram, 0)
+
+	plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+
+	var plans Plans
+	plans[TankEarthPond] = plan
+
+	s.Cash, s.Debt = 0, 1_199_700
+
+	if !s.stuck(b, plans) {
+		t.Error("tanque sem um peixe, com racao parada e sem caixa, ainda conta como fazenda viva")
+	}
+}
