@@ -248,3 +248,19 @@ func TestRalearNuncaVendeOLoteInteiro(t *testing.T) {
 		t.Errorf("ralear mandou %d peixes de um lote de 800, queria %d", item.action.Amount, want)
 	}
 }
+
+func TestDicaDoEmprestimoNaoPrometeEncherOTanqueQuandoNaoDa(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	tank := snap.Tanks[0]
+	// Limite quase todo consumido: o que sobra nao enche nem cobre o que falta.
+	tank.LoanAdvice, tank.LoanBlock = 30_300, "open"
+	tank.Fish, tank.BreakEven, tank.StockAdvice, tank.CostPerFish = 100, 5_000, 0, 599
+
+	hint := loanHint(tank)
+	if strings.Contains(hint, "cobre") {
+		t.Errorf("a dica promete cobrir com %d de emprestimo, e faltam %d peixes a %d cada: %q",
+			tank.LoanAdvice, tank.BreakEven-int64(tank.Fish), tank.CostPerFish, hint)
+	}
+}

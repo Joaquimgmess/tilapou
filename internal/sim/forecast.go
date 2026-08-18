@@ -1,6 +1,9 @@
 package sim
 
 const (
+	// loanFeedFloorKg is the restock the loan has to cover, in kilos: it is what the shop
+	// sells in one go.
+	loanFeedFloorKg   = 100
 	forecastCapDays   = 400
 	forecastFeedFloor = 50 * MicrogramsPerKilogram
 	forecastFeedTopUp = 500 * MicrogramsPerKilogram
@@ -302,5 +305,15 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, breakEven FishCount) (Coins,
 		return 0, LoanNoNeed
 	}
 
-	return min(Coins(mulDivCeil(int64(perFish), short, 1)), room), LoanOpen
+	// Nunca menos que um saco de racao: um emprestimo dimensionado pelos poucos peixes que
+	// faltam nao paga o proximo gasto obrigatorio, e o jogador fica com a divida sem poder
+	// alimentar o que tem.
+	wanted := max(mulDivCeil(int64(perFish), short, 1), int64(s.feedSack(b)))
+
+	return min(Coins(wanted), room), LoanOpen
+}
+
+// feedSack is the smallest restock that keeps a batch fed, in cents.
+func (s *State) feedSack(b *Balance) Coins {
+	return Coins(mulDivCeil(int64(MarketAt(b, s.Tick).FeedKg), loanFeedFloorKg, 1))
 }

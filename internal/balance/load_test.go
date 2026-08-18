@@ -161,3 +161,41 @@ func TestOPeaoVendeNoPontoDeMargemDeCadaTanque(t *testing.T) {
 		}
 	}
 }
+
+func TestEmprestimoOferecidoCobreUmSacoDeRacao(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	// O cenario que o QA viveu: fazenda logo depois da falencia, caixa zero, divida
+	// pequena e limite de credito quase todo livre.
+	s := sim.NewState(1, 0, 0)
+	s.Cash = 0
+	s.Debt = 5_985
+
+	id, ok := s.AddTank(&b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	plan := b.CycleAt(sim.TankEarthPond, 0, 0)
+
+	// Doze peixes abaixo do break-even: e ai que o conselho oferece um emprestimo
+	// dimensionado por esses doze peixes, que nao paga nem racao.
+	s.StockTank(id, plan.BreakEven-12, 450*sim.MicrogramsPerGram, 1_000)
+
+	loan, block := s.LoanAdvice(&b, id, plan.BreakEven)
+	if block != sim.LoanOpen {
+		t.Fatalf("o credito esta bloqueado por %v com o limite quase todo livre", block)
+	}
+
+	// 100 kg e o saco que a loja vende: um emprestimo que nao paga um saco nao serve.
+	sack := int64(sim.MarketAt(&b, s.Tick).FeedKg) * 100
+
+	if int64(loan)+int64(s.Cash) < sack {
+		t.Errorf("o emprestimo oferecido e %d e com o caixa da %d, e um saco de racao custa %d: o jogador aceita a divida e segue sem poder alimentar",
+			loan, int64(loan)+int64(s.Cash), sack)
+	}
+}
