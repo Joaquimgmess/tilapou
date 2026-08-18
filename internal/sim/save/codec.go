@@ -173,6 +173,43 @@ func Encode(s sim.State) ([]byte, error) {
 	return raw, nil
 }
 
+// tankFields and batchFields mirror sim.Tank and sim.Batch field by field. The conversions
+// in Decode only compile while the mirrors match, so a new field there stops compiling here
+// until someone decides whether it becomes a document column, is derived or is left zero.
+type tankFields struct {
+	ID           sim.TankID
+	Kind         sim.TankKind
+	Litres       sim.Litres
+	Batches      [sim.MaxBatchesPerTank]sim.Batch
+	BatchCount   int32
+	FeedStock    sim.Micrograms
+	ServedUntil  sim.Tick
+	Upgrades     uint32
+	Oxygen       sim.MicrogramsPerLiter
+	Aerating     bool
+	FeedCarry    int64
+	FeedUnitCost sim.Coins
+	UpkeepCarry  int64
+	CarrierUntil sim.Tick
+	Accrual      sim.Accrual
+}
+
+type batchFields struct {
+	ID              sim.BatchID
+	Fish            sim.FishCount
+	MeanMass        sim.Micrograms
+	MassRoot        int64
+	GrowthCarry     int64
+	StockedAt       sim.Tick
+	FeedEaten       sim.Micrograms
+	MassGained      sim.Micrograms
+	Cost            sim.Coins
+	CostCarry       int64
+	Sick            int32
+	HypoxiaTicks    int32
+	StarvationTicks int32
+}
+
 // Decode rebuilds the state from the JSON, recomputing what is derived.
 func Decode(raw []byte) (sim.State, error) {
 	var doc document
@@ -217,7 +254,7 @@ func Decode(raw []byte) (sim.State, error) {
 			return sim.State{}, fmt.Errorf("%w: %d", ErrUnknownKind, tank.Kind)
 		}
 
-		state.Tanks[i] = sim.Tank{
+		state.Tanks[i] = sim.Tank(tankFields{
 			ID:          sim.TankID(tank.ID),
 			Kind:        sim.TankKind(tank.Kind),
 			Litres:      sim.Litres(tank.Litres),
@@ -240,11 +277,11 @@ func Decode(raw []byte) (sim.State, error) {
 				MassGained:       sim.Micrograms(tank.Accrual.MassGained),
 			},
 			BatchCount: int32(len(tank.Batches)),
-		}
+		})
 
 		for j := range tank.Batches {
 			batch := &tank.Batches[j]
-			state.Tanks[i].Batches[j] = sim.Batch{
+			state.Tanks[i].Batches[j] = sim.Batch(batchFields{
 				ID:              sim.BatchID(batch.ID),
 				Fish:            sim.FishCount(batch.Fish),
 				MeanMass:        sim.Micrograms(batch.MeanMass),
@@ -258,7 +295,7 @@ func Decode(raw []byte) (sim.State, error) {
 				Sick:            batch.Sick,
 				HypoxiaTicks:    batch.HypoxiaTicks,
 				StarvationTicks: batch.StarvationTicks,
-			}
+			})
 		}
 	}
 	state.TankCount = int32(len(doc.Tanks))
