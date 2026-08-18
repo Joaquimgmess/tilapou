@@ -23,39 +23,44 @@ var (
 	ErrRequestFailed = errors.New("client: o daemon recusou a chamada")
 )
 
-// Tank is the state of a tank in the snapshot.
+// Batch is one batch inside a tank; a tank holds up to MaxBatches of them.
+type Batch struct {
+	ID             uint32   `json:"batch_id"`
+	Fish           int32    `json:"fish"`
+	MeanGrams      int64    `json:"mean_grams"`
+	Ready          bool     `json:"ready_to_harvest"`
+	Sick           bool     `json:"sick"`
+	PriceKgCents   int64    `json:"price_kg_cents"`
+	ValueCents     int64    `json:"value_cents"`
+	CostCents      int64    `json:"cost_cents"`
+	MarginCents    int64    `json:"margin_cents"`
+	CostPerKg      int64    `json:"cost_per_kg_cents"`
+	ClassPPM       int64    `json:"class_ppm"`
+	NextClassGrams int64    `json:"next_class_grams"`
+	NextClassGain  int64    `json:"next_class_gain_ppm"`
+	Decision       Decision `json:"decision"`
+}
+
+// Tank is the state of a tank in the snapshot; what belongs to a batch lives in Batches.
 type Tank struct {
-	ID             uint32    `json:"id"`
-	Kind           string    `json:"kind"`
-	Fish           int32     `json:"fish"`
-	BatchFish      int32     `json:"batch_fish"`
-	MeanGrams      int64     `json:"mean_grams"`
-	FeedKg         int64     `json:"feed_kg"`
-	OxygenUgL      int32     `json:"oxygen_ugl"`
-	Aerating       bool      `json:"aerating"`
-	DensityMilli   int64     `json:"density_milli_kg_m3"`
-	Ready          bool      `json:"ready_to_harvest"`
-	BatchID        uint32    `json:"batch_id"`
-	PriceKgCents   int64     `json:"price_kg_cents"`
-	ValueCents     int64     `json:"value_cents"`
-	CostCents      int64     `json:"cost_cents"`
-	MarginCents    int64     `json:"margin_cents"`
-	CostPerKg      int64     `json:"cost_per_kg_cents"`
-	ClassPPM       int64     `json:"class_ppm"`
-	NextClassGain  int64     `json:"next_class_gain_ppm"`
-	Decision       Decision  `json:"decision"`
-	NextClassGrams int64     `json:"next_class_grams"`
-	Sick           bool      `json:"sick"`
-	Capacity       int64     `json:"capacity_fish"`
-	StockAdvice    int64     `json:"stock_advice_fish"`
-	Batches        int32     `json:"batch_count"`
-	MaxBatches     int32     `json:"max_batches"`
-	BreakEven      int64     `json:"break_even_fish"`
-	CostPerFish    int64     `json:"stock_cost_per_fish_cents"`
-	LoanAdvice     int64     `json:"loan_advice_cents"`
-	LoanBlock      string    `json:"loan_block"`
-	ServedFor      int64     `json:"served_for_ticks"`
-	Upgrades       []Upgrade `json:"upgrades"`
+	ID           uint32    `json:"id"`
+	Kind         string    `json:"kind"`
+	Fish         int32     `json:"fish"`
+	FeedKg       int64     `json:"feed_kg"`
+	OxygenUgL    int32     `json:"oxygen_ugl"`
+	Aerating     bool      `json:"aerating"`
+	DensityMilli int64     `json:"density_milli_kg_m3"`
+	Batches      []Batch   `json:"batches"`
+	Capacity     int64     `json:"capacity_fish"`
+	StockAdvice  int64     `json:"stock_advice_fish"`
+	BatchCount   int32     `json:"batch_count"`
+	MaxBatches   int32     `json:"max_batches"`
+	BreakEven    int64     `json:"break_even_fish"`
+	CostPerFish  int64     `json:"stock_cost_per_fish_cents"`
+	LoanAdvice   int64     `json:"loan_advice_cents"`
+	LoanBlock    string    `json:"loan_block"`
+	ServedFor    int64     `json:"served_for_ticks"`
+	Upgrades     []Upgrade `json:"upgrades"`
 }
 
 // Event is one event from the farm history.

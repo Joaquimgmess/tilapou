@@ -27,7 +27,7 @@ func adviceCases() map[string]func(client.Snapshot) client.Snapshot {
 			return s
 		},
 		"doente": func(s client.Snapshot) client.Snapshot {
-			s.Tanks[1].Sick = true
+			s.Tanks[1].Batches[0].Sick = true
 
 			return s
 		},
@@ -42,7 +42,7 @@ func adviceCases() map[string]func(client.Snapshot) client.Snapshot {
 			return s
 		},
 		"no ponto de abate": func(s client.Snapshot) client.Snapshot {
-			s.Tanks[1].Ready = true
+			s.Tanks[1].Batches[0].Ready = true
 
 			return s
 		},
@@ -199,13 +199,13 @@ func TestConselhoNaoMandaPegarCreditoComOLimiteEstourado(t *testing.T) {
 		},
 		"folego menor que o ciclo": func(s client.Snapshot) client.Snapshot {
 			s.RunwayDays = 1
-			s.Tanks[0].Decision.HoldDays = 60
+			s.Tanks[0].Batches[0].Decision.HoldDays = 60
 
 			return s
 		},
 		"tanque vazio e sem grana": func(s client.Snapshot) client.Snapshot {
-			s.Tanks[0].Fish, s.Tanks[0].BatchFish = 0, 0
-			s.Tanks[1].Fish, s.Tanks[1].BatchFish = 0, 0
+			s.Tanks[0].Fish, s.Tanks[0].Batches[0].Fish = 0, 0
+			s.Tanks[1].Fish, s.Tanks[1].Batches[0].Fish = 0, 0
 			s.CashCents = 0
 
 			return s
@@ -231,7 +231,7 @@ func TestComprarViveiroSemGranaDizOPrecoEOQueFalta(t *testing.T) {
 
 	snap := sizedSnapshot()
 	snap.CashCents = 1_000
-	snap.NextTankCents = 5_247_03
+	snap.NextTankCents = 524_703
 
 	shed := shedMenu(snap, snap.Tanks[0])
 
@@ -424,7 +424,7 @@ func TestFazendaSemPeixeEComCaixaMandaPovoar(t *testing.T) {
 	snap.CashCents = 398_900
 
 	for i := range snap.Tanks {
-		snap.Tanks[i].Fish, snap.Tanks[i].BatchFish = 0, 0
+		snap.Tanks[i].Fish, snap.Tanks[i].Batches[0].Fish = 0, 0
 		snap.Tanks[i].Upgrades = everyUpgrade()
 		snap.Tanks[i].StockAdvice = 500
 	}

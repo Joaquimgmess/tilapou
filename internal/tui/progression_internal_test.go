@@ -36,10 +36,12 @@ func (d *driver) line(label string) string {
 		note = "  << " + note
 	}
 
+	front, _ := frontBatch(t)
+
 	return fmt.Sprintf("%-26s caixa %10s  %5d peixes de %3d g  racao %4d kg  auto[%s]\n"+
 		"%-26s margem %10s  custo %s/kg  mercado %s/kg%s\n%-26s %s\n",
-		label, coins(s.CashCents), t.Fish, t.MeanGrams, t.FeedKg, strings.Join(auto, ","),
-		"", signedPlain(t.MarginCents), coins(t.CostPerKg), coins(t.PriceKgCents), note,
+		label, coins(s.CashCents), t.Fish, front.MeanGrams, t.FeedKg, strings.Join(auto, ","),
+		"", signedPlain(front.MarginCents), coins(front.CostPerKg), coins(front.PriceKgCents), note,
 		"", goal)
 }
 

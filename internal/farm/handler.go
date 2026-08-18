@@ -19,41 +19,48 @@ const (
 	gramsPerKilo   = 1_000
 )
 
+// BatchView is one batch inside a tank: money in cents, weight in grams, ratios in PPM.
+// A tank holds up to sim.MaxBatchesPerTank of them, and every one is a decision of its own.
+type BatchView struct {
+	ID             uint32       `json:"batch_id"`
+	Fish           int32        `json:"fish"`
+	MeanGrams      int64        `json:"mean_grams"`
+	Ready          bool         `json:"ready_to_harvest"`
+	Sick           bool         `json:"sick"`
+	PriceKgCents   int64        `json:"price_kg_cents"`
+	ValueCents     int64        `json:"value_cents"`
+	CostCents      int64        `json:"cost_cents"`
+	MarginCents    int64        `json:"margin_cents"`
+	CostPerKg      int64        `json:"cost_per_kg_cents"`
+	ClassPPM       int64        `json:"class_ppm"`
+	NextClassGrams int64        `json:"next_class_grams"`
+	NextClassGain  int64        `json:"next_class_gain_ppm"`
+	Decision       DecisionView `json:"decision"`
+}
+
 // TankView is the tank in the API: money in cents, weight in grams, oxygen in
-// micrograms per litre, density in thousandths of kg/m3 and ratios in PPM.
+// micrograms per litre, density in thousandths of kg/m3 and ratios in PPM. What belongs to
+// a batch lives in Batches, so a tank with four of them does not hide three.
 type TankView struct {
 	ID           uint32 `json:"id"`
 	Kind         string `json:"kind"`
 	Fish         int32  `json:"fish"`
-	BatchFish    int32  `json:"batch_fish"`
-	MeanGrams    int64  `json:"mean_grams"`
 	FeedKg       int64  `json:"feed_kg"`
 	OxygenUgL    int32  `json:"oxygen_ugl"`
 	Aerating     bool   `json:"aerating"`
 	DensityMilli int64  `json:"density_milli_kg_m3"`
-	Ready        bool   `json:"ready_to_harvest"`
-	BatchID      uint32 `json:"batch_id"`
 
-	PriceKgCents   int64         `json:"price_kg_cents"`
-	ValueCents     int64         `json:"value_cents"`
-	CostCents      int64         `json:"cost_cents"`
-	MarginCents    int64         `json:"margin_cents"`
-	CostPerKg      int64         `json:"cost_per_kg_cents"`
-	ClassPPM       int64         `json:"class_ppm"`
-	NextClassGain  int64         `json:"next_class_gain_ppm"`
-	Decision       DecisionView  `json:"decision"`
-	NextClassGrams int64         `json:"next_class_grams"`
-	Sick           bool          `json:"sick"`
-	Capacity       int64         `json:"capacity_fish"`
-	StockAdvice    int64         `json:"stock_advice_fish"`
-	Batches        int32         `json:"batch_count"`
-	MaxBatches     int32         `json:"max_batches"`
-	BreakEven      int64         `json:"break_even_fish"`
-	CostPerFish    int64         `json:"stock_cost_per_fish_cents"`
-	LoanAdvice     int64         `json:"loan_advice_cents"`
-	LoanBlock      string        `json:"loan_block"`
-	ServedFor      int64         `json:"served_for_ticks"`
-	Upgrades       []UpgradeView `json:"upgrades"`
+	Batches     []BatchView   `json:"batches"`
+	Capacity    int64         `json:"capacity_fish"`
+	StockAdvice int64         `json:"stock_advice_fish"`
+	BatchCount  int32         `json:"batch_count"`
+	MaxBatches  int32         `json:"max_batches"`
+	BreakEven   int64         `json:"break_even_fish"`
+	CostPerFish int64         `json:"stock_cost_per_fish_cents"`
+	LoanAdvice  int64         `json:"loan_advice_cents"`
+	LoanBlock   string        `json:"loan_block"`
+	ServedFor   int64         `json:"served_for_ticks"`
+	Upgrades    []UpgradeView `json:"upgrades"`
 }
 
 // EventView is the event in the API, with mass in grams and cash in cents.
@@ -346,7 +353,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 			Aerating:    tank.Aerating,
 			Capacity:    tank.Capacity(b),
 			StockAdvice: advice,
-			Batches:     tank.BatchCount,
+			BatchCount:  tank.BatchCount,
 			MaxBatches:  sim.MaxBatchesPerTank,
 			CostPerFish: perFish,
 			BreakEven:   int64(plan.BreakEven),
@@ -358,9 +365,10 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		if tank.Litres > 0 {
 			tv.DensityMilli = int64(tank.Biomass()) / (sim.LitresPerCubicMetre * int64(tank.Litres))
 		}
-		if tank.BatchCount > 0 {
-			fillBatch(&tv, state, b, tank, &tank.Batches[0], p)
+		for j := range tank.BatchCount {
+			tv.Batches = append(tv.Batches, batchViewOf(state, b, tank, &tank.Batches[j], p))
 		}
+
 		view.Tanks = append(view.Tanks, tv)
 	}
 
@@ -381,34 +389,40 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 	return view
 }
 
-func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, p *plans) {
-	tv.MeanGrams = batch.MeanMass.Grams()
-	tv.BatchFish = int32(batch.Fish)
-	tv.BatchID = uint32(batch.ID)
-	tv.Ready = batch.MeanMass >= b.Growth.HarvestMass
-	tv.PriceKgCents = int64(b.PriceFor(batch.MeanMass, state.Tick))
-	if entry, gain, ok := b.NextClass(batch.MeanMass); ok {
-		tv.NextClassGrams, tv.NextClassGain = entry.Grams(), int64(gain)
+func batchViewOf(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, p *plans) BatchView {
+	bv := BatchView{
+		ID:           uint32(batch.ID),
+		Fish:         int32(batch.Fish),
+		MeanGrams:    batch.MeanMass.Grams(),
+		Ready:        batch.MeanMass >= b.Growth.HarvestMass,
+		Sick:         batch.Sick > 0,
+		PriceKgCents: int64(b.PriceFor(batch.MeanMass, state.Tick)),
+		ClassPPM:     int64(b.ClassPPM(batch.MeanMass)),
+		CostCents:    int64(batch.Cost),
 	}
-	tv.Sick = batch.Sick > 0
-	tv.ClassPPM = int64(b.ClassPPM(batch.MeanMass))
-	tv.CostCents = int64(batch.Cost)
+
+	if entry, gain, ok := b.NextClass(batch.MeanMass); ok {
+		bv.NextClassGrams, bv.NextClassGain = entry.Grams(), int64(gain)
+	}
 
 	kilos := int64(batch.Biomass()) / int64(sim.MicrogramsPerKilogram)
-	tv.ValueCents = tv.PriceKgCents * kilos
-	tv.MarginCents = tv.ValueCents - tv.CostCents
+	bv.ValueCents = bv.PriceKgCents * kilos
+	bv.MarginCents = bv.ValueCents - bv.CostCents
+
 	if kilos > 0 {
-		tv.CostPerKg = tv.CostCents / kilos
+		bv.CostPerKg = bv.CostCents / kilos
 	}
 
 	in := newDecisionInput(state, tank, batch)
 
-	tv.Decision = p.decision(in, func() DecisionView { return decisionFor(b, in) })
-	tv.Decision.SellNowCents = tv.ValueCents
-	tv.Decision.SellNowMargin = tv.MarginCents
-	tv.Decision.BreakEvenPerKg = tv.CostPerKg
-	tv.Decision.HoldMargin = tv.Decision.HoldCents - tv.CostCents - tv.Decision.HoldCostCents
-	tv.Decision.CycleDays = p.at(b, tank.Kind, state.Tick, state.Zone).Days
+	bv.Decision = p.decision(in, func() DecisionView { return decisionFor(b, in) })
+	bv.Decision.SellNowCents = bv.ValueCents
+	bv.Decision.SellNowMargin = bv.MarginCents
+	bv.Decision.BreakEvenPerKg = bv.CostPerKg
+	bv.Decision.HoldMargin = bv.Decision.HoldCents - bv.CostCents - bv.Decision.HoldCostCents
+	bv.Decision.CycleDays = p.at(b, tank.Kind, state.Tick, state.Zone).Days
+
+	return bv
 }
 
 // decisionFor projects the batch; the sell-now cents are filled by the caller on every
@@ -417,6 +431,8 @@ func decisionFor(b *sim.Balance, in decisionInput) DecisionView {
 	var view DecisionView
 
 	tank := in.tank
+	// newDecisionInput quantiza o lote da chave para a posicao 0: e o unico lote que o
+	// input carrega, e o cache depende disso para nao misturar lotes.
 	batch := tank.Batches[0]
 	feedKg := int64(tank.FeedStock) / int64(sim.MicrogramsPerKilogram)
 

@@ -192,18 +192,36 @@ func creditRoom(s client.Snapshot) bool {
 	return false
 }
 
+// anyBatch reports whether some batch in the tank answers yes: the alert is about the tank,
+// and one sick or ready batch is enough to raise it.
+func anyBatch(t *client.Tank, yes func(*client.Batch) bool) bool {
+	for i := range t.Batches {
+		if yes(&t.Batches[i]) {
+			return true
+		}
+	}
+
+	return false
+}
+
 // thinAdvice is the way out when credit is gone: selling part of the batch buys feed for
 // the rest. It returns false when there is no batch big enough to thin.
 func thinAdvice(t *client.Tank) (string, bool) {
-	count := int64(t.BatchFish) * thinPercent / fullPercent
-	if count <= 0 || t.MeanGrams <= 0 || t.PriceKgCents <= 0 {
+	if len(t.Batches) == 0 {
 		return "", false
 	}
 
-	revenue := count * t.MeanGrams * t.PriceKgCents / gramsPerKg
+	batch := &t.Batches[0]
+
+	count := int64(batch.Fish) * thinPercent / fullPercent
+	if count <= 0 || batch.MeanGrams <= 0 || batch.PriceKgCents <= 0 {
+		return "", false
+	}
+
+	revenue := count * batch.MeanGrams * batch.PriceKgCents / gramsPerKg
 
 	return fmt.Sprintf("Sem espaco no credito: raleie o tanque %d com [z] e venda %d peixes de %d g por ~%s",
-		t.ID, count, t.MeanGrams, coins(revenue)), true
+		t.ID, count, batch.MeanGrams, coins(revenue)), true
 }
 
 func farmGoal(s client.Snapshot) string {
@@ -222,12 +240,14 @@ func farmGoal(s client.Snapshot) string {
 	if s.Prices.RatioPPM < s.Prices.ViablePPM {
 		return "Racao cara demais para o preco do peixe: segure a despesca e evite povoar agora"
 	}
-	if tank.NextClassGrams > tank.MeanGrams {
+	front := tank.Batches[0]
+	if front.NextClassGrams > front.MeanGrams {
 		return fmt.Sprintf("Segurar ate %d g sobe o preco por quilo (esta em %d g)",
-			tank.NextClassGrams, tank.MeanGrams)
+			front.NextClassGrams, front.MeanGrams)
 	}
 
-	return fmt.Sprintf("Engorde ate 800 g (esta em %d g) e sirva o trato antes de acabar", tank.MeanGrams)
+	return fmt.Sprintf("Engorde ate o ponto de abate (esta em %d g) e sirva o trato antes de acabar",
+		front.MeanGrams)
 }
 
 func underStocked(s client.Snapshot) (advice, bool) {
@@ -286,7 +306,7 @@ func suffocating(s client.Snapshot) (advice, bool) {
 func sickBatch(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
-		if t.Sick {
+		if anyBatch(t, func(b *client.Batch) bool { return b.Sick }) {
 			return advice{text: fmt.Sprintf(
 				"Doenca no tanque %d. Abra [z] e trate, ou aceite as perdas", t.ID), urgent: true, tank: t.ID, key: "z"}, true
 		}
@@ -302,7 +322,8 @@ func shortRunway(s client.Snapshot) (advice, bool) {
 
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
-		if t.Fish == 0 || t.Decision.HoldDays <= s.RunwayDays {
+		front, ok := frontBatch(*t)
+		if !ok || t.Fish == 0 || front.Decision.HoldDays <= s.RunwayDays {
 			continue
 		}
 
@@ -317,7 +338,7 @@ func shortRunway(s client.Snapshot) (advice, bool) {
 
 		return advice{text: fmt.Sprintf(
 			"O caixa dura %d dias e o lote do tanque %d so fecha em %d. Pegue credito com [g]",
-			s.RunwayDays, t.ID, t.Decision.HoldDays), urgent: true}, true
+			s.RunwayDays, t.ID, front.Decision.HoldDays), urgent: true}, true
 	}
 
 	return advice{}, false
@@ -362,7 +383,7 @@ func unfed(s client.Snapshot) (advice, bool) {
 func readyToHarvest(s client.Snapshot) (advice, bool) {
 	for i := range s.Tanks {
 		t := &s.Tanks[i]
-		if t.Ready {
+		if anyBatch(t, func(b *client.Batch) bool { return b.Ready }) {
 			return advice{text: fmt.Sprintf("O lote do tanque %d esta no ponto de abate. Despesque com [h]", t.ID), tank: t.ID, key: "h"}, true
 		}
 	}

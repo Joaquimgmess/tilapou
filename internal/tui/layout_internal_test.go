@@ -6,6 +6,8 @@ import (
 
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
 func TestPainelUsaATelaInteira(t *testing.T) {
@@ -57,7 +59,7 @@ func TestOMenuCabeNoTamanhoMinimo(t *testing.T) {
 	snap.Tanks[0].Upgrades = everyUpgrade()
 
 	menus := map[string]*menu{
-		"tanque": tankMenu(snap, snap.Tanks[0]),
+		"tanque": tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0]),
 		"galpao": shedMenu(snap, snap.Tanks[0]),
 	}
 
@@ -89,5 +91,74 @@ func TestOMenuCabeNoTamanhoMinimo(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func snapshotComDoisLotes() client.Snapshot {
+	snap := sizedSnapshot()
+	tank := &snap.Tanks[0]
+	tank.Fish, tank.BatchCount = 423, 2
+	tank.Batches[0].Fish, tank.Batches[0].MeanGrams = 276, 450
+	tank.Batches = append(tank.Batches, client.Batch{ID: 7, Fish: 147, MeanGrams: 120})
+
+	return snap
+}
+
+func TestOsDoisLotesDoTanqueViramDuasLinhas(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = snapshotComDoisLotes()
+	m.width, m.height, m.mode = 120, 40, ModeDashboard
+
+	plain := ansi.Strip(m.render())
+	for _, want := range []string{"T1-L3", "T1-L7", "276", "147"} {
+		if !strings.Contains(plain, want) {
+			t.Errorf("a tabela nao mostra %q: o painel esconde lote\n%s", want, plain)
+		}
+	}
+}
+
+func TestJAndaPorLoteDentroDoTanque(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = snapshotComDoisLotes()
+	m.width, m.height, m.mode = 120, 40, ModeDashboard
+
+	first, firstTank := m.batchID(), m.tankID()
+
+	m = m.selectDelta(1)
+
+	second, secondTank := m.batchID(), m.tankID()
+	if second == first {
+		t.Errorf("j nao trocou de lote: continua no %d", first)
+	}
+	if secondTank != firstTank {
+		t.Errorf("j saiu do tanque %d para o %d em vez de andar entre os lotes", firstTank, secondTank)
+	}
+}
+
+func TestOTanqueVazioContinuaSelecionavel(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	snap.Tanks[1].Fish, snap.Tanks[1].BatchCount, snap.Tanks[1].Batches = 0, 0, nil
+
+	m := New(nil)
+	m.snapshot = snap
+	m.width, m.height, m.mode = 120, 40, ModeDashboard
+
+	rows := m.rows()
+	if len(rows) != 2 {
+		t.Fatalf("um tanque com lote e um vazio geraram %d linhas, queria 2", len(rows))
+	}
+
+	m.selected = 1
+	if got := m.tankID(); got != snap.Tanks[1].ID {
+		t.Errorf("a linha do tanque vazio seleciona o tanque %d, queria %d", got, snap.Tanks[1].ID)
+	}
+	if _, ok := m.batch(); ok {
+		t.Error("a linha do tanque vazio devolveu um lote")
 	}
 }

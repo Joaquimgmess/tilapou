@@ -51,7 +51,7 @@ func runStatus(args []string) error {
 			fmt.Fprintf(&line, " | ALERTA O2 no tanque %d", t.ID)
 		case t.FeedKg == 0:
 			fmt.Fprintf(&line, " | sem racao no tanque %d", t.ID)
-		case t.Ready:
+		case readyBatch(t):
 			fmt.Fprintf(&line, " | tanque %d pronto", t.ID)
 		}
 	}
@@ -59,4 +59,14 @@ func runStatus(args []string) error {
 	fmt.Fprintln(os.Stdout, line.String())
 
 	return nil
+}
+
+func readyBatch(t *client.Tank) bool {
+	for i := range t.Batches {
+		if t.Batches[i].Ready {
+			return true
+		}
+	}
+
+	return false
 }

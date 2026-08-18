@@ -174,10 +174,35 @@ func (m Model) dialogue() string {
 }
 
 func tankHeadline(t client.Tank) string {
-	return fmt.Sprintf("TANQUE %d: %d peixes de %d g", t.ID, t.Fish, t.MeanGrams)
+	front, ok := frontBatch(t)
+	if !ok {
+		return fmt.Sprintf("TANQUE %d: vazio", t.ID)
+	}
+
+	lotes := ""
+	if len(t.Batches) > 1 {
+		lotes = fmt.Sprintf(" em %d lotes", len(t.Batches))
+	}
+
+	return fmt.Sprintf("TANQUE %d: %d peixes de %d g%s", t.ID, t.Fish, front.MeanGrams, lotes)
+}
+
+// frontBatch is the batch the map talks about: the tank has one line, so it speaks for the
+// oldest batch, which is the one closest to being sold.
+func frontBatch(t client.Tank) (client.Batch, bool) {
+	if len(t.Batches) == 0 {
+		return client.Batch{}, false
+	}
+
+	return t.Batches[0], true
 }
 
 func tankAdvice(t client.Tank) string {
+	front, ok := frontBatch(t)
+	if !ok {
+		return "tanque vazio: povoe com [s]"
+	}
+
 	switch {
 	case t.OxygenUgL < criticalOxygenUgL && !t.Aerating:
 		return "a agua esta sufocando! ligue o aerador"
@@ -185,17 +210,17 @@ func tankAdvice(t client.Tank) string {
 		return "a racao acabou, va ate o galpao"
 	case t.ServedFor <= 0:
 		return "os peixes estao sem trato servido"
-	case t.Ready:
+	case front.Ready:
 		return "os peixes estao no ponto de abate"
 	}
 
 	next := ""
-	if t.NextClassGrams > 0 && t.NextClassGrams > t.MeanGrams {
-		next = fmt.Sprintf("   proxima classe em %d g", t.NextClassGrams)
+	if front.NextClassGrams > 0 && front.NextClassGrams > front.MeanGrams {
+		next = fmt.Sprintf("   proxima classe em %d g", front.NextClassGrams)
 	}
 
 	return fmt.Sprintf("%s/kg agora   racao %d kg   trato por %s%s",
-		coins(t.PriceKgCents), t.FeedKg, minutes(t.ServedFor), next)
+		coins(front.PriceKgCents), t.FeedKg, minutes(t.ServedFor), next)
 }
 
 func (m Model) renderGameBoyKeys() string {

@@ -97,6 +97,8 @@ func (in decisionInput) forecast(b *sim.Balance, target sim.Micrograms) sim.Fore
 	})
 }
 
+// quantizedBatches keeps only the batch the decision is about, always at index 0: the key
+// carries one batch, and decisionFor reads that slot.
 func quantizedBatches(batch *sim.Batch) [sim.MaxBatchesPerTank]sim.Batch {
 	var only [sim.MaxBatchesPerTank]sim.Batch
 

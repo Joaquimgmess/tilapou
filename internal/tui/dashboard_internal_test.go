@@ -125,9 +125,10 @@ func TestCustoMaiorDeSegurarNuncaMelhoraOVeredito(t *testing.T) {
 func TestTanqueVazioNaoEntraEmAlerta(t *testing.T) {
 	t.Parallel()
 
-	vazio := client.Tank{ID: 1, Fish: 0, FeedKg: 0, ServedFor: 0, OxygenUgL: 6_000}
+	tank := client.Tank{ID: 1, Fish: 0, FeedKg: 0, ServedFor: 0, OxygenUgL: 6_000}
+	vazio := client.Batch{ID: 1, Fish: 0}
 
-	label, alert := tankState(&vazio)
+	label, alert := rowState(&tank, &vazio)
 	if alert {
 		t.Errorf("tanque sem um peixe entrou em alerta como %q", label)
 	}
@@ -139,9 +140,10 @@ func TestTanqueVazioNaoEntraEmAlerta(t *testing.T) {
 func TestTanqueVazioNaoAnunciaProximaClasse(t *testing.T) {
 	t.Parallel()
 
-	vazio := client.Tank{ID: 1, Fish: 0, MeanGrams: 0, NextClassGrams: 0}
+	// Lote sem peixe nao tem proxima classe para anunciar.
+	vazio := client.Batch{ID: 1, Fish: 0, MeanGrams: 0, NextClassGrams: 0}
 
-	if got := nextClass(&vazio); got == "no topo" {
-		t.Errorf("tanque vazio anuncia %q para um peixe de 0 g", got)
+	if got := nextClass(&vazio); got != "no topo" {
+		t.Errorf("lote de 0 g anuncia %q", got)
 	}
 }

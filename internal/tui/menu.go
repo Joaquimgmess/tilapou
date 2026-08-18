@@ -45,15 +45,17 @@ func (m *menu) current() (menuItem, bool) {
 	return m.items[m.cursor], true
 }
 
-func tankMenu(s client.Snapshot, t client.Tank) *menu {
+// tankMenu acts on one batch of the tank: the actions that carry a batch id use it, and the
+// tank-wide ones ignore it.
+func tankMenu(s client.Snapshot, t client.Tank, batch client.Batch) *menu {
 	items := make([]menuItem, 0, len(t.Upgrades)+fixedTankItems)
 	items = append(items,
 		feedItem(t),
 		buyFeedItem(s, t),
 		aeratorItem(t),
-		harvestItem(t),
-		thinItem(t),
-		treatItem(t),
+		harvestItem(t, batch),
+		thinItem(t, batch),
+		treatItem(t, batch),
 		stockItem(s, t),
 	)
 
@@ -130,35 +132,35 @@ func aeratorItem(t client.Tank) menuItem {
 	}
 }
 
-func harvestItem(t client.Tank) menuItem {
+func harvestItem(t client.Tank, batch client.Batch) menuItem {
 	item := menuItem{
 		label:   "Despescar o lote",
-		enabled: t.Fish > 0,
+		enabled: batch.Fish > 0,
 		status:  "despescando",
-		action:  client.Action{Kind: "harvest", Tank: t.ID, Batch: t.BatchID},
+		action:  client.Action{Kind: "harvest", Tank: t.ID, Batch: batch.ID},
 	}
 
 	switch {
-	case t.Fish == 0:
+	case batch.Fish == 0:
 		item.hint = "nao ha peixe aqui"
-	case t.Ready:
-		item.hint = fmt.Sprintf("%d peixes de %d g, no ponto", t.Fish, t.MeanGrams)
+	case batch.Ready:
+		item.hint = fmt.Sprintf("%d peixes de %d g, no ponto", batch.Fish, batch.MeanGrams)
 	default:
-		item.hint = fmt.Sprintf("so %d g: vender agora rende menos", t.MeanGrams)
+		item.hint = fmt.Sprintf("so %d g: vender agora rende menos", batch.MeanGrams)
 	}
 
 	return item
 }
 
-func thinItem(t client.Tank) menuItem {
-	count := int64(t.BatchFish) * thinPercent / fullPercent
-	revenue := count * t.MeanGrams * t.PriceKgCents / gramsPerKg
+func thinItem(t client.Tank, batch client.Batch) menuItem {
+	count := int64(batch.Fish) * thinPercent / fullPercent
+	revenue := count * batch.MeanGrams * batch.PriceKgCents / gramsPerKg
 
 	item := menuItem{
 		label:   fmt.Sprintf("Ralear %d%% do lote", thinPercent),
 		enabled: count > 0,
 		status:  "raleando o lote",
-		action:  client.Action{Kind: "harvest", Tank: t.ID, Batch: t.BatchID, Amount: count},
+		action:  client.Action{Kind: "harvest", Tank: t.ID, Batch: batch.ID, Amount: count},
 		hint:    fmt.Sprintf("vende %d peixes por ~%s e o resto continua crescendo", count, coins(revenue)),
 	}
 	if count <= 0 {
@@ -168,15 +170,15 @@ func thinItem(t client.Tank) menuItem {
 	return item
 }
 
-func treatItem(t client.Tank) menuItem {
+func treatItem(t client.Tank, batch client.Batch) menuItem {
 	item := menuItem{
 		label:   "Tratar o lote",
-		enabled: t.Sick,
+		enabled: batch.Sick,
 		status:  "tratando o lote",
 		action:  client.Action{Kind: "treat", Tank: t.ID},
 		hint:    "nao ha doenca nesse tanque",
 	}
-	if t.Sick {
+	if batch.Sick {
 		item.hint = "cura agora, mas deixa portadores no tanque por um tempo"
 	}
 
@@ -207,7 +209,7 @@ func stockBlocked(t client.Tank) string {
 	case t.Capacity-int64(t.Fish) <= 0:
 		return "O tanque " + tank + " ja esta no limite de densidade: " +
 			strconv.FormatInt(t.Capacity, 10) + " peixes"
-	case t.MaxBatches > 0 && t.Batches >= t.MaxBatches:
+	case t.MaxBatches > 0 && t.BatchCount >= t.MaxBatches:
 		return "O tanque " + tank + " ja tem os " + strconv.FormatInt(int64(t.MaxBatches), 10) +
 			" lotes que cabem. Despesque um antes de povoar de novo"
 	}

@@ -128,7 +128,7 @@ func (m Model) onSnapshot(msg snapshotMsg) Model {
 	}
 	m.seenEvent, m.greeted = newestEvent(m.snapshot, m.seenEvent), true
 	m.farm = m.resizedFarm(len(msg.snapshot.Tanks))
-	m.selected = min(m.selected, max(len(msg.snapshot.Tanks)-1, 0))
+	m.selected = min(m.selected, max(len(m.rows())-1, 0))
 
 	if failure := explain(msg.snapshot.LastOutcome, msg.snapshot.CashCents); failure != "" {
 		return m.say(failure)
@@ -357,7 +357,8 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 		if !ok {
 			return m, nil
 		}
-		m.menu, m.message = tankMenu(m.snapshot, tank), ""
+		batch, _ := m.batch()
+		m.menu, m.message = tankMenu(m.snapshot, tank, batch), ""
 
 		return m, nil
 	}
@@ -373,8 +374,10 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 	case targetShed:
 		m.menu = shedMenu(m.snapshot, tank)
 	case targetTank:
-		m.selected = index
-		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[index])
+		m.selected = m.firstRowOf(index)
+
+		batch, _ := m.batch()
+		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[index], batch)
 	case targetNone:
 		return m, nil
 	}
@@ -491,7 +494,9 @@ func (m Model) refreshedMenu() *menu {
 		return nil
 	}
 
-	rebuilt := tankMenu(m.snapshot, tank)
+	batch, _ := m.batch()
+
+	rebuilt := tankMenu(m.snapshot, tank, batch)
 	if m.menu.title == shedTitle {
 		rebuilt = shedMenu(m.snapshot, tank)
 	}
@@ -508,21 +513,69 @@ func (m Model) otherMode() Mode {
 	return ModeGameBoy
 }
 
+// row is one line of the batch table: a batch inside a tank, or the tank itself when it has
+// no batch yet. The selection walks rows, so what the keys act on is always what is
+// highlighted — and a tank with four batches no longer hides three of them.
+type row struct {
+	tank  int
+	batch int
+}
+
+func (m Model) rows() []row {
+	var out []row
+
+	for i := range m.snapshot.Tanks {
+		batches := m.snapshot.Tanks[i].Batches
+		if len(batches) == 0 {
+			out = append(out, row{tank: i, batch: -1})
+
+			continue
+		}
+
+		for j := range batches {
+			out = append(out, row{tank: i, batch: j})
+		}
+	}
+
+	return out
+}
+
+func (m Model) current() (row, bool) {
+	rows := m.rows()
+	if m.selected < 0 || m.selected >= len(rows) {
+		return row{}, false
+	}
+
+	return rows[m.selected], true
+}
+
 func (m Model) selectDelta(delta int) Model {
-	if len(m.snapshot.Tanks) == 0 {
+	rows := m.rows()
+	if len(rows) == 0 {
 		return m
 	}
 
-	m.selected = (m.selected + delta + len(m.snapshot.Tanks)) % len(m.snapshot.Tanks)
+	m.selected = (m.selected + delta + len(rows)) % len(rows)
 
 	return m
+}
+
+// firstRowOf is where the selection lands when the player picks a tank instead of a row.
+func (m Model) firstRowOf(tank int) int {
+	for i, r := range m.rows() {
+		if r.tank == tank {
+			return i
+		}
+	}
+
+	return 0
 }
 
 func (m Model) jumpToAdvice() Model {
 	target := adviceTank(m.snapshot)
 	for i := range m.snapshot.Tanks {
 		if m.snapshot.Tanks[i].ID == target {
-			m.selected = i
+			m.selected = m.firstRowOf(i)
 
 			return m.clearStale()
 		}
@@ -532,11 +585,22 @@ func (m Model) jumpToAdvice() Model {
 }
 
 func (m Model) tank() (client.Tank, bool) {
-	if m.selected < 0 || m.selected >= len(m.snapshot.Tanks) {
+	r, ok := m.current()
+	if !ok {
 		return client.Tank{}, false
 	}
 
-	return m.snapshot.Tanks[m.selected], true
+	return m.snapshot.Tanks[r.tank], true
+}
+
+// batch is the batch the selected row points at; ok is false on an empty tank.
+func (m Model) batch() (client.Batch, bool) {
+	r, ok := m.current()
+	if !ok || r.batch < 0 {
+		return client.Batch{}, false
+	}
+
+	return m.snapshot.Tanks[r.tank].Batches[r.batch], true
 }
 
 func (m Model) tankID() uint32 {
@@ -549,12 +613,12 @@ func (m Model) tankID() uint32 {
 }
 
 func (m Model) batchID() uint32 {
-	tank, ok := m.tank()
+	batch, ok := m.batch()
 	if !ok {
 		return 0
 	}
 
-	return tank.BatchID
+	return batch.ID
 }
 
 func (m Model) aeratorToggle() int64 {

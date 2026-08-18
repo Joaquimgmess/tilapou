@@ -29,7 +29,12 @@ func stockedForDecision(t *testing.T, b *sim.Balance) sim.State {
 func checkCoherent(t *testing.T, step string, tv TankView) {
 	t.Helper()
 
-	d := tv.Decision
+	if len(tv.Batches) == 0 {
+		t.Fatalf("%s: o tanque saiu sem lote", step)
+	}
+
+	bv := tv.Batches[0]
+	d := bv.Decision
 	if d.FeedPerDayG > 0 {
 		want := tv.FeedKg * gramsPerKilo / d.FeedPerDayG
 		if d.DaysOfFeed != want {
@@ -38,15 +43,15 @@ func checkCoherent(t *testing.T, step string, tv TankView) {
 		}
 	}
 
-	if want := d.HoldCents - tv.CostCents - d.HoldCostCents; d.HoldMargin != want {
+	if want := d.HoldCents - bv.CostCents - d.HoldCostCents; d.HoldMargin != want {
 		t.Errorf("%s: hold_margin = %d, mas %d de venda menos %d de custo menos %d de gasto dao %d",
-			step, d.HoldMargin, d.HoldCents, tv.CostCents, d.HoldCostCents, want)
+			step, d.HoldMargin, d.HoldCents, bv.CostCents, d.HoldCostCents, want)
 	}
 
-	kilos := int64(tv.BatchFish) * tv.MeanGrams / gramsPerKilo
-	if want := tv.PriceKgCents * kilos; d.SellNowCents != want {
+	kilos := int64(bv.Fish) * bv.MeanGrams / gramsPerKilo
+	if want := bv.PriceKgCents * kilos; d.SellNowCents != want {
 		t.Errorf("%s: sell_now_cents = %d, mas %d kg a %d c/kg dao %d",
-			step, d.SellNowCents, kilos, tv.PriceKgCents, want)
+			step, d.SellNowCents, kilos, bv.PriceKgCents, want)
 	}
 }
 
@@ -84,7 +89,7 @@ func TestDecisaoBateComOsNumerosCrusDoMesmoPayload(t *testing.T) {
 		}
 
 		checkCoherent(t, step.name, view.Tanks[0])
-		seen[view.Tanks[0].Decision.DaysOfFeed] = true
+		seen[view.Tanks[0].Batches[0].Decision.DaysOfFeed] = true
 	}
 
 	if len(seen) < 2 {

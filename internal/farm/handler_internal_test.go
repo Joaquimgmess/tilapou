@@ -30,6 +30,17 @@ func viewOfStocked(t *testing.T, b *sim.Balance) (TankView, SnapshotView) {
 	return view.Tanks[0], view
 }
 
+// frontBatch is the batch the old TankView used to flatten into itself.
+func frontBatch(t *testing.T, tank TankView) BatchView {
+	t.Helper()
+
+	if len(tank.Batches) == 0 {
+		t.Fatal("o tanque saiu sem lote")
+	}
+
+	return tank.Batches[0]
+}
+
 func brokeView(t *testing.T, b *sim.Balance) SnapshotView {
 	t.Helper()
 
@@ -57,8 +68,8 @@ func TestAViewDoTanqueCarregaOQueOPainelLe(t *testing.T) {
 	if tank.MaxBatches != sim.MaxBatchesPerTank {
 		t.Errorf("max_batches saiu %d, o dominio diz %d", tank.MaxBatches, sim.MaxBatchesPerTank)
 	}
-	if tank.Batches != 1 {
-		t.Errorf("batch_count saiu %d num tanque com um lote", tank.Batches)
+	if tank.BatchCount != 1 {
+		t.Errorf("batch_count saiu %d num tanque com um lote", tank.BatchCount)
 	}
 	if view.Broke {
 		t.Error("uma fazenda com peixe e caixa nao esta quebrada")
@@ -66,10 +77,10 @@ func TestAViewDoTanqueCarregaOQueOPainelLe(t *testing.T) {
 	if !brokeView(t, &b).Broke {
 		t.Error("uma fazenda sem peixe, sem caixa e sem credito tem que sair como quebrada")
 	}
-	if tank.Decision.CostPerDay <= 0 {
+	if frontBatch(t, tank).Decision.CostPerDay <= 0 {
 		t.Error("cost_per_day_cents saiu zerado: manutencao e energia sempre custam algo")
 	}
-	if tank.Decision.HoldToGrams > 0 && tank.Decision.HoldCostCents <= 0 {
+	if frontBatch(t, tank).Decision.HoldToGrams > 0 && frontBatch(t, tank).Decision.HoldCostCents <= 0 {
 		t.Error("hold_cost_cents saiu zerado numa projecao que dura dias")
 	}
 }
@@ -83,13 +94,13 @@ func TestARacaoPorDiaVemDaMassaComidaENaoDeDinheiro(t *testing.T) {
 	}
 
 	tank, _ := viewOfStocked(t, &b)
-	d := tank.Decision
+	d := frontBatch(t, tank).Decision
 
 	if d.FeedPerDayG <= 0 {
 		t.Fatal("feed_per_day_grams saiu zerado")
 	}
 
-	biomass := int64(tank.Fish) * tank.MeanGrams
+	biomass := int64(tank.Fish) * frontBatch(t, tank).MeanGrams
 	percent := d.FeedPerDayG * 100 / biomass
 
 	if percent < 1 || percent > 6 {
@@ -219,5 +230,44 @@ func TestActionOfRecusaCampoObrigatorioFaltando(t *testing.T) {
 				t.Errorf("actionOf devolveu %v, queria %v", err, tc.want)
 			}
 		})
+	}
+}
+
+func TestTodoLoteDoTanqueApareceNaView(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	s := sim.NewState(1, 0, 0)
+	s.Cash = 10_000_000
+
+	id, ok := s.AddTank(&b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	s.StockTank(id, 276, 450*sim.MicrogramsPerGram, 200_000)
+	s.StockTank(id, 147, 120*sim.MicrogramsPerGram, 90_000)
+	s.SeedOxygen(&b)
+
+	view := viewOf(Snapshot{Farm: Farm{State: s}, Projection: sim.Project(&s)}, &b, newPlans())
+	if len(view.Tanks) != 1 {
+		t.Fatalf("a view saiu com %d tanques", len(view.Tanks))
+	}
+
+	tank := view.Tanks[0]
+	if len(tank.Batches) != 2 {
+		t.Fatalf("o tanque tem 2 lotes e a view mostra %d", len(tank.Batches))
+	}
+
+	var fish int32
+	for i := range tank.Batches {
+		fish += tank.Batches[i].Fish
+	}
+
+	if fish != tank.Fish {
+		t.Errorf("os lotes somam %d peixes e o tanque diz %d: a view esconde lote", fish, tank.Fish)
 	}
 }

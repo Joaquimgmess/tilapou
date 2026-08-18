@@ -174,21 +174,31 @@ func (m Model) renderBatches() string {
 	lines := []string{labelStyle.Render(header) + dimStyle.Render(
 		strings.Repeat(" ", max(m.effectiveWidth()-lipgloss.Width(header)-panelInset, 0)))}
 
-	for i := range m.snapshot.Tanks {
-		t := &m.snapshot.Tanks[i]
-		state, alert := tankState(t)
+	for i, r := range m.rows() {
+		t := &m.snapshot.Tanks[r.tank]
 
-		row := fmt.Sprintf("%-7s %6d %4d g %11s %11s  %s",
-			fmt.Sprintf("T%d-L%d", t.ID, t.BatchID), t.Fish, t.MeanGrams,
-			coins(t.ValueCents), signedPlain(t.MarginCents), state)
+		if r.batch < 0 {
+			lines = append(lines, m.decorateRow(i,
+				fmt.Sprintf("%-7s %6s %6s %11s %11s  %s",
+					fmt.Sprintf("T%d", t.ID), "-", "-", "-", "-", "vazio, povoe com [s]"), false))
 
-		if wide {
-			row = fmt.Sprintf("%-7s %6d %4d g %11s %11s %12s  %s",
-				fmt.Sprintf("T%d-L%d", t.ID, t.BatchID), t.BatchFish, t.MeanGrams,
-				coins(t.ValueCents), signedPlain(t.MarginCents), nextClass(t), state)
+			continue
 		}
 
-		lines = append(lines, m.decorateRow(i, row, alert))
+		batch := &t.Batches[r.batch]
+		state, alert := rowState(t, batch)
+
+		line := fmt.Sprintf("%-7s %6d %4d g %11s %11s  %s",
+			fmt.Sprintf("T%d-L%d", t.ID, batch.ID), batch.Fish, batch.MeanGrams,
+			coins(batch.ValueCents), signedPlain(batch.MarginCents), state)
+
+		if wide {
+			line = fmt.Sprintf("%-7s %6d %4d g %11s %11s %12s  %s",
+				fmt.Sprintf("T%d-L%d", t.ID, batch.ID), batch.Fish, batch.MeanGrams,
+				coins(batch.ValueCents), signedPlain(batch.MarginCents), nextClass(batch), state)
+		}
+
+		lines = append(lines, m.decorateRow(i, line, alert))
 	}
 
 	return strings.Join(lines, "\n")
@@ -205,24 +215,21 @@ func (m Model) decorateRow(index int, row string, alert bool) string {
 	return "  " + dimStyle.Render(row)
 }
 
-func nextClass(t *client.Tank) string {
-	if t.Fish == 0 {
-		return ""
-	}
-	if t.NextClassGrams <= t.MeanGrams {
+func nextClass(batch *client.Batch) string {
+	if batch.NextClassGrams <= batch.MeanGrams {
 		return "no topo"
 	}
 
-	return fmt.Sprintf("%d g +%s", t.NextClassGrams, percent(t.NextClassGain))
+	return fmt.Sprintf("%d g +%s", batch.NextClassGrams, percent(batch.NextClassGain))
 }
 
-func tankState(t *client.Tank) (label string, alert bool) {
+// rowState mixes the two levels the row shows: doenca e do lote, oxigenio e racao sao do
+// tanque. Sem peixe no lote nada disso e urgencia.
+func rowState(t *client.Tank, batch *client.Batch) (label string, alert bool) {
 	switch {
-	// Tanque sem peixe nao tem do que reclamar: falta de racao ou de trato ali nao e
-	// urgencia, e vermelho gasto assim ensina o jogador a ignorar vermelho.
-	case t.Fish == 0:
+	case batch.Fish == 0:
 		return "vazio", false
-	case t.Sick:
+	case batch.Sick:
 		return "DOENTE", true
 	case t.OxygenUgL < criticalOxygenUgL && !t.Aerating:
 		return "O2 " + strconv.FormatInt(int64(t.OxygenUgL), 10), true
@@ -230,8 +237,8 @@ func tankState(t *client.Tank) (label string, alert bool) {
 		return "SEM RACAO", true
 	case t.ServedFor <= 0:
 		return "SEM TRATO", true
-	case t.Decision.DaysOfFeed > 0:
-		return fmt.Sprintf("racao %d d", t.Decision.DaysOfFeed), false
+	case batch.Decision.DaysOfFeed > 0:
+		return fmt.Sprintf("racao %d d", batch.Decision.DaysOfFeed), false
 	}
 
 	return "ok", false
@@ -248,19 +255,25 @@ func (m Model) effectiveWidth() int {
 func (m Model) renderDecision() string {
 	tank, ok := m.tank()
 	if !ok {
-		return dimStyle.Render("sem lote selecionado")
+		return dimStyle.Render("sem tanque selecionado")
 	}
 
-	d := tank.Decision
+	batch, ok := m.batch()
+	if !ok {
+		return rule(fmt.Sprintf("DECISAO T%d", tank.ID), decisionCol-panelInset) + "\n" +
+			dimStyle.Render("sem lote neste tanque: povoe com [s]")
+	}
+
+	d := batch.Decision
 	lines := []string{
-		rule(fmt.Sprintf("DECISAO T%d-L%d", tank.ID, tank.BatchID), decisionCol-panelInset),
+		rule(fmt.Sprintf("DECISAO T%d-L%d", tank.ID, batch.ID), decisionCol-panelInset),
 		fmt.Sprintf("%s %s/kg (classe %s)   %s %s g/d",
-			labelStyle.Render("preco"), coins(tank.PriceKgCents), percent(tank.ClassPPM),
+			labelStyle.Render("preco"), coins(batch.PriceKgCents), percent(batch.ClassPPM),
 			labelStyle.Render("ganho"), grams(d.GainPerDayMg)),
 		fmt.Sprintf("%s %s kg/d   %s %s/d   %s %s/kg",
 			labelStyle.Render("racao"), kilos(d.FeedPerDayG),
 			labelStyle.Render("gasto"), coins(d.CostPerDay),
-			labelStyle.Render("custo"), coins(tank.CostPerKg)),
+			labelStyle.Render("custo"), coins(batch.CostPerKg)),
 		"",
 		fmt.Sprintf("  vender agora    %12s  %s", coins(d.SellNowCents), signedCoins(d.SellNowMargin)),
 	}
@@ -277,12 +290,12 @@ func (m Model) renderDecision() string {
 				d.HoldDays, coins(d.HoldCostCents))))
 	}
 
-	return strings.Join(append(lines, renderBreakEven(tank), renderStocking(tank)), "\n")
+	return strings.Join(append(lines, renderBreakEven(batch), renderStocking(tank)), "\n")
 }
 
-func renderBreakEven(tank client.Tank) string {
-	price := tank.PriceKgCents
-	breakEven := tank.Decision.BreakEvenPerKg
+func renderBreakEven(batch client.Batch) string {
+	price := batch.PriceKgCents
+	breakEven := batch.Decision.BreakEvenPerKg
 
 	if breakEven <= 0 {
 		return dimStyle.Render("break-even: lote sem custo acumulado")

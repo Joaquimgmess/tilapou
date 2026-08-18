@@ -121,7 +121,7 @@ func TestTheFooterOnlyPromisesKeysThatWork(t *testing.T) {
 		m := New(nil)
 		m.snapshot, m.mode = snap, mode
 		m.width, m.height = 120, 40
-		m.menu = tankMenu(snap, snap.Tanks[0])
+		m.menu = tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0])
 
 		footer := plain(m.render())
 		footer = footer[strings.LastIndex(footer, "\n")+1:]
@@ -143,7 +143,7 @@ func TestJAndKMoveTheMenuCursor(t *testing.T) {
 	snap := sizedSnapshot()
 	m := New(nil)
 	m.snapshot = snap
-	m.menu = tankMenu(snap, snap.Tanks[0])
+	m.menu = tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0])
 
 	next, _ := m.onMenuKey("j")
 	moved, ok := next.(Model)
@@ -218,9 +218,10 @@ func TestThinHintQuotesThePriceTheSaleActuallyPays(t *testing.T) {
 
 	snap := sizedSnapshot()
 	tank := snap.Tanks[0]
-	tank.BatchFish, tank.MeanGrams, tank.PriceKgCents = 800, 500, 1_000
+	batch := tank.Batches[0]
+	batch.Fish, batch.MeanGrams, batch.PriceKgCents = 800, 500, 1_000
 
-	hint := thinItem(tank).hint
+	hint := thinItem(tank, batch).hint
 
 	const paid = "1200,00 TC"
 	if !strings.Contains(hint, paid) {
@@ -233,12 +234,15 @@ func TestRalearNuncaVendeOLoteInteiro(t *testing.T) {
 
 	snap := sizedSnapshot()
 	tank := snap.Tanks[0]
-	tank.Fish, tank.BatchFish = 3_800, 800
+	tank.Fish = 3_800
 
-	item := thinItem(tank)
-	if item.action.Amount >= int64(tank.BatchFish) {
+	batch := tank.Batches[0]
+	batch.Fish = 800
+
+	item := thinItem(tank, batch)
+	if item.action.Amount >= int64(batch.Fish) {
 		t.Errorf("ralear %d%% mandou %d peixes num lote de %d: isso despesca o lote todo",
-			thinPercent, item.action.Amount, tank.BatchFish)
+			thinPercent, item.action.Amount, batch.Fish)
 	}
 	if want := int64(240); item.action.Amount != want {
 		t.Errorf("ralear mandou %d peixes de um lote de 800, queria %d", item.action.Amount, want)
