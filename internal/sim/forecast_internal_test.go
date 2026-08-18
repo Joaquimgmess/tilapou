@@ -71,11 +71,15 @@ func TestSeriesEndsAtTheCurrentTick(t *testing.T) {
 	s.Tick = 50 * TicksPerDay
 
 	fish, feed := s.Series(b, 12, TicksPerDay)
-	if len(fish) != 12 || len(feed) != 12 {
-		t.Fatalf("series com %d e %d pontos, queria 12", len(fish), len(feed))
+
+	wantFish := []Coins{1040, 1055, 1070, 1085, 1080, 1076, 1071, 1067, 1062, 1058, 1053, 1049}
+	wantFeed := []Coins{330, 328, 327, 325, 324, 323, 322, 321, 320, 319, 318, 317}
+
+	if !slicesEqual(fish, wantFish) {
+		t.Errorf("serie do peixe = %v, queria %v", fish, wantFish)
 	}
-	if fish[11] != MarketAt(b, s.Tick).FishKg {
-		t.Error("o ultimo ponto da serie nao e o preco de agora")
+	if !slicesEqual(feed, wantFeed) {
+		t.Errorf("serie da racao = %v, queria %v", feed, wantFeed)
 	}
 }
 
@@ -263,4 +267,17 @@ func TestAPrevisaoSimulaSoOTanqueAlvo(t *testing.T) {
 	if only.batch(5, only.Tanks[0].Batches[0].ID) == nil {
 		t.Error("o lote alvo nao e mais alcancavel depois de isolar")
 	}
+}
+
+func slicesEqual(got, want []Coins) bool {
+	if len(got) != len(want) {
+		return false
+	}
+	for i := range got {
+		if got[i] != want[i] {
+			return false
+		}
+	}
+
+	return true
 }

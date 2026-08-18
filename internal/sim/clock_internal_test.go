@@ -41,9 +41,25 @@ func TestTickAtHandlesNegativeZoneAndTick(t *testing.T) {
 func TestTickAtMinuteIsAlwaysInsideTheDay(t *testing.T) {
 	t.Parallel()
 
-	for tick := Tick(-3000); tick < 3000; tick++ {
+	casos := map[Tick]int32{
+		-3000: 1140,
+		-1:    1259,
+		0:     1260,
+		1:     1261,
+		1439:  1259,
+		1440:  1260,
+		2999:  1379,
+	}
+
+	for tick, want := range casos {
 		got := tick.At(-180)
-		if got.Minute < 0 || int64(got.Minute) >= int64(TicksPerDay) {
+		if got.Minute != want {
+			t.Errorf("tick %d rendeu minuto %d, queria %d", tick, got.Minute, want)
+		}
+	}
+
+	for tick := Tick(-3000); tick < 3000; tick++ {
+		if got := tick.At(-180); got.Minute < 0 || int64(got.Minute) >= int64(TicksPerDay) {
 			t.Fatalf("tick %d rendeu minuto %d fora do dia", tick, got.Minute)
 		}
 	}

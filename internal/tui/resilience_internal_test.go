@@ -218,15 +218,13 @@ func TestThinHintQuotesThePriceTheSaleActuallyPays(t *testing.T) {
 
 	snap := sizedSnapshot()
 	tank := snap.Tanks[0]
-	tank.PriceKgCents = snap.Prices.FishKgCents * 72 / 100
+	tank.BatchFish, tank.MeanGrams, tank.PriceKgCents = 800, 500, 1_000
 
 	hint := thinItem(tank).hint
-	count := int64(tank.BatchFish) * thinPercent / fullPercent
-	paid := coins(count * tank.MeanGrams * tank.PriceKgCents / gramsPerKg)
 
+	const paid = "1200,00 TC"
 	if !strings.Contains(hint, paid) {
-		t.Errorf("a dica promete outro valor: %q, a venda paga %s (classe de %d g)",
-			hint, paid, tank.MeanGrams)
+		t.Errorf("a dica promete outro valor: %q, 240 peixes de 500 g a 1000 c/kg pagam %s", hint, paid)
 	}
 }
 
@@ -242,7 +240,7 @@ func TestRalearNuncaVendeOLoteInteiro(t *testing.T) {
 		t.Errorf("ralear %d%% mandou %d peixes num lote de %d: isso despesca o lote todo",
 			thinPercent, item.action.Amount, tank.BatchFish)
 	}
-	if want := int64(tank.BatchFish) * thinPercent / fullPercent; item.action.Amount != want {
-		t.Errorf("ralear mandou %d, queria %d por cento do lote = %d", item.action.Amount, thinPercent, want)
+	if want := int64(240); item.action.Amount != want {
+		t.Errorf("ralear mandou %d peixes de um lote de 800, queria %d", item.action.Amount, want)
 	}
 }
