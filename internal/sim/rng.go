@@ -56,15 +56,9 @@ func (s Seed) RollBelow(k RollKey, bound int64) int64 {
 	return int64(high)
 }
 
-// Chance saturates to false below zero and to true from UnitPPM on.
+// Chance is false for a probability of zero or less and true from UnitPPM on, because
+// RollBelow stays inside [0, UnitPPM).
 func (s Seed) Chance(k RollKey, probability PPM) bool {
-	if probability <= 0 {
-		return false
-	}
-	if probability >= UnitPPM {
-		return true
-	}
-
 	return s.RollBelow(k, int64(UnitPPM)) < int64(probability)
 }
 
