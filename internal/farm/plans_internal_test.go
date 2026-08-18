@@ -82,7 +82,7 @@ func TestDecisaoRecalculaDepoisQueODiaVira(t *testing.T) {
 		return DecisionView{SellNowCents: 1}
 	}
 
-	today := batchKey{tank: 1, batch: 1, fish: 10, grams: 100, day: 0}
+	today := decisionInput{batch: 1, day: 0}
 	tomorrow := today
 	tomorrow.day = 1
 
@@ -106,7 +106,7 @@ func TestDecisaoDoMesmoDiaSoCalculaUmaVez(t *testing.T) {
 		return DecisionView{SellNowCents: 1}
 	}
 
-	key := batchKey{tank: 1, batch: 1, fish: 10, grams: 100, day: 0}
+	key := decisionInput{batch: 1, day: 0}
 
 	p.decision(key, compute)
 	p.decision(key, compute)

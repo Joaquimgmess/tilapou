@@ -398,37 +398,25 @@ func fillBatch(tv *TankView, state *sim.State, b *sim.Balance, tank *sim.Tank, b
 		tv.CostPerKg = tv.CostCents / kilos
 	}
 
-	tv.Decision = p.decision(batchKey{
-		tank:  tank.ID,
-		batch: batch.ID,
-		fish:  batch.Fish,
-		grams: batch.MeanMass.Grams(),
-		day:   int64(state.Tick / sim.TicksPerDay),
-	}, func() DecisionView {
-		return decisionFor(state, b, tank, batch, sellNow{
-			valueCents:  tv.ValueCents,
-			marginCents: tv.MarginCents,
-			costPerKg:   tv.CostPerKg,
-		})
-	})
+	in := newDecisionInput(state, tank, batch)
+
+	tv.Decision = p.decision(in, func() DecisionView { return decisionFor(b, in) })
+	tv.Decision.SellNowCents = tv.ValueCents
+	tv.Decision.SellNowMargin = tv.MarginCents
+	tv.Decision.BreakEvenPerKg = tv.CostPerKg
+	tv.Decision.HoldMargin = tv.Decision.HoldCents - tv.CostCents - tv.Decision.HoldCostCents
 }
 
-type sellNow struct {
-	valueCents  int64
-	marginCents int64
-	costPerKg   int64
-}
+// decisionFor projects the batch; the sell-now cents are filled by the caller on every
+// request, because they follow the price of the tick and must not be cached by day.
+func decisionFor(b *sim.Balance, in decisionInput) DecisionView {
+	var view DecisionView
 
-func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Batch, now sellNow) DecisionView {
-	view := DecisionView{
-		SellNowCents:   now.valueCents,
-		SellNowMargin:  now.marginCents,
-		BreakEvenPerKg: now.costPerKg,
-	}
-
+	tank := in.tank
+	batch := tank.Batches[0]
 	feedKg := int64(tank.FeedStock) / int64(sim.MicrogramsPerKilogram)
 
-	ahead := state.Forecast(b, tank.ID, batch.ID, batch.MeanMass+sim.MicrogramsPerGram)
+	ahead := in.forecast(b, batch.MeanMass+sim.MicrogramsPerGram)
 	if ahead.Days > 0 {
 		view.GainPerDayMg = int64(ahead.MeanMass-batch.MeanMass) / ahead.Days / microsPerMilli
 		view.CostPerDay = int64(ahead.Cost) / ahead.Days
@@ -443,11 +431,10 @@ func decisionFor(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 		return view
 	}
 
-	hold := state.Forecast(b, tank.ID, batch.ID, target)
+	hold := in.forecast(b, target)
 	view.HoldToGrams = target.Grams()
 	view.HoldDays = hold.Days
 	view.HoldCents = int64(hold.Value)
-	view.HoldMargin = int64(hold.Margin)
 	view.HoldCostCents = int64(hold.Cost)
 	view.HoldReached = hold.Reached
 

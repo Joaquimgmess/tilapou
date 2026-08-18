@@ -19,16 +19,45 @@ type Forecast struct {
 	PricePerKg Coins
 }
 
+// ForecastInput is everything the projection reads: the tank by value plus the farm
+// scalars that change growth. What is not here cannot change the result.
+type ForecastInput struct {
+	Tank     Tank
+	Batch    BatchID
+	At       Tick
+	Zone     ZoneOffset
+	Prestige uint32
+	Target   Micrograms
+}
+
+// ForecastAhead projects the batch in an isolated, well-tended tank; it returns the zero
+// value if the batch does not exist or is empty.
+func ForecastAhead(b *Balance, in ForecastInput) Forecast {
+	start := State{
+		Version:  StateVersion,
+		Tick:     in.At,
+		Zone:     in.Zone,
+		Prestige: in.Prestige,
+	}
+	start.Tanks[0] = in.Tank
+	start.TankCount = 1
+
+	return forecastFrom(b, start, in.Tank.ID, in.Batch, in.Target)
+}
+
 // Forecast projects the batch in an isolated, well-tended tank; it returns the zero value if the batch does not exist or is empty.
 func (s *State) Forecast(b *Balance, tank TankID, batch BatchID, target Micrograms) Forecast {
-	start := s.isolate(tank)
+	return forecastFrom(b, s.isolate(tank), tank, batch, target)
+}
+
+func forecastFrom(b *Balance, start State, tank TankID, batch BatchID, target Micrograms) Forecast {
 	found := start.batch(tank, batch)
 	if found == nil || found.Empty() {
 		return Forecast{}
 	}
 
 	spent, ate := found.Cost, found.FeedEaten
-	from := s.Tick
+	from := start.Tick
 
 	for day := range int64(forecastCapDays) {
 		keepManaged(&start, b, tank)
