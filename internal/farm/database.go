@@ -289,7 +289,24 @@ func (d *DB) AppliedOutcome(ctx context.Context, id ID, key sim.ActionID) (sim.O
 	}
 
 	out.At, out.Needed = sim.Tick(tick), sim.Coins(needed)
-	out.Reason, _ = sim.RejectReasonNamed(reason)
+
+	out, err = storedOutcome(out, reason)
+	if err != nil {
+		return sim.Outcome{}, false, fmt.Errorf("%w: farm %s, key %d", err, id, key)
+	}
 
 	return out, true, nil
+}
+
+// storedOutcome refuses a reason outside the enum instead of replaying it as RejectNone,
+// which would turn a refused action into an applied one on the retry.
+func storedOutcome(out sim.Outcome, reason string) (sim.Outcome, error) {
+	known, ok := sim.RejectReasonNamed(reason)
+	if !ok {
+		return sim.Outcome{}, fmt.Errorf("%w: %q", ErrUnknownReason, reason)
+	}
+
+	out.Reason = known
+
+	return out, nil
 }
