@@ -316,3 +316,38 @@ func TestPovoarDeixaCaixaParaOCustoFixoDoCiclo(t *testing.T) {
 			fish, spent, left, plan.Days, fixed)
 	}
 }
+
+// Emprestimo que o proprio jogo sugere e que depois nao compra um peixe deixa o jogador com a
+// divida e sem a jogada: o conselho de credito dimensiona pelo alevino, mas povoar cobra
+// tambem o custo fixo do ciclo — e tomar o emprestimo aumenta esse custo fixo, porque o juro
+// da divida entra nele.
+func TestOEmprestimoSugeridoPovoaAlgumaCoisa(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	for _, cash := range []Coins{0, 50_000, 200_000, 500_000} {
+		s := NewState(1, 0, 0)
+		s.Cash = cash
+
+		id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+
+		plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+
+		loan, block := s.LoanAdvice(b, id, plan)
+		if block != LoanOpen || loan <= 0 {
+			continue
+		}
+
+		s.Cash += loan
+		s.Debt += loan
+
+		if fish, _ := s.StockAdvice(b, id, plan); fish <= 0 {
+			t.Errorf("com caixa %d o jogo sugeriu pegar %d de emprestimo e depois nao povoa nada",
+				cash, loan)
+		}
+	}
+}

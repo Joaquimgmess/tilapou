@@ -279,3 +279,42 @@ func TestBrokeOlhaOCustoDePovoarOMinimo(t *testing.T) {
 		t.Error("com caixa que nao povoa o minimo a fazenda nao esta quebrada, e o [b] fica recusado")
 	}
 }
+
+// Caixa alto de emprestimo com tanque vazio nao e uma fazenda viva: sem peixe, sem racao e
+// sem caixa para um ciclo, nenhuma tecla faz nada. Contar isso pelo saco de racao dava ao
+// jogador semanas de tela parada antes do resgate chegar.
+func TestOCaixaPresoEmDividaContaComoFazendaTravada(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	s := NewState(1, 0, 0)
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+
+	plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+
+	var plans Plans
+	plans[TankEarthPond] = plan
+
+	// A divida entra antes da conta: o juro dela corre durante o ciclo e faz parte do que o
+	// caixa precisa cobrir para o tanque voltar a andar.
+	s.Debt = 500_000
+
+	tank := s.tank(id)
+	cycle := s.cheapestCycle(b, tank, plan)
+
+	s.Cash = cycle - 1
+	if !s.stuck(b, plans) {
+		t.Errorf("caixa %d nao paga o ciclo mais barato (%d) e a fazenda ainda conta como viva",
+			s.Cash, cycle)
+	}
+
+	s.Cash = cycle
+	if s.stuck(b, plans) {
+		t.Errorf("caixa %d paga o ciclo mais barato e a fazenda conta como travada", s.Cash)
+	}
+}

@@ -41,16 +41,16 @@ func (s *State) Broke(b *Balance) bool {
 const MinStockFish = 100
 
 // stuck reports whether nothing can improve the farm any more: no cash for the smallest
-// restock, no fish worth harvesting, and no feed left to grow the ones that are small. Feed
+// cycle, no fish worth harvesting, and no feed left to grow the ones that are small. Feed
 // in a tank is a way out on its own — the batch keeps growing without the player.
-func (s *State) stuck(b *Balance) bool {
-	if s.Cash >= s.feedSack(b) {
-		return false
-	}
-
+//
+// O criterio e o ciclo, e nao o saco de racao: caixa alto de emprestimo com tanque vazio
+// nunca contava como preso, e o jogador ficava semanas de tela olhando o juro comer o caixa
+// sem que nenhuma tecla fizesse nada.
+func (s *State) stuck(b *Balance, plans Plans) bool {
 	for i := range s.TankCount {
 		t := &s.Tanks[i]
-		if t.FeedStock > 0 {
+		if t.FeedStock > 0 || s.Cash >= s.cheapestCycle(b, t, plans[t.Kind]) {
 			return false
 		}
 
@@ -62,6 +62,15 @@ func (s *State) stuck(b *Balance) bool {
 	}
 
 	return true
+}
+
+// cheapestCycle e o menor caixa que ainda comeca um ciclo no tanque: um peixe mais o custo
+// fixo que corre enquanto ele cresce, e nunca menos que um saco de racao, que e a menor
+// compra que o mercado aceita.
+func (s *State) cheapestCycle(b *Balance, t *Tank, plan CyclePlan) Coins {
+	cycle := s.fixedCost(b, t, plan) + b.Economy.FingerlingPrice + feedToRaise(b, s.Tick)
+
+	return max(cycle, s.feedSack(b))
 }
 
 func restart(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
@@ -94,8 +103,8 @@ func prestige(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
 // bankrupt winds the farm up when the debt passes the point of no return, and reports
 // whether it fired. It hands back the same restart package as [b], so nobody is better off
 // starving the farm on purpose than going broke.
-func bankrupt(s *State, b *Balance, at Tick, sink *eventSink) bool {
-	if s.stuck(b) {
+func bankrupt(s *State, b *Balance, at Tick, sink *eventSink, plans Plans) bool {
+	if s.stuck(b, plans) {
 		s.StuckTicks++
 	} else {
 		s.StuckTicks = 0

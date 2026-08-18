@@ -257,6 +257,7 @@ const (
 	LoanNoCredit
 	LoanNoRoom
 	LoanNoNeed
+	LoanNoCycle
 	loanBlockCount
 )
 
@@ -265,6 +266,7 @@ var loanBlockNames = [...]string{
 	LoanNoCredit: "no_credit",
 	LoanNoRoom:   "no_room",
 	LoanNoNeed:   "no_need",
+	LoanNoCycle:  "no_cycle",
 }
 
 var _ [len(loanBlockNames) - int(loanBlockCount)]struct{}
@@ -310,9 +312,30 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) (Coins, Loan
 	// Nunca menos que um saco de racao: um emprestimo dimensionado pelos poucos peixes que
 	// faltam nao paga o proximo gasto obrigatorio, e o jogador fica com a divida sem poder
 	// alimentar o que tem.
-	wanted := max(mulDivCeil(int64(perFish), short, 1), int64(s.feedSack(b)))
+	wanted := max(s.loanFor(b, t, plan, short, perFish), int64(s.feedSack(b)))
+	if wanted > int64(room) {
+		// Oferecer o que cabe no limite seria oferecer uma jogada estritamente pior: ele
+		// nao povoa nada e ainda sobe o custo fixo do ciclo com mais juro.
+		return 0, LoanNoCycle
+	}
 
-	return min(Coins(wanted), room), LoanOpen
+	return Coins(wanted), LoanOpen
+}
+
+// loanFor e quanto o jogador precisa pegar para de fato povoar short peixes. Nao basta o
+// alevino: povoar so acontece com o custo fixo do ciclo guardado, e o proprio emprestimo
+// aumenta esse custo, porque o juro da divida entra nele. Dai o emprestimo aparecer nos dois
+// lados da conta e a divisao no fim.
+func (s *State) loanFor(b *Balance, t *Tank, plan CyclePlan, short int64, perFish Coins) int64 {
+	need := mulDivCeil(int64(perFish), short, 1) + int64(s.fixedCost(b, t, plan))
+
+	// A fatia de cada centavo emprestado que volta como juro ao longo do ciclo.
+	bite := mulDivCeil(int64(b.Credit.DailyRatePPM), plan.Days, 1)
+	if bite >= int64(UnitPPM) {
+		return need
+	}
+
+	return mulDivCeil(need, int64(UnitPPM), int64(UnitPPM)-bite)
 }
 
 // feedSack is the smallest restock that keeps a batch fed, in cents.

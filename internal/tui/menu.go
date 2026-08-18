@@ -193,6 +193,8 @@ func loanHint(t client.Tank) string {
 		return fmt.Sprintf("o tanque %d nao aceita mais peixe: nao ha o que financiar", t.ID)
 	case "no_need":
 		return fmt.Sprintf("o caixa ja cobre o que falta no tanque %d", t.ID)
+	case "no_cycle":
+		return "o credito que sobra nao paga um ciclo inteiro: pague o que deve antes"
 	}
 
 	short := t.BreakEven - int64(t.Fish) - t.StockAdvice

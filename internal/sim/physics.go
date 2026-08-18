@@ -19,7 +19,7 @@ func massFromRoot(root int64) Micrograms {
 func step(s *State, b *Balance, tick Tick, sink *eventSink, plans Plans) {
 	accrueInterest(s, b)
 
-	if bankrupt(s, b, tick, sink) {
+	if bankrupt(s, b, tick, sink, plans) {
 		return
 	}
 
