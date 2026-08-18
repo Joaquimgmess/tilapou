@@ -238,3 +238,95 @@ func TestApertarPovoarDeNovoNaoLotaOTanqueSozinho(t *testing.T) {
 		}
 	}
 }
+
+// O break-even promete "N peixes pagam a manutencao". A promessa cobrada aqui e a ordem de
+// grandeza: com metade dele a fazenda perde, com o dobro ela ganha. Perto do numero exato a
+// doenca decide o sinal, entao uma assercao ali seria sorteio e nao juiz.
+//
+// O numero e otimista em ~17%: a sonda repoe a biomassa que a mortalidade tirou, mas nao a
+// racao ja paga no peixe que morreu antes da despesca. O cruzamento medido em 24 sementes
+// fica em ~890 contra os 760 de hoje. Ver TASK-134.
+func TestOBreakEvenPagaMesmoAManutencao(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+	b.Market.SwingPPM = 0
+
+	plan := b.CycleAt(sim.TankEarthPond, 0, 0)
+	if plan.BreakEven <= 0 {
+		t.Fatal("o viveiro nao tem break-even")
+	}
+
+	if lucro := meanCycleProfit(t, &b, plan.BreakEven/2); lucro >= 0 {
+		t.Errorf("com metade do break-even (%d peixes) a fazenda ainda lucrou %d",
+			plan.BreakEven/2, lucro)
+	}
+	if lucro := meanCycleProfit(t, &b, plan.BreakEven*2); lucro <= 0 {
+		t.Errorf("com o dobro do break-even (%d peixes) a fazenda ainda perdeu %d",
+			plan.BreakEven*2, -lucro)
+	}
+}
+
+// meanCycleProfit roda o ciclo em varias sementes e devolve o caixa medio. Oito e o que faz o
+// sinal parar de virar entre janelas de sementes.
+func meanCycleProfit(t *testing.T, b *sim.Balance, fish sim.FishCount) int64 {
+	t.Helper()
+
+	const seeds = 8
+
+	var sum int64
+	for seed := sim.Seed(1); seed <= seeds; seed++ {
+		sum += cycleProfit(t, b, fish, seed)
+	}
+
+	return sum / seeds
+}
+
+// cycleProfit devolve quanto a fazenda ganha ou perde de caixa num ciclo completo.
+func cycleProfit(t *testing.T, b *sim.Balance, fish sim.FishCount, seed sim.Seed) int64 {
+	t.Helper()
+
+	s := sim.NewState(seed, 0, 0)
+	s.Cash = 100_000_000
+
+	id, ok := s.AddTank(b, sim.TankEarthPond, b.Tanks[sim.TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+
+	start := s.Cash
+	s.StockTank(id, fish, b.Growth.FingerlingMass, sim.Coins(int64(fish))*b.Economy.FingerlingPrice)
+	s.Cash -= sim.Coins(int64(fish)) * b.Economy.FingerlingPrice
+	s.SeedOxygen(b)
+	s.Tanks[0].Upgrades = 0b11
+
+	for range 400 {
+		out, err := sim.Advance(sim.Input{State: s, Until: s.Tick + sim.TicksPerDay, Balance: b})
+		if err != nil {
+			t.Fatal(err)
+		}
+		s = out.State
+
+		batch := &s.Tanks[0].Batches[0]
+		if batch.Empty() {
+			break
+		}
+
+		if batch.MeanMass >= b.Growth.HarvestMass {
+			price := b.PriceFor(batch.MeanMass, s.Tick)
+			kilos := int64(batch.Biomass()) / int64(sim.MicrogramsPerKilogram)
+			left := mulKg(int64(s.Tanks[0].FeedStock), int64(sim.MarketAt(b, s.Tick).FeedKg))
+
+			return int64(s.Cash) + int64(price)*kilos + left - int64(start)
+		}
+	}
+
+	return int64(s.Cash) - int64(start)
+}
+
+func mulKg(micrograms, perKg int64) int64 {
+	return micrograms / int64(sim.MicrogramsPerKilogram) * perKg
+}

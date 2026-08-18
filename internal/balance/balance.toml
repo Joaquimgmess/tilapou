@@ -118,6 +118,8 @@ volume_litros = 1000000
 densidade_max_peixes_m3 = 5
 renovacao_por_hora_pct = 0.0
 custo_base_centavos = 300000
+# Mais barato que isso a manutencao some do calculo do jogador: ela cai para dentro do ruido
+# de um surto de doenca e o tanque deixa de ter tensao economica.
 manutencao_centavos_dia = 900
 [[tanques]]
 tipo = "tanque_rede"
