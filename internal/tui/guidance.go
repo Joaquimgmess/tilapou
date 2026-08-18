@@ -24,6 +24,57 @@ type advice struct {
 	key    string
 }
 
+// headline turns the newest event past seen into a line the player reads. The events are
+// what the farm did while nobody was watching, and without this they only ever existed in
+// the database: the farm could go bankrupt and the screen would say nothing.
+func headline(s client.Snapshot, seen uint64) (string, bool) {
+	for i := range s.Events {
+		e := &s.Events[i]
+		if e.Seq <= seen {
+			continue
+		}
+
+		if text, ok := eventHeadline(e); ok {
+			return text, true
+		}
+	}
+
+	return "", false
+}
+
+// newestEvent is the highest sequence the player has now been shown.
+func newestEvent(s client.Snapshot, seen uint64) uint64 {
+	for i := range s.Events {
+		seen = max(seen, s.Events[i].Seq)
+	}
+
+	return seen
+}
+
+func eventHeadline(e *client.Event) (string, bool) {
+	switch e.Kind {
+	case "bankrupt":
+		return "A fazenda quebrou: a divida de " + coins(e.CashCents) +
+			" foi perdoada e voce recomeca com o lote inicial", true
+	case "prestiged":
+		return "Voce tilapou: a fazenda recomeca com as matrizes valendo para sempre", true
+	case "restarted":
+		return "A fazenda recomecou do zero", true
+	case "disease":
+		return fmt.Sprintf("Surto de doenca no tanque %d: trate com [z] ou aceite as perdas", e.Tank), true
+	case "disease_deaths":
+		return fmt.Sprintf("A doenca matou %d peixes no tanque %d", e.Fish, e.Tank), true
+	case "starvation_deaths":
+		return fmt.Sprintf("%d peixes do tanque %d morreram de fome", e.Fish, e.Tank), true
+	case "hypoxia_deaths":
+		return fmt.Sprintf("%d peixes do tanque %d morreram sem oxigenio", e.Fish, e.Tank), true
+	case "feed_exhausted":
+		return fmt.Sprintf("A racao do tanque %d acabou", e.Tank), true
+	}
+
+	return "", false
+}
+
 // adviceTank returns the tank the current advice is about, or zero when it is about the farm.
 func adviceTank(s client.Snapshot) uint32 {
 	found, ok := current(s)

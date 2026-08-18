@@ -266,3 +266,76 @@ func TestRecusaApareceComOMenuAberto(t *testing.T) {
 		t.Error("a recusa nao aparece enquanto o menu esta aberto: o jogador aperta e nada responde")
 	}
 }
+
+func TestAcontecimentoNovoVeioParaATela(t *testing.T) {
+	t.Parallel()
+
+	casos := map[string]struct {
+		event client.Event
+		want  string
+	}{
+		"falencia":   {event: client.Event{Seq: 9, Kind: "bankrupt", CashCents: 4_500_000}, want: "quebrou"},
+		"doenca":     {event: client.Event{Seq: 9, Kind: "disease", Tank: 2}, want: "tanque 2"},
+		"mortandade": {event: client.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 449}, want: "449"},
+		"tilapada":   {event: client.Event{Seq: 9, Kind: "prestiged"}, want: "tilap"},
+	}
+
+	for name, tc := range casos {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			snap := sizedSnapshot()
+			snap.Events = []client.Event{tc.event}
+
+			told, ok := headline(snap, 0)
+			if !ok {
+				t.Fatalf("o acontecimento %q nao virou aviso nenhum", tc.event.Kind)
+			}
+			if !strings.Contains(told, tc.want) {
+				t.Errorf("o aviso de %q e %q, sem dizer %q", tc.event.Kind, told, tc.want)
+			}
+		})
+	}
+}
+
+func TestAcontecimentoJaVistoNaoVoltaAAvisar(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	snap.Events = []client.Event{{Seq: 7, Kind: "bankrupt"}}
+
+	if _, ok := headline(snap, 7); ok {
+		t.Error("o mesmo acontecimento avisou de novo depois de ja ter sido mostrado")
+	}
+	if _, ok := headline(snap, 6); !ok {
+		t.Error("um acontecimento mais novo que o ultimo visto nao avisou")
+	}
+}
+
+func TestOHistoricoDaAberturaNaoViraNovidade(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+	snap.Events = []client.Event{{Seq: 3, Kind: "bankrupt"}}
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.run(d.model.(Model).fetch())
+
+	if said := d.model.(Model).message; strings.Contains(said, "quebrou") {
+		t.Errorf("o historico da abertura foi anunciado como novidade: %q", said)
+	}
+
+	snap.Events = []client.Event{{Seq: 4, Kind: "bankrupt", CashCents: 100}, {Seq: 3, Kind: "bankrupt"}}
+	d.run(d.model.(Model).fetch())
+
+	if said := d.model.(Model).message; !strings.Contains(said, "quebrou") {
+		t.Errorf("o acontecimento novo nao foi anunciado: %q", said)
+	}
+}

@@ -58,6 +58,8 @@ type Model struct {
 	quitting   bool
 	messageAt  int
 	staleTicks int
+	seenEvent  uint64
+	greeted    bool
 }
 
 // New creates the initial Model bound to the daemon client.
@@ -117,11 +119,22 @@ func (m Model) onSnapshot(msg snapshotMsg) Model {
 	}
 
 	m.snapshot, m.staleTicks = msg.snapshot, 0
+
+	// O primeiro snapshot traz o historico inteiro: anunciar ali seria contar como novidade
+	// o que aconteceu antes de o jogador abrir o jogo.
+	told, isNew := "", false
+	if m.greeted {
+		told, isNew = headline(m.snapshot, m.seenEvent)
+	}
+	m.seenEvent, m.greeted = newestEvent(m.snapshot, m.seenEvent), true
 	m.farm = m.resizedFarm(len(msg.snapshot.Tanks))
 	m.selected = min(m.selected, max(len(msg.snapshot.Tanks)-1, 0))
 
 	if failure := explain(msg.snapshot.LastOutcome, msg.snapshot.CashCents); failure != "" {
 		return m.say(failure)
+	}
+	if isNew {
+		return m.say(told)
 	}
 	m.menu = m.refreshedMenu()
 
