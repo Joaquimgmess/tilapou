@@ -415,12 +415,16 @@ func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
 	}
 
 	return m.act(client.Action{Kind: "buy_upgrade", Tank: tank.ID, Auto: upgrade.Kind},
-		"comprando "+upgrade.Kind+" para o tanque "+strconv.FormatUint(uint64(tank.ID), 10))
+		"comprando "+upgrade.Kind)
 }
 
 func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {
 	action.Key = m.nextKey
 	m.nextKey++
+
+	if action.Tank != 0 {
+		status = fmt.Sprintf("%s no tanque %d", status, action.Tank)
+	}
 	m = m.say(status)
 
 	c := m.client

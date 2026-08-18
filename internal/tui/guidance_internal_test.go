@@ -141,3 +141,38 @@ func TestPuloDoConselhoSelecionaOTanqueQueEleNomeia(t *testing.T) {
 			m.snapshot.Tanks[m.selected].ID, adviceTank(snap))
 	}
 }
+
+func TestTodaAcaoDeTanqueDizEmQualTanqueCaiu(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	for _, key := range []string{"f", "c", "a", "h"} {
+		t.Run(key, func(t *testing.T) {
+			t.Parallel()
+
+			d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+			d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+			d.run(d.model.(Model).fetch())
+
+			m, ok := d.model.(Model)
+			if !ok {
+				t.Fatal("o driver perdeu o Model")
+			}
+			d.press(key)
+
+			said := d.model.(Model).message
+			want := fmt.Sprintf("no tanque %d", m.snapshot.Tanks[m.selected].ID)
+
+			if !strings.Contains(said, want) {
+				t.Errorf("a tecla %q confirmou com %q, sem dizer %q", key, said, want)
+			}
+		})
+	}
+}
