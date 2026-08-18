@@ -13,6 +13,9 @@ const (
 	autoKindCount
 )
 
+// AutoKindCount is how many upgrades exist, so tables outside the package can be sized by it.
+const AutoKindCount = int(autoKindCount)
+
 const (
 	autoRestockKg    = 200
 	autoMinRestockKg = 10

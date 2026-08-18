@@ -479,6 +479,8 @@ var upgradeOrder = [5]sim.AutoKind{
 	sim.AutoContract,
 }
 
+var _ [len(upgradeOrder) - sim.AutoKindCount]struct{}
+
 func upgradesOf(tank *sim.Tank, b *sim.Balance) []UpgradeView {
 	views := make([]UpgradeView, 0, len(upgradeOrder))
 	for _, kind := range upgradeOrder {
