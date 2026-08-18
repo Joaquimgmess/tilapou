@@ -118,12 +118,19 @@ func clipTo(text string, width int) string {
 		return text
 	}
 
-	runes := []rune(text)
-	for len(runes) > 0 && lipgloss.Width(string(runes)) > width-1 {
-		runes = runes[:len(runes)-1]
+	var kept strings.Builder
+
+	used := 0
+	for _, r := range text {
+		w := lipgloss.Width(string(r))
+		if used+w > width-1 {
+			break
+		}
+		used += w
+		_, _ = kept.WriteRune(r)
 	}
 
-	return string(runes) + "~"
+	return kept.String() + "~"
 }
 
 func (m Model) renderBatches() string {
