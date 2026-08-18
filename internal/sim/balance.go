@@ -10,6 +10,9 @@ type TankSpec struct {
 	BaseCost          Coins
 	UpkeepPerDay      Coins
 	Litres            Litres
+	// TempFactorPPM replaces the season inside the tank, for the kinds that control the
+	// water. Zero means the tank follows the weather like any pond.
+	TempFactorPPM PPM
 }
 
 // GrowthBalance governs growth: masses in micrograms, temperature in thousandths of a

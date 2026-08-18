@@ -216,3 +216,52 @@ func TestFeedConversionWorsensInTheCold(t *testing.T) {
 		t.Errorf("no frio a conversao deveria piorar: 28C=%.2f 22C=%.2f", warm, cold)
 	}
 }
+
+func TestTanqueClimatizadoIgnoraAEstacao(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	b.Tanks[TankRecirculation].TempFactorPPM = 1_400_000
+
+	const winter = Tick(200) * TicksPerDay
+
+	ambient := b.TempMultiplier(TemperatureAt(b, winter, 0))
+	if ambient == 1_400_000 {
+		t.Fatal("o cenario precisa de uma estacao diferente do fator do tanque")
+	}
+
+	grown := func(kind TankKind) Micrograms {
+		s := NewState(1, 0, 0)
+		s.Tick = winter
+
+		id, ok := s.AddTank(kind, b.Tanks[kind].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+		s.StockTank(id, 100, 200*MicrogramsPerGram, 1_000)
+		s.Tanks[0].FeedStock = 10_000 * MicrogramsPerKilogram
+		s.Tanks[0].ServedUntil = s.Tick + 10*TicksPerDay
+		s.SeedOxygen(b)
+
+		out, err := Advance(Input{State: s, Until: s.Tick + 10*TicksPerDay, Balance: b})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return out.State.Tanks[0].Batches[0].MeanMass
+	}
+
+	climate, season := grown(TankRecirculation), grown(TankEarthPond)
+	if climate == season {
+		t.Errorf("o tanque climatizado cresceu igual ao que segue a estacao: %d contra %d", climate, season)
+	}
+}
+
+func TestTanqueSemFatorSegueAEstacao(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	if b.Tanks[TankEarthPond].TempFactorPPM != 0 {
+		t.Fatal("o viveiro nao deveria ter fator de temperatura proprio")
+	}
+}

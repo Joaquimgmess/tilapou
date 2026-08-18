@@ -91,6 +91,7 @@ type tanqueRow struct {
 	VolumeLitros          int64   `toml:"volume_litros"`
 	DensidadeMaxPeixesM3  int64   `toml:"densidade_max_peixes_m3"`
 	RenovacaoPorHoraPct   float64 `toml:"renovacao_por_hora_pct"`
+	MultiplicadorTemp     float64 `toml:"multiplicador_temperatura"`
 	CustoBaseCentavos     int64   `toml:"custo_base_centavos"`
 	ManutencaoCentavosDia int64   `toml:"manutencao_centavos_dia"`
 }
@@ -326,6 +327,7 @@ func convert(f file) (sim.Balance, error) {
 			BaseCost:          sim.Coins(row.CustoBaseCentavos),
 			UpkeepPerDay:      sim.Coins(row.ManutencaoCentavosDia),
 			Litres:            sim.Litres(row.VolumeLitros),
+			TempFactorPPM:     ppmOf(row.MultiplicadorTemp),
 		}
 	}
 

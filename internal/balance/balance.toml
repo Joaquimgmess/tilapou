@@ -121,25 +121,30 @@ custo_base_centavos = 300000
 manutencao_centavos_dia = 900
 [[tanques]]
 tipo = "tanque_rede"
-volume_litros = 6000
+volume_litros = 30000
 densidade_max_peixes_m3 = 160
 renovacao_por_hora_pct = 100.0
 custo_base_centavos = 800000
-manutencao_centavos_dia = 1800
+manutencao_centavos_dia = 700
+# Bioflocos e recirculacao controlam a agua: a estacao nao entra, e por isso o ciclo
+# fecha mais rapido. A renovacao alta e o que sustenta a densidade: a 20% qualquer
+# lotacao acima de 3,6 kg/m3 sufoca, o que mata o proposito do tanque.
 [[tanques]]
 tipo = "bioflocos"
-volume_litros = 30000
+volume_litros = 150000
 densidade_max_peixes_m3 = 80
-renovacao_por_hora_pct = 20.0
+renovacao_por_hora_pct = 100.0
+multiplicador_temperatura = 1.25
 custo_base_centavos = 3500000
-manutencao_centavos_dia = 5200
+manutencao_centavos_dia = 6000
 [[tanques]]
 tipo = "recirculacao"
-volume_litros = 20000
-densidade_max_peixes_m3 = 120
-renovacao_por_hora_pct = 300.0
-custo_base_centavos = 12000000
-manutencao_centavos_dia = 14000
+volume_litros = 150000
+densidade_max_peixes_m3 = 200
+renovacao_por_hora_pct = 100.0
+multiplicador_temperatura = 1.40
+custo_base_centavos = 9000000
+manutencao_centavos_dia = 9000
 
 # O mercado oscila sozinho e o preco por quilo depende da classe de peso:
 # peixe maior rende mais por quilo (rendimento de file), ate a classe de excesso.

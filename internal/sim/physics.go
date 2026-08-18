@@ -24,10 +24,16 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink) {
 	}
 
 	temp := TemperatureAt(b, tick, s.Zone)
-	tempMult := b.TempMultiplier(temp)
+	ambient := b.TempMultiplier(temp)
 
 	for i := range s.TankCount {
 		t := &s.Tanks[i]
+
+		tempMult := ambient
+		if controlled := b.Tanks[t.Kind].TempFactorPPM; controlled > 0 {
+			tempMult = controlled
+		}
+
 		t.Oxygen = oxygenAt(b, t, tick, s.Zone)
 		automate(s, b, t, tick, sink)
 		payEnergy(s, b, t)
