@@ -97,7 +97,7 @@ func TestAHealthyFarmCannotStartOver(t *testing.T) {
 	}
 }
 
-func TestTilaparNaoPerdoaADivida(t *testing.T) {
+func TestTilaparZeraADividaEDaPrestigio(t *testing.T) {
 	t.Parallel()
 
 	b := testBalance(t)
@@ -109,8 +109,9 @@ func TestTilaparNaoPerdoaADivida(t *testing.T) {
 		t.Fatalf("tilapada recusada: %v", reason)
 	}
 
-	if s.Debt != 1_500_000 || s.DebtCarry != 77 {
-		t.Errorf("a tilapada perdoou a divida: %d com carry %d, queria 1500000 e 77", s.Debt, s.DebtCarry)
+	if s.Debt != 0 || s.DebtCarry != 0 {
+		t.Errorf("a tilapada deixou divida de %d com carry %d: o juro come o caixa de reinicio no mesmo tick",
+			s.Debt, s.DebtCarry)
 	}
 	if s.Prestige == 0 {
 		t.Error("a tilapada nao deu prestigio")
@@ -126,5 +127,20 @@ func TestFazendaComCreditoLivreNaoEstaQuebrada(t *testing.T) {
 
 	if s.Broke(b) {
 		t.Fatal("com o limite de credito inteiro livre a fazenda ainda tem como se virar")
+	}
+}
+
+func TestFazendaSemPeixeSemCaixaESemCreditoQuebraMesmoComPrestigioASacar(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := brokeFarm(t, b)
+	s.LifetimeEarned = Coins(b.Progression.PrestigeDivisor) * 10
+
+	if PrestigePointsFor(s.LifetimeEarned, b.Progression.PrestigeDivisor) <= s.Prestige {
+		t.Fatal("o cenario precisa ter prestigio a sacar")
+	}
+	if !s.Broke(b) {
+		t.Error("a fazenda tem 0 peixe, 0 caixa e 0 credito e nao esta quebrada: prestigio pendente nao e liquidez")
 	}
 }

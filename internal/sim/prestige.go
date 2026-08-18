@@ -24,12 +24,11 @@ func (s *State) prestigeBonus(b *Balance) PPM {
 	return PPM(addSat(int64(UnitPPM), int64(s.Prestige)*int64(b.Progression.PrestigeBonusPPM)))
 }
 
-// Broke reports whether there are no fish, no cash for a fingerling, no prestige to claim and no credit.
+// Broke reports whether there are no fish, no cash for a fingerling and no credit. Prestige
+// left to claim does not count: it comes from LifetimeEarned, which never goes down, so it
+// would keep a farm with nothing to do from ever restarting.
 func (s *State) Broke(b *Balance) bool {
 	if s.Fish() > 0 || s.Cash >= b.Economy.FingerlingPrice {
-		return false
-	}
-	if PrestigePointsFor(s.LifetimeEarned, b.Progression.PrestigeDivisor) > s.Prestige {
 		return false
 	}
 
@@ -41,7 +40,6 @@ func restart(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
 		return RejectNotBroke
 	}
 
-	s.Debt, s.DebtCarry = 0, 0
 	rebuild(s, b, at, s.Prestige)
 
 	sink.emit(Event{Kind: EventRestarted, From: at, To: at})
@@ -62,6 +60,8 @@ func prestige(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
 	return RejectNone
 }
 
+// rebuild also writes off the debt: the restart cash only survives a day of play while the
+// debt is under RestartCash divided by the daily rate, which any compounded debt passes.
 func rebuild(s *State, b *Balance, at Tick, points uint32) {
 	kept := State{
 		Version:        s.Version,
@@ -76,8 +76,8 @@ func rebuild(s *State, b *Balance, at Tick, points uint32) {
 		NextTankID:     1,
 		NextBatchID:    1,
 		EventSeq:       s.EventSeq,
-		Debt:           s.Debt,
-		DebtCarry:      s.DebtCarry,
+		Debt:           0,
+		DebtCarry:      0,
 	}
 
 	tank, ok := kept.AddTank(TankEarthPond, b.Tanks[TankEarthPond].Litres)
