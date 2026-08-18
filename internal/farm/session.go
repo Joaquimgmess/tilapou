@@ -83,18 +83,6 @@ func (s *Sessions) Act(ctx context.Context, playerID uuid.UUID, action sim.Actio
 	return s.withFarm(ctx, playerID, &action)
 }
 
-// planFor monta o plano de cada tipo de tanque que a fazenda tem. So os que ela tem: cada
-// plano que falta no cache custa duas simulacoes de ciclo.
-func (s *Sessions) planFor(state *sim.State, at sim.Tick) sim.Plans {
-	var out sim.Plans
-	for i := range state.TankCount {
-		kind := state.Tanks[i].Kind
-		out[kind] = s.plans.at(s.balance, kind, at, state.Zone)
-	}
-
-	return out
-}
-
 func (s *Sessions) withFarm(ctx context.Context, playerID uuid.UUID, action *sim.Action) (Snapshot, error) {
 	f, err := s.ensure(ctx, playerID)
 	if err != nil {
@@ -157,7 +145,7 @@ func (s *Sessions) attempt(ctx context.Context, playerID uuid.UUID, action *sim.
 
 	out, err := sim.Advance(sim.Input{
 		State: f.State, Until: now, Balance: s.balance, Actions: actions,
-		Plans: s.planFor(&f.State, now),
+		Plans: s.plans.forFarm(s.balance, &f.State),
 	})
 	if err != nil {
 		return Snapshot{}, err

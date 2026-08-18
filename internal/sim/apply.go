@@ -7,12 +7,12 @@ package sim
 // melhor recusar visivelmente do que aplicar em silencio uma decisao de outro mundo.
 const staleViewTicks = Tick(5)
 
-func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
+func apply(s *State, b *Balance, a Action, at Tick, sink *eventSink, plans Plans) (reason RejectReason, needed Coins) {
 	if a.stale(at) {
 		return RejectStaleView, 0
 	}
 
-	return dispatch(s, b, a, at, sink)
+	return dispatch(s, b, a, at, sink, plans)
 }
 
 // stale reporta se a tela que o jogador viu ja tinha morrido quando a acao chegou.
@@ -20,7 +20,7 @@ func (a Action) stale(at Tick) bool {
 	return a.SeenAt > 0 && at-a.SeenAt > staleViewTicks
 }
 
-func dispatch(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
+func dispatch(s *State, b *Balance, a Action, at Tick, sink *eventSink, plans Plans) (reason RejectReason, needed Coins) {
 	switch a.Kind {
 	case ActionBuyTank:
 		return applyBuyTank(s, b, a, at, sink)
@@ -37,7 +37,7 @@ func dispatch(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason 
 	case ActionBuyUpgrade:
 		return applyBuyUpgrade(s, b, a, at, sink)
 	case ActionRestart:
-		return restart(s, b, at, sink), 0
+		return restart(s, b, at, sink, plans), 0
 	case ActionPrestige:
 		return prestige(s, b, at, sink), 0
 	case ActionBorrow:

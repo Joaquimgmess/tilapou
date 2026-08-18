@@ -314,7 +314,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) SnapshotView {
 		Series:        seriesOf(state, b),
 		InterestDay:   int64(state.Debt) * int64(b.Credit.DailyRatePPM) / int64(sim.UnitPPM),
 		RunwayDays:    runwayDays(state, b),
-		Broke:         state.Broke(b),
+		Broke:         state.Broke(b, p.forFarm(b, state)),
 		Prices: PriceView{
 			FeedKgCents:     int64(market.FeedKg),
 			FingerlingCents: int64(b.Economy.FingerlingPrice),

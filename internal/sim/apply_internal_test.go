@@ -35,7 +35,7 @@ func TestAcaoDecididaContraUmMundoVelhoERecusada(t *testing.T) {
 			sink := &eventSink{}
 			reason, _ := apply(&s, b, Action{
 				ID: 1, Kind: ActionAerate, Tank: 1, Amount: 1, SeenAt: tc.seen,
-			}, 100, sink)
+			}, 100, sink, Plans{})
 
 			if reason != tc.want {
 				t.Errorf("acao com a tela do tick %d no tick 100 deu %v, queria %v", tc.seen, reason, tc.want)

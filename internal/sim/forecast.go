@@ -339,6 +339,11 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 	// para cima que dimensiona o emprestimo sobra um peixe, e prometer um a mais do que o
 	// povoar entrega e o defeito que esta conta existe para nao ter.
 	buys := min(s.fishFor(b, t, plan, Coins(wanted), perFish), short)
+	if buys <= 0 {
+		// Cabe no limite e mesmo assim nao povoa um peixe: aceitar so sobe o juro, e o juro
+		// e o que ja esta engolindo o ciclo. E a mesma jogada pior que LoanNoCycle recusa.
+		return LoanOffer{Block: LoanNoCycle}
+	}
 
 	return LoanOffer{Cents: Coins(wanted), Fish: FishCount(min(buys, maxInt32)), Block: LoanOpen}
 }

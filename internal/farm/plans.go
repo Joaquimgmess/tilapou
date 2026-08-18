@@ -158,6 +158,18 @@ func (p *plans) decision(key decisionInput, compute func() DecisionView) Decisio
 	return view
 }
 
+// forFarm monta o plano de cada tipo de tanque que a fazenda tem. So os que ela tem: cada
+// plano que falta no cache custa duas simulacoes de ciclo.
+func (p *plans) forFarm(b *sim.Balance, state *sim.State) sim.Plans {
+	var out sim.Plans
+	for i := range state.TankCount {
+		kind := state.Tanks[i].Kind
+		out[kind] = p.at(b, kind, state.Tick, state.Zone)
+	}
+
+	return out
+}
+
 func (p *plans) at(b *sim.Balance, kind sim.TankKind, tick sim.Tick, zone sim.ZoneOffset) sim.CyclePlan {
 	day := int64(tick / sim.TicksPerDay)
 

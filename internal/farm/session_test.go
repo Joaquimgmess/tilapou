@@ -285,6 +285,13 @@ func TestAWriteLostToAnotherWriterReplaysWithoutDeadlocking(t *testing.T) {
 	frozen := epoch.Add(time.Hour)
 	sessions := farm.NewSessions(store, &b, func() time.Time { return frozen }, metrics.NewRegistry())
 
+	// O primeiro pedido do dia monta o plano do ciclo, que sao duas simulacoes: sem aquecer,
+	// o prazo abaixo mede a fila da maquina e nao a trava que este teste existe para pegar.
+	if _, syncErr := sessions.Sync(context.Background(), store.farm.PlayerID); syncErr != nil {
+		t.Fatal(syncErr)
+	}
+	store.failNext = farm.ErrAlreadyApplied
+
 	type result struct {
 		snap farm.Snapshot
 		err  error
@@ -308,10 +315,10 @@ func TestAWriteLostToAnotherWriterReplaysWithoutDeadlocking(t *testing.T) {
 		if got.snap.Outcome.ID != 9 {
 			t.Errorf("o replay devolveu o outcome %d, esperado o 9 gravado pelo outro writer", got.snap.Outcome.ID)
 		}
-	// Folgado de caso pensado: o primeiro Act do dia monta o plano do ciclo, que sao duas
-	// simulacoes, e sob -race isso passa de cinco segundos. Aqui o que se cobra e trava, e
-	// nao tempo.
-	case <-time.After(30 * time.Second):
+	// Generoso de caso pensado: uma trava de verdade nao volta nunca, entao o prazo so precisa
+	// ser maior que a maquina carregada. Prazo curto aqui media CPU disponivel, e a suite
+	// inteira sob -race o derrubava sozinha.
+	case <-time.After(2 * time.Minute):
 		t.Fatal("Act travou: o retry pede o mutex da fazenda que ele mesmo ja segura")
 	}
 }

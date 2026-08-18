@@ -24,17 +24,15 @@ func (s *State) prestigeBonus(b *Balance) PPM {
 	return PPM(addSat(int64(UnitPPM), int64(s.Prestige)*int64(b.Progression.PrestigeBonusPPM)))
 }
 
-// Broke reports whether there are no fish, no cash to restock the minimum and no credit.
-// The bar is the minimum stocking and not a single fingerling: a few thousand cents parked
-// in the till buy one fish and nothing else, and used to keep [b] refused forever. Prestige
-// left to claim does not count: it comes from LifetimeEarned, which never goes down.
-func (s *State) Broke(b *Balance) bool {
-	restock := b.Economy.FingerlingPrice * MinStockFish
-	if s.Fish() > 0 || s.Cash >= restock {
-		return false
-	}
-
-	return Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt))) < restock
+// Broke reports whether the farm can no longer start a cycle, which is what frees the
+// restart key. Prestige left to claim does not count: it comes from LifetimeEarned, which
+// never goes down.
+//
+// A conta e a mesma de stuck, e nao a de um alevino: perguntar se cabe um peixe no credito
+// dizia sim com o juro da divida engolindo o ciclo inteiro, e a tela indicava uma tecla que
+// ela mesma negava. O cronometro do resgate e a tecla respondem a mesma pergunta.
+func (s *State) Broke(b *Balance, plans Plans) bool {
+	return s.stuck(b, plans)
 }
 
 // MinStockFish is the smallest stocking worth the name; below it the farm has no cycle.
@@ -48,9 +46,13 @@ const MinStockFish = 100
 // nunca contava como preso, e o jogador ficava semanas de tela olhando o juro comer o caixa
 // sem que nenhuma tecla fizesse nada.
 func (s *State) stuck(b *Balance, plans Plans) bool {
+	// O credito que ainda da para tomar e jogada na mao do jogador, e conta como caixa: sem
+	// ele, a fazenda com o limite inteiro livre era marcada presa e resgatada em tres dias.
+	reach := s.Cash + Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
+
 	for i := range s.TankCount {
 		t := &s.Tanks[i]
-		if s.Cash >= s.cheapestCycle(b, t, plans[t.Kind]) {
+		if reach >= s.cheapestCycle(b, t, plans[t.Kind]) {
 			return false
 		}
 		// Racao so e saida enquanto houver lote comendo: com o tanque vazio ela e caixa que
@@ -78,8 +80,8 @@ func (s *State) cheapestCycle(b *Balance, t *Tank, plan CyclePlan) Coins {
 	return max(cycle, s.feedSack(b))
 }
 
-func restart(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
-	if !s.Broke(b) {
+func restart(s *State, b *Balance, at Tick, sink *eventSink, plans Plans) RejectReason {
+	if !s.Broke(b, plans) {
 		return RejectNotBroke
 	}
 

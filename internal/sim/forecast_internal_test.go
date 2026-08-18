@@ -351,3 +351,24 @@ func TestOEmprestimoSugeridoPovoaAlgumaCoisa(t *testing.T) {
 		}
 	}
 }
+
+// Emprestimo que cabe no limite e nao povoa um peixe e jogada estritamente pior: o jogador
+// aceita divida nova, o juro sobe, e a fazenda continua parada.
+func TestNaoSeOfereceEmprestimoQueNaoPovoaNada(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	s := NewState(1, 0, 0)
+	s.Debt = b.Credit.MaxPrincipal - b.Credit.MaxPrincipal/5
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+
+	offer := s.LoanAdvice(b, id, b.CycleAt(TankEarthPond, s.Tick, s.Zone))
+	if offer.Block == LoanOpen && offer.Fish <= 0 {
+		t.Errorf("ofereceu %d centavos de emprestimo que povoam %d peixes", offer.Cents, offer.Fish)
+	}
+}

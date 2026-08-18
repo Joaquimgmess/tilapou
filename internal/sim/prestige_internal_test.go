@@ -23,7 +23,7 @@ func TestABrokeFarmCanStartOverAndKeepsItsLifetime(t *testing.T) {
 	b := testBalance(t)
 	s := brokeFarm(t, b)
 
-	if !s.Broke(b) {
+	if !s.Broke(b, plansOf(t, b)) {
 		t.Fatal("o cenario deveria estar quebrado: sem peixe, sem caixa, sem credito e sem prestigio")
 	}
 
@@ -79,7 +79,7 @@ func TestAHealthyFarmCannotStartOver(t *testing.T) {
 	s := stockedFarm(t, 64)
 	s.Cash = 100_000
 
-	if s.Broke(b) {
+	if s.Broke(b, plansOf(t, b)) {
 		t.Fatal("uma fazenda com peixe e caixa nao esta quebrada")
 	}
 
@@ -125,7 +125,7 @@ func TestFazendaComCreditoLivreNaoEstaQuebrada(t *testing.T) {
 	s := brokeFarm(t, b)
 	s.Debt = 0
 
-	if s.Broke(b) {
+	if s.Broke(b, plansOf(t, b)) {
 		t.Fatal("com o limite de credito inteiro livre a fazenda ainda tem como se virar")
 	}
 }
@@ -140,7 +140,7 @@ func TestFazendaSemPeixeSemCaixaESemCreditoQuebraMesmoComPrestigioASacar(t *test
 	if PrestigePointsFor(s.LifetimeEarned, b.Progression.PrestigeDivisor) <= s.Prestige {
 		t.Fatal("o cenario precisa ter prestigio a sacar")
 	}
-	if !s.Broke(b) {
+	if !s.Broke(b, plansOf(t, b)) {
 		t.Error("a fazenda tem 0 peixe, 0 caixa e 0 credito e nao esta quebrada: prestigio pendente nao e liquidez")
 	}
 }
@@ -216,7 +216,8 @@ func TestFazendaSemAcaoPossivelQuebraEmTresDias(t *testing.T) {
 	b := testBalance(t)
 	s := NewState(1, 0, 0)
 	s.Cash = 2_282
-	s.Debt = 27_610
+	// Limite consumido: credito que sobra e jogada na mao, e conta como caixa.
+	s.Debt = b.Credit.MaxPrincipal
 
 	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
 	if !ok {
@@ -275,7 +276,7 @@ func TestBrokeOlhaOCustoDePovoarOMinimo(t *testing.T) {
 	// Alguns milhares de centavos parados: da para um alevino, nao da para povoar.
 	s.Cash = 2_282
 
-	if !s.Broke(b) {
+	if !s.Broke(b, plansOf(t, b)) {
 		t.Error("com caixa que nao povoa o minimo a fazenda nao esta quebrada, e o [b] fica recusado")
 	}
 }
@@ -301,8 +302,8 @@ func TestOCaixaPresoEmDividaContaComoFazendaTravada(t *testing.T) {
 	plans[TankEarthPond] = plan
 
 	// A divida entra antes da conta: o juro dela corre durante o ciclo e faz parte do que o
-	// caixa precisa cobrir para o tanque voltar a andar.
-	s.Debt = 500_000
+	// caixa precisa cobrir, e o que sobra do limite conta junto com o caixa.
+	s.Debt = b.Credit.MaxPrincipal
 
 	tank := s.tank(id)
 	cycle := s.cheapestCycle(b, tank, plan)
@@ -345,4 +346,56 @@ func TestRacaoSemLoteNaoContaComoSaida(t *testing.T) {
 	if !s.stuck(b, plans) {
 		t.Error("tanque sem um peixe, com racao parada e sem caixa, ainda conta como fazenda viva")
 	}
+}
+
+// Credito disponivel e jogada do jogador: contar so o caixa liga o cronometro de falencia em
+// quem tem um emprestimo trivial na mao, e nega a tecla de recomecar a quem nao tem.
+func TestOCreditoQueSobraContaDosDoisLados(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	novo := func(debt Coins) State {
+		s := NewState(1, 0, 0)
+		s.Debt = debt
+
+		if _, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres); !ok {
+			t.Fatal("sem tanque")
+		}
+
+		return s
+	}
+
+	plan := b.CycleAt(TankEarthPond, 0, 0)
+
+	var plans Plans
+	plans[TankEarthPond] = plan
+
+	// Sem divida, o limite inteiro esta na mao: ha jogada, e o resgate nao tem o que resgatar.
+	folgado := novo(0)
+	if folgado.stuck(b, plans) {
+		t.Error("fazenda com o limite de credito inteiro livre contou como travada")
+	}
+	if folgado.Broke(b, plans) {
+		t.Error("fazenda com o limite de credito inteiro livre contou como quebrada")
+	}
+
+	// Com o limite quase todo consumido, o que sobra nao paga um ciclo: as duas concordam.
+	apertado := novo(b.Credit.MaxPrincipal - 8_000)
+	if !apertado.stuck(b, plans) {
+		t.Error("o credito que sobra nao paga um ciclo e a fazenda ainda conta como viva")
+	}
+	if !apertado.Broke(b, plans) {
+		t.Error("o objetivo manda recomecar e a tecla recusa: Broke discorda de stuck")
+	}
+}
+
+// plansOf monta o plano do viveiro para as chamadas que precisam dele.
+func plansOf(t *testing.T, b *Balance) Plans {
+	t.Helper()
+
+	var plans Plans
+	plans[TankEarthPond] = b.CycleAt(TankEarthPond, 0, 0)
+
+	return plans
 }
