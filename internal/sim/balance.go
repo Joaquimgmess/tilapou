@@ -109,6 +109,11 @@ type AutomationSpec struct {
 // ProgressionBalance governs progression and restart: factors in PPM and the start in
 // cents, fish and micrograms.
 type ProgressionBalance struct {
+	// StuckDaysToBankruptcy is how long the farm may sit with no possible action before it
+	// is wound up. The trigger is the absence of a move, not the size of the debt: debt
+	// grows too slowly to rescue anyone.
+	StuckDaysToBankruptcy int64
+
 	CostFactorPPM    PPM
 	PrestigeDivisor  int64
 	PrestigeBonusPPM PPM

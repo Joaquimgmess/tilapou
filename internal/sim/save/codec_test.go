@@ -19,6 +19,7 @@ func sample(t *testing.T) sim.State {
 	s.Cash = 987_654
 	s.LifetimeEarned = 1_234_567
 	s.Prestige = 3
+	s.StuckTicks = 77
 	s.EventSeq = 91
 	s.Debt = 45_000
 	s.DebtCarry = 17

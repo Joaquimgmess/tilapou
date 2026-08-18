@@ -209,3 +209,73 @@ func TestDividaAbaixoDoTetoNaoQuebraNada(t *testing.T) {
 		t.Error("a divida abaixo do teto foi perdoada")
 	}
 }
+
+func TestFazendaSemAcaoPossivelQuebraEmTresDias(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Cash = 2_282
+	s.Debt = 27_610
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	// Tres peixes minusculos: nao valem despesca e nao ha caixa para racao.
+	s.StockTank(id, 3, 30*MicrogramsPerGram, 100)
+
+	out, err := Advance(Input{State: s, Until: s.Tick + 4*TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando: %v", err)
+	}
+
+	if out.State.Debt != 0 {
+		t.Errorf("depois de 4 dias sem acao possivel a divida ainda e %d", out.State.Debt)
+	}
+	// O caixa fica um pouco abaixo do pacote porque a manutencao do dia corre depois.
+	if out.State.Cash <= 0 || out.State.Cash > b.Progression.RestartCash {
+		t.Errorf("a falencia deixou o caixa em %d, esperava perto do pacote de reinicio %d",
+			out.State.Cash, b.Progression.RestartCash)
+	}
+	if out.State.Fish() != b.Progression.RestartFish {
+		t.Errorf("a falencia devolveu %d peixes, queria %d", out.State.Fish(), b.Progression.RestartFish)
+	}
+}
+
+func TestFazendaComCaixaParaRacaoNaoQuebra(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := NewState(1, 0, 0)
+	s.Cash = 5_000_000
+	s.Debt = 27_610
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	s.StockTank(id, 3, 30*MicrogramsPerGram, 100)
+
+	out, err := Advance(Input{State: s, Until: s.Tick + 10*TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando: %v", err)
+	}
+
+	if out.State.Debt == 0 {
+		t.Error("a fazenda com caixa para racao foi declarada falida")
+	}
+}
+
+func TestBrokeOlhaOCustoDePovoarOMinimo(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := brokeFarm(t, b)
+	// Alguns milhares de centavos parados: da para um alevino, nao da para povoar.
+	s.Cash = 2_282
+
+	if !s.Broke(b) {
+		t.Error("com caixa que nao povoa o minimo a fazenda nao esta quebrada, e o [b] fica recusado")
+	}
+}

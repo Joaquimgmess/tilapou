@@ -266,10 +266,31 @@ func (m Model) move(dx, dy int, look facing) Model {
 		return m
 	}
 
+	turned := m.you.facing != look
 	m.you.facing = look
+
 	if !m.farm.blocked(m.you.x+dx, m.you.y+dy) {
 		m.you.x += dx
 		m.you.y += dy
+
+		return m.clearStale()
 	}
-	return m.clearStale()
+
+	// Virar ja e resposta; esbarrar de frente para o obstaculo nao mexia um pixel.
+	if turned {
+		return m.clearStale()
+	}
+
+	return m.say(blockedMessage(m.farm, m.you.x+dx, m.you.y+dy))
+}
+
+func blockedMessage(farm farmMap, x, y int) string {
+	if _, ok := farm.pondAt(x, y); ok {
+		return "nao da para atravessar o viveiro: ande em volta"
+	}
+	if x == farm.shedX() && y == farm.shedY() {
+		return "o galpao esta fechado desse lado: entre pela frente"
+	}
+
+	return "a cerca fecha aqui"
 }

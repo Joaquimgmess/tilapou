@@ -142,6 +142,8 @@ type economiaSection struct {
 }
 
 type progressaoSection struct {
+	DiasSemSaidaParaFalencia int64 `toml:"dias_sem_saida_para_falencia"`
+
 	FatorCusto                  float64 `toml:"fator_custo"`
 	PrestigioDivisor            int64   `toml:"prestigio_divisor"`
 	PrestigioBonusPorUnidadePct float64 `toml:"prestigio_bonus_por_unidade_pct"`
@@ -258,13 +260,14 @@ func convert(f file) (sim.Balance, error) {
 			CarrierRiskPPM: ppmOf(f.Choques.PortadorRiscoPct / percentScale),
 		},
 		Progression: sim.ProgressionBalance{
-			CostFactorPPM:    ppmOf(f.Progressao.FatorCusto),
-			PrestigeDivisor:  f.Progressao.PrestigioDivisor,
-			PrestigeBonusPPM: ppmOf(f.Progressao.PrestigioBonusPorUnidadePct / percentScale),
-			ContractBonusPPM: ppmOf(f.Progressao.ContratoBonusPct / percentScale),
-			RestartCash:      sim.Coins(f.Progressao.ReinicioCaixaCentavos),
-			RestartFish:      sim.FishCount(f.Progressao.ReinicioPeixes),
-			RestartFeed:      sim.Micrograms(f.Progressao.ReinicioRacaoKg) * sim.MicrogramsPerKilogram,
+			StuckDaysToBankruptcy: f.Progressao.DiasSemSaidaParaFalencia,
+			CostFactorPPM:         ppmOf(f.Progressao.FatorCusto),
+			PrestigeDivisor:       f.Progressao.PrestigioDivisor,
+			PrestigeBonusPPM:      ppmOf(f.Progressao.PrestigioBonusPorUnidadePct / percentScale),
+			ContractBonusPPM:      ppmOf(f.Progressao.ContratoBonusPct / percentScale),
+			RestartCash:           sim.Coins(f.Progressao.ReinicioCaixaCentavos),
+			RestartFish:           sim.FishCount(f.Progressao.ReinicioPeixes),
+			RestartFeed:           sim.Micrograms(f.Progressao.ReinicioRacaoKg) * sim.MicrogramsPerKilogram,
 		},
 	}
 

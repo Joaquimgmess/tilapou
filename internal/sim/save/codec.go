@@ -34,6 +34,7 @@ type document struct {
 	EventSeq       uint64         `json:"event_seq"`
 	Debt           int64          `json:"debt"`
 	DebtCarry      int64          `json:"debt_carry"`
+	StuckTicks     int64          `json:"stuck_ticks"`
 	LastCycle      cycleDocument  `json:"last_cycle,omitzero"`
 	Tanks          []tankDocument `json:"tanks"`
 }
@@ -106,6 +107,7 @@ func Encode(s sim.State) ([]byte, error) {
 		EventSeq:       s.EventSeq,
 		Debt:           int64(s.Debt),
 		DebtCarry:      s.DebtCarry,
+		StuckTicks:     int64(s.StuckTicks),
 		LastCycle: cycleDocument{
 			Fish:       int32(s.LastCycle.Fish),
 			Mass:       int64(s.LastCycle.Mass),
@@ -231,6 +233,7 @@ func Decode(raw []byte) (sim.State, error) {
 	state.EventSeq = doc.EventSeq
 	state.Debt = sim.Coins(doc.Debt)
 	state.DebtCarry = doc.DebtCarry
+	state.StuckTicks = sim.Tick(doc.StuckTicks)
 	state.LastCycle = sim.Cycle{
 		Fish:       sim.FishCount(doc.LastCycle.Fish),
 		Mass:       sim.Micrograms(doc.LastCycle.Mass),

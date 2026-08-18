@@ -211,6 +211,10 @@ custo_energia_aerador_centavos_hora = 120
 # custa 66x a base e a fazenda para de crescer em ~25 dos 64 que o estado reserva; a 1.12
 # custa 30x. A receita cresce linear com o numero de tanques, o custo cresce exponencial.
 [progressao]
+# Sem peixe que valha despesca e sem caixa para um saco de racao, nada que o jogador faca
+# reverte: a fazenda quebra por falta de acao possivel, e nao por tamanho da divida, que
+# cresce devagar demais para servir de resgate.
+dias_sem_saida_para_falencia = 3
 fator_custo = 1.12
 prestigio_divisor = 1000000
 prestigio_bonus_por_unidade_pct = 5.0

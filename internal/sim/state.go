@@ -172,6 +172,9 @@ type State struct {
 	Debt           Coins
 	DebtCarry      int64
 	LastCycle      Cycle
+	// StuckTicks conta quanto tempo a fazenda esta sem nenhuma acao possivel: sem peixe que
+	// valha despesca e sem caixa para um saco de racao. Zera assim que uma das duas volta.
+	StuckTicks Tick
 }
 
 const (

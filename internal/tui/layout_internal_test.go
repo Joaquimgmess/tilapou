@@ -1,9 +1,14 @@
 package tui
 
 import (
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
+	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/charmbracelet/x/ansi"
 
@@ -195,5 +200,42 @@ func TestATeclaDoAlertaApareceNaBarraQuandoServe(t *testing.T) {
 		if strings.Contains(ansi.Strip(m.keyBar()), jumpKey+" alerta") {
 			t.Errorf("modo %d: a barra anuncia o %q sem alerta de outro tanque", mode, jumpKey)
 		}
+	}
+}
+
+func TestEsbarrarJaOlhandoParaOObstaculoResponde(t *testing.T) {
+	t.Parallel()
+
+	snap := sizedSnapshot()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(snap)
+	}))
+	t.Cleanup(server.Close)
+
+	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.run(d.model.(Model).fetch())
+
+	// Primeira seta vira o avatar para o viveiro; a segunda ja o encontra virado.
+	d.press(keyUp)
+
+	before, ok := d.model.(Model)
+	if !ok {
+		t.Fatal("o driver perdeu o Model")
+	}
+
+	d.press(keyUp)
+
+	after, ok := d.model.(Model)
+	if !ok {
+		t.Fatal("o driver perdeu o Model depois do segundo passo")
+	}
+	if after.you != before.you {
+		t.Fatal("o cenario precisa de um obstaculo: o avatar andou")
+	}
+	if after.message == "" {
+		t.Error("esbarrar de frente para o obstaculo nao respondeu nada")
 	}
 }

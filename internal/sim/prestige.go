@@ -24,15 +24,44 @@ func (s *State) prestigeBonus(b *Balance) PPM {
 	return PPM(addSat(int64(UnitPPM), int64(s.Prestige)*int64(b.Progression.PrestigeBonusPPM)))
 }
 
-// Broke reports whether there are no fish, no cash for a fingerling and no credit. Prestige
-// left to claim does not count: it comes from LifetimeEarned, which never goes down, so it
-// would keep a farm with nothing to do from ever restarting.
+// Broke reports whether there are no fish, no cash to restock the minimum and no credit.
+// The bar is the minimum stocking and not a single fingerling: a few thousand cents parked
+// in the till buy one fish and nothing else, and used to keep [b] refused forever. Prestige
+// left to claim does not count: it comes from LifetimeEarned, which never goes down.
 func (s *State) Broke(b *Balance) bool {
-	if s.Fish() > 0 || s.Cash >= b.Economy.FingerlingPrice {
+	restock := b.Economy.FingerlingPrice * MinStockFish
+	if s.Fish() > 0 || s.Cash >= restock {
 		return false
 	}
 
-	return Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt))) < b.Economy.FingerlingPrice
+	return Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt))) < restock
+}
+
+// MinStockFish is the smallest stocking worth the name; below it the farm has no cycle.
+const MinStockFish = 100
+
+// stuck reports whether nothing can improve the farm any more: no cash for the smallest
+// restock, no fish worth harvesting, and no feed left to grow the ones that are small. Feed
+// in a tank is a way out on its own — the batch keeps growing without the player.
+func (s *State) stuck(b *Balance) bool {
+	if s.Cash >= s.feedSack(b) {
+		return false
+	}
+
+	for i := range s.TankCount {
+		t := &s.Tanks[i]
+		if t.FeedStock > 0 {
+			return false
+		}
+
+		for j := range t.BatchCount {
+			if t.Batches[j].MeanMass >= b.Growth.HarvestMass {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func restart(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
@@ -66,12 +95,23 @@ func prestige(s *State, b *Balance, at Tick, sink *eventSink) RejectReason {
 // whether it fired. It hands back the same restart package as [b], so nobody is better off
 // starving the farm on purpose than going broke.
 func bankrupt(s *State, b *Balance, at Tick, sink *eventSink) bool {
-	if b.Credit.BankruptcyPrincipal <= 0 || s.Debt < b.Credit.BankruptcyPrincipal {
+	if s.stuck(b) {
+		s.StuckTicks++
+	} else {
+		s.StuckTicks = 0
+	}
+
+	overDebt := b.Credit.BankruptcyPrincipal > 0 && s.Debt >= b.Credit.BankruptcyPrincipal
+	stuckTooLong := b.Progression.StuckDaysToBankruptcy > 0 &&
+		s.StuckTicks >= Tick(b.Progression.StuckDaysToBankruptcy)*TicksPerDay
+
+	if !overDebt && !stuckTooLong {
 		return false
 	}
 
 	forgiven := s.Debt
 	rebuild(s, b, at, s.Prestige)
+	s.StuckTicks = 0
 
 	sink.emit(Event{Kind: EventBankrupt, From: at, To: at, Cash: forgiven})
 
