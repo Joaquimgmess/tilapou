@@ -17,6 +17,15 @@ type driver struct {
 	model tea.Model
 }
 
+// refresh pede o snapshot pelo mesmo caminho do jogo, que registra o pedido em voo.
+func (d *driver) refresh() {
+	d.t.Helper()
+
+	started, cmd := d.model.(Model).fetching()
+	d.model = started
+	d.run(cmd)
+}
+
 func (d *driver) run(cmd tea.Cmd) {
 	d.t.Helper()
 
@@ -119,4 +128,60 @@ func TestLiveSession(t *testing.T) {
 	if err := os.WriteFile("/tmp/live.txt", []byte(out.String()), 0o600); err != nil {
 		t.Fatal(err)
 	}
+}
+
+// Pedido novo com o anterior no ar enfileira trabalho no daemon em vez de esperar por ele: e
+// assim que a TUI se afoga sozinha quando a resposta demora mais que o intervalo de refresh.
+func TestORefreshNaoPedeDeNovoComOPedidoNoAr(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+
+	first, cmd := m.fetching()
+	if cmd == nil {
+		t.Fatal("o primeiro refresh nao pediu nada")
+	}
+
+	if _, again := first.fetching(); again != nil {
+		t.Error("pediu de novo com o anterior ainda no ar")
+	}
+
+	// Resposta do pedido que a acao cancelou: chega depois e traz um mundo mais velho.
+	if stale := first.onSnapshot(snapshotMsg{snapshot: sizedSnapshot(), seq: first.flightSeq - 1}); stale.inFlight == flightNone {
+		t.Error("resposta de um pedido cancelado foi aceita e liberou o caminho")
+	}
+
+	back := first.onSnapshot(snapshotMsg{snapshot: sizedSnapshot(), seq: first.flightSeq})
+	if _, after := back.fetching(); after == nil {
+		t.Error("depois da resposta chegar o refresh parou de pedir")
+	}
+}
+
+// Peixe nadando com o numero parado e a tela dizendo que esta viva quando o que ela mostra ja
+// nao vale: passando do timeout, a animacao congela.
+func TestAAnimacaoCongelaQuandoODadoEnvelhece(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 200, 80
+	m.frame = 3
+
+	fresh := m.render()
+
+	m.staleTicks = staleFreeze
+	if frozen := m.render(); frozen == fresh {
+		t.Error("com o dado velho a tela continua animando igual")
+	}
+
+	m.frame = 4
+	if next := m.render(); next != m.withFrame(3).render() {
+		t.Error("com o dado velho a animacao andou de quadro")
+	}
+}
+
+func (m Model) withFrame(frame int) Model {
+	m.frame = frame
+
+	return m
 }

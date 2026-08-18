@@ -22,10 +22,28 @@ const (
 	messageTicks   = 5
 )
 
+// waitFrames gira enquanto um pedido esta no ar.
+const waitFrames = `|/-\`
+
+// staleFreeze e a espera a partir da qual a tela para de animar: peixe nadando com dado velho
+// e a tela dizendo que esta viva quando nao esta.
+const staleFreeze = int(callTimeout / refreshEvery)
+
 type snapshotMsg struct {
 	snapshot client.Snapshot
 	err      error
+	seq      uint64
 }
+
+// flight is what the TUI has in the air; only one request travels at a time.
+type flight uint8
+
+// O que esta voando.
+const (
+	flightNone flight = iota
+	flightRefresh
+	flightAction
+)
 
 type tickMsg time.Time
 
@@ -53,6 +71,11 @@ type Model struct {
 	snapshot   client.Snapshot
 	err        error
 	nextKey    uint64
+	inFlight   flight
+	flightSeq  uint64
+	flightAt   int
+	flightWhat string
+	cancel     context.CancelFunc
 	width      int
 	height     int
 	quitting   bool
@@ -78,8 +101,12 @@ func New(c *client.Client) Model {
 }
 
 // Init starts the first snapshot fetch and the periodic tick.
-func (m Model) Init() tea.Cmd {
-	return tea.Batch(m.fetch(), tick())
+//
+// O primeiro tick sai na hora, e e ele que pede: assim o pedido inicial passa pelo mesmo
+// controle de um pedido por vez que todos os outros, que o Init sozinho nao consegue fazer
+// porque devolve comando e nao modelo.
+func (Model) Init() tea.Cmd {
+	return func() tea.Msg { return tickMsg(time.Time{}) }
 }
 
 // Update handles messages and returns a new Model, without changing the original.
@@ -100,7 +127,9 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.message = ""
 		}
 
-		return m, tea.Batch(m.fetch(), tick())
+		next, cmd := m.fetching()
+
+		return next, tea.Batch(cmd, tick())
 
 	case snapshotMsg:
 		return m.onSnapshot(msg), nil
@@ -113,6 +142,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) onSnapshot(msg snapshotMsg) Model {
+	// Resposta de um pedido que a acao cancelou chega depois dela e sobrescreveria o mundo
+	// novo com o velho: para o jogador, a acao nao teria feito nada.
+	if msg.seq != m.flightSeq {
+		return m
+	}
+	m.inFlight, m.cancel = flightNone, nil
+
 	m.err = msg.err
 	if msg.err != nil {
 		return m
@@ -238,7 +274,7 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case "r":
-		return m, m.fetch()
+		return m.onRetry()
 
 	case "tab":
 		m.mode = m.otherMode()
@@ -445,37 +481,83 @@ func (m Model) buyUpgrade(index int) (tea.Model, tea.Cmd) {
 }
 
 func (m Model) act(action client.Action, status string) (tea.Model, tea.Cmd) {
-	action.Key = m.nextKey
-	m.nextKey++
+	// Acao sobre acao e recusada, nunca enfileirada: duas iguais no ar sao dois efeitos. A
+	// recusa cita o que esta voando para a tecla nao parecer que sumiu.
+	if m.inFlight == flightAction {
+		return m.say("espere — " + m.flightWhat), nil
+	}
 
 	if action.Tank != 0 {
 		status = fmt.Sprintf("%s no tanque %d", status, action.Tank)
 	}
-	m = m.say(status)
 
-	c := m.client
+	act := action
+	act.Key = m.nextKey
 
-	return m, func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
+	said := m.say(status)
+	said.nextKey = m.nextKey + 1
+
+	return said.launch(flightAction, status, func(ctx context.Context, c *client.Client) (client.Snapshot, error) {
+		return c.Act(ctx, act)
+	})
+}
+
+// fetching pede o snapshot, ou devolve um comando nulo quando ja ha pedido no ar: pedir de
+// novo antes da resposta enfileira trabalho no daemon e a TUI se afoga sozinha.
+func (m Model) fetching() (Model, tea.Cmd) {
+	if m.inFlight != flightNone {
+		return m, nil
+	}
+
+	return m.launch(flightRefresh, "", func(ctx context.Context, c *client.Client) (client.Snapshot, error) {
+		return c.Snapshot(ctx)
+	})
+}
+
+// launch poe um pedido no ar. A acao passa na frente do refresh automatico e cancela ele: o
+// refresh e descartavel, nasce outro em um segundo, e a tecla do jogador nao.
+func (m Model) launch(kind flight, what string,
+	call func(context.Context, *client.Client) (client.Snapshot, error),
+) (Model, tea.Cmd) {
+	if kind == flightAction && m.cancel != nil {
+		m.cancel()
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
+
+	next := m
+	next.inFlight, next.flightAt, next.flightWhat, next.cancel = kind, m.frame, what, cancel
+	next.flightSeq = m.flightSeq + 1
+
+	seq, c := next.flightSeq, next.client
+
+	return next, func() tea.Msg {
 		defer cancel()
 
-		snapshot, err := c.Act(ctx, action)
+		snapshot, err := call(ctx, c)
 
-		return snapshotMsg{snapshot: snapshot, err: err}
+		return snapshotMsg{snapshot: snapshot, err: err, seq: seq}
 	}
 }
 
-func (m Model) fetch() tea.Cmd {
-	c := m.client
-
-	return func() tea.Msg {
-		ctx, cancel := context.WithTimeout(context.Background(), callTimeout)
-		defer cancel()
-
-		snapshot, err := c.Snapshot(ctx)
-
-		return snapshotMsg{snapshot: snapshot, err: err}
+// onRetry responde a tecla de tentar de novo. Com pedido no ar ela nao pede outro, mas
+// tambem nao pode virar nada: tecla sem resposta le como jogo travado.
+func (m Model) onRetry() (tea.Model, tea.Cmd) {
+	next, cmd := m.fetching()
+	if cmd == nil {
+		return m.say(fmt.Sprintf("ja estou pedindo... %ds", m.flying())), nil
 	}
+
+	return next, cmd
+}
+
+// flying e ha quantos ticks o pedido esta no ar.
+func (m Model) flying() int {
+	if m.inFlight == flightNone {
+		return 0
+	}
+
+	return m.frame - m.flightAt
 }
 
 func tick() tea.Cmd {

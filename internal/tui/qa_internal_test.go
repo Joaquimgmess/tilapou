@@ -93,7 +93,7 @@ func TestQASession(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(addr, 10*time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	qaPlay(t, d, os.Getenv("QA_SCRIPT"))
 
@@ -153,7 +153,7 @@ func TestQAHarnessActuallySendsTheAction(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	qaPlay(t, d, "f,c,h")
 
@@ -177,7 +177,7 @@ func TestQAScriptHandlesArrowsAndPrompts(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	qaPlay(t, d, "down,up,left,right")
 
@@ -216,7 +216,7 @@ func TestApertarZNoSegundoViveiroTrocaOTanqueSelecionado(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	if got := d.model.(Model).mode; got != ModeGameBoy {
 		t.Fatalf("o jogo abre no modo %v, queria a tela GameBoy", got)

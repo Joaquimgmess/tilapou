@@ -55,6 +55,16 @@ const (
 )
 
 // mapScreenRows is how many terminal rows are left for the map after the chrome.
+// animation congela o quadro da animacao quando o dado ja e velho demais: peixe nadando com
+// numero parado e a tela dizendo que esta viva quando o que ela mostra ja nao vale.
+func (m Model) animation() int {
+	if m.staleTicks >= staleFreeze {
+		return 0
+	}
+
+	return m.frame
+}
+
 // mapSpace e quantas linhas o mapa desenha e quantas sobram de vidro para o quadro nao
 // encolher quando o menu fecha.
 type mapSpace struct {
@@ -144,7 +154,7 @@ func (m Model) renderGameBoy() string {
 	// rodape do frame anterior ficaria na tela.
 	rows := m.mapRows(width, chrome)
 
-	blocks := []string{hud, banner, cropTo(renderMap(m.farm, m.you, snapshot, m.frame), rows.drawn)}
+	blocks := []string{hud, banner, cropTo(renderMap(m.farm, m.you, snapshot, m.animation()), rows.drawn)}
 	if rows.glass > 0 {
 		blocks = append(blocks, strings.Repeat("\n", rows.glass-1))
 	}

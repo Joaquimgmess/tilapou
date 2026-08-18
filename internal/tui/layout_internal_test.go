@@ -216,7 +216,7 @@ func TestEsbarrarJaOlhandoParaOObstaculoResponde(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	// Primeira seta vira o avatar para o viveiro; a segunda ja o encontra virado.
 	d.press(keyUp)

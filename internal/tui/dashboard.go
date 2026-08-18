@@ -102,11 +102,27 @@ func (m Model) renderTopBar() string {
 		parts = append(parts, dimStyle.Render(fmt.Sprintf("d%d %02dh %.1f C",
 			s.Tick/(hoursPerDay*minutesPerHour), s.Hour, float64(s.TempMilliC)/milliUnit)))
 	}
+	if wait := m.waitMark(); wait != "" {
+		parts = append(parts, wait)
+	}
 	if m.staleTicks > 1 {
-		parts = append(parts, dangerStyle.Render(fmt.Sprintf("! %ds sem resposta", m.staleTicks)))
+		// A barra diz a saida junto com o problema: sem isso o jogador le que travou e nao
+		// le o que fazer.
+		parts = append(parts, dangerStyle.Render(fmt.Sprintf("! %ds sem resposta — r tenta de novo, q sai",
+			m.staleTicks)))
 	}
 
 	return barStyle.Width(m.effectiveWidth()).Render(strings.Join(parts, dimStyle.Render(" | ")))
+}
+
+// waitMark e o sinal de que ha pedido no ar. So aparece quando a espera passa de um tick:
+// piscar em toda resposta rapida seria ruido, e o que ele existe para explicar e a demora.
+func (m Model) waitMark() string {
+	if m.flying() < 1 {
+		return ""
+	}
+
+	return dimStyle.Render(string(waitFrames[m.frame%len(waitFrames)]))
 }
 
 // rule renders a section title followed by a line filling the width.

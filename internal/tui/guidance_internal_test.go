@@ -126,7 +126,7 @@ func TestPuloDoConselhoSelecionaOTanqueQueEleNomeia(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	if got := d.model.(Model).selected; got != 0 {
 		t.Fatalf("o cenario comeca com o tanque de indice %d selecionado, queria 0", got)
@@ -161,7 +161,7 @@ func TestTodaAcaoDeTanqueDizEmQualTanqueCaiu(t *testing.T) {
 
 			d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 			d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-			d.run(d.model.(Model).fetch())
+			d.refresh()
 
 			m, ok := d.model.(Model)
 			if !ok {
@@ -327,14 +327,14 @@ func TestOHistoricoDaAberturaNaoViraNovidade(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	if said := d.model.(Model).message; strings.Contains(said, "quebrou") {
 		t.Errorf("o historico da abertura foi anunciado como novidade: %q", said)
 	}
 
 	snap.Events = []client.Event{{Seq: 4, Kind: "bankrupt", CashCents: 100}, {Seq: 3, Kind: "bankrupt"}}
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	if said := d.model.(Model).message; !strings.Contains(said, "quebrou") {
 		t.Errorf("o acontecimento novo nao foi anunciado: %q", said)
@@ -358,7 +358,7 @@ func TestConfirmacaoSobreviveAoProximoPasso(t *testing.T) {
 
 			d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 			d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-			d.run(d.model.(Model).fetch())
+			d.refresh()
 
 			d.press("f")
 
@@ -448,7 +448,7 @@ func TestZNoVazioDizQueNaoTemNada(t *testing.T) {
 
 	d := &driver{t: t, model: New(client.New(server.URL, time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.run(d.model.(Model).fetch())
+	d.refresh()
 
 	// De costas para o caminho, sem viveiro nem galpao na frente.
 	d.press(keyDown)
