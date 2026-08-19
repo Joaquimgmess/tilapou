@@ -96,7 +96,7 @@ func (m Model) chromeAtRest(width int) int {
 
 	return lipgloss.Height(hudStyle.Width(width).Render(" ")) +
 		lipgloss.Height(goalStyle.Width(width).Render(" ")) +
-		lipgloss.Height(boxStyle.Width(width).Render(rest.dialogue())) +
+		lipgloss.Height(rest.body(width)) +
 		lipgloss.Height(rest.renderGameBoyKeys(width))
 }
 
@@ -110,6 +110,22 @@ func cropTo(frame string, rows int) string {
 	}
 
 	return strings.Join(lines[:rows], "\n")
+}
+
+// body e o bloco de baixo do aparelho: o painel, ou o menu com a recusa por cima dele.
+func (m Model) body(width int) string {
+	box := boxStyle.Width(width)
+	if m.menu != nil {
+		return box.Render(m.menuWithReply())
+	}
+
+	return box.Render(m.dialogue())
+}
+
+// bodyRows e a altura desse bloco. Mudanca de altura aqui e o que faz o renderer do
+// bubbletea achar que a tela rolou; ver o comentario no Update.
+func (m Model) bodyRows() int {
+	return lipgloss.Height(m.body(m.farm.cols * gb.TileSize))
 }
 
 func (m Model) fitsGameBoy() bool {
@@ -140,12 +156,7 @@ func (m Model) renderGameBoy() string {
 		banner = urgentStyle.Width(width).Render("! " + goal)
 	}
 
-	box := boxStyle.Width(width)
-
-	body := box.Render(m.dialogue())
-	if m.menu != nil {
-		body = box.Render(m.menuWithReply())
-	}
+	body := m.body(width)
 
 	keys := m.renderGameBoyKeys(width)
 

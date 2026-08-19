@@ -3,6 +3,8 @@ package tui
 import (
 	"fmt"
 	"os"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -203,4 +205,68 @@ func TestAConfirmacaoDestrutivaNaoAceitaATeclaDePovoar(t *testing.T) {
 	if next, ok := after.(Model); ok && next.confirming {
 		t.Error("o prompt continuou aberto depois da tecla")
 	}
+}
+
+// O renderer so suja quando a altura do corpo muda, e nenhum teste de string alcanca isso
+// porque o frame que entregamos esta correto nos dois estados. O que da para cobrar aqui e a
+// regra: mudou a forma, sai o pedido de limpar a tela.
+func TestMudarAFormaDoCorpoPedeLimparATela(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 100, 40
+	m.farm = m.resizedFarm(len(m.snapshot.Tanks))
+	// No mapa a tecla so age em cima do tanque; aqui interessa a mudanca de forma, nao onde
+	// o boneco esta.
+	m.mode = ModeDashboard
+
+	menu := tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0])
+
+	aberto := m
+	aberto.menu = menu
+
+	if aberto.bodyRows() == m.bodyRows() {
+		t.Fatal("o cenario precisa de um menu mais alto que o painel")
+	}
+
+	_, abrindo := m.Update(tea.KeyPressMsg{Code: 'z'})
+	if !clearsScreen(t, abrindo) {
+		t.Error("abrir o menu nao pediu para limpar a tela")
+	}
+
+	_, fechando := aberto.Update(tea.KeyPressMsg{Code: 'x'})
+	if !clearsScreen(t, fechando) {
+		t.Error("fechar o menu nao pediu para limpar a tela")
+	}
+
+	_, parado := m.Update(tickMsg{})
+	if clearsScreen(t, parado) {
+		t.Error("tick sem mudanca de forma pediu para limpar a tela a toa")
+	}
+}
+
+// clearsScreen diz se o comando carrega o pedido de limpar a tela. Compara a funcao em vez
+// de executa-la: rodar o que vem junto dispararia chamada HTTP no cliente do teste.
+func clearsScreen(t *testing.T, cmd tea.Cmd) bool {
+	t.Helper()
+
+	if cmd == nil {
+		return false
+	}
+	if isClearScreen(cmd) {
+		return true
+	}
+
+	batch, ok := cmd().(tea.BatchMsg)
+	if !ok {
+		return false
+	}
+
+	return slices.ContainsFunc(batch, isClearScreen)
+}
+
+func isClearScreen(cmd tea.Cmd) bool {
+	return cmd != nil &&
+		reflect.ValueOf(cmd).Pointer() == reflect.ValueOf(tea.Cmd(tea.ClearScreen)).Pointer()
 }

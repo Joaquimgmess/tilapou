@@ -111,7 +111,29 @@ func (Model) Init() tea.Cmd {
 }
 
 // Update handles messages and returns a new Model, without changing the original.
+//
+// O renderer do bubbletea otimiza repaint procurando linhas que rolaram, e o hash que casa
+// linha velha com nova ignora o estilo (ultraviolet, terminal_renderer_hashmap.go: hash()
+// escreve so c.Content). Nosso mapa e a mesma runa U+2580 repetida com a informacao toda no
+// fundo, entao para esse hash todas as linhas de agua sao iguais: encolher a caixa faz ele
+// "achar" um scroll que nao houve, emitir DECSTBM+SD, arrastar a caixa velha para dentro do
+// mapa e so remendar o meio das linhas — sobra a borda do frame anterior nas duas pontas.
+//
+// Provado isolado: as duas strings do frame estao corretas, e o mesmo defeito sai de um
+// programa que so alimenta o bubbletea com elas. Some com SetScrollOptim(false), que a lib
+// nao expoe. Limpar a tela na mudanca de forma e o que temos ate isso subir upstream.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	next, cmd := m.handle(msg)
+
+	after, ok := next.(Model)
+	if !ok || after.bodyRows() == m.bodyRows() {
+		return next, cmd
+	}
+
+	return next, tea.Batch(cmd, tea.ClearScreen)
+}
+
+func (m Model) handle(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
