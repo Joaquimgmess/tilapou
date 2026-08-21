@@ -12,6 +12,7 @@ const (
 // CyclePlan carries duration in days, mass in micrograms, price per kilo in cents and the stocking that pays the fixed costs.
 type CyclePlan struct {
 	Days       int64
+	At         Tick
 	Mass       Micrograms
 	PricePerKg Coins
 	BreakEven  FishCount
@@ -103,6 +104,72 @@ func outbreakLoss(spec DiseaseSpec) int64 {
 	return int64(UnitPPM) - alive
 }
 
+// MinStockFish is the smallest stocking worth the name; below it the farm has no cycle.
+const MinStockFish = 100
+
+// cycleFloor e o menor ciclo que o jogo deixa comecar: MinStockFish alevinos mais o custo
+// fixo que corre enquanto o lote cresce, nunca menos que um saco de racao. E a conta de quem
+// pergunta "da para comecar?" — o resgate, a tecla de recomecar e o piso do emprestimo.
+func cycleFloor(b *Balance, t *Tank, plan CyclePlan, debt Coins) Coins {
+	fish := int64(b.Economy.FingerlingPrice)*MinStockFish +
+		mulDivCeil(int64(feedToRaise(b, plan.At)), MinStockFish, 1)
+
+	return max(Coins(addSat(fish, int64(fixedCostOn(b, t, plan, debt)))), feedSackAt(b, plan.At))
+}
+
+// perFishFloor e o desembolso por peixe que o piso do ciclo usa: alevino mais a racao ate a
+// despesca, ao preco do dia do plano.
+func perFishFloor(b *Balance, plan CyclePlan) Coins {
+	return Coins(addSat(int64(b.Economy.FingerlingPrice), int64(feedToRaise(b, plan.At))))
+}
+
+// fundsFloor pergunta se, tomado o principal, ainda sobra caixa para povoar o piso do ciclo.
+// O proprio emprestimo aumenta o custo fixo, porque o juro da divida entra nele: por isso a
+// pergunta e feita com a divida que ele deixa, e nao com a de agora.
+func fundsFloor(b *Balance, t *Tank, plan CyclePlan, debt, cash, principal Coins) bool {
+	perFish := perFishFloor(b, plan)
+	if perFish <= 0 {
+		return false
+	}
+
+	spendable := int64(cash) + int64(principal) - int64(fixedCostOn(b, t, plan, debt+principal))
+
+	return spendable >= mulDivCeil(int64(perFish), MinStockFish, 1)
+}
+
+// lendable e quanto o galpao de fato solta neste tanque: o que o conselho pediu quando cabe no
+// limite e ainda povoa o piso do ciclo, senao o proprio piso nas mesmas condicoes, senao nada.
+// Quem pergunta "da para comecar?" usa esta funcao, e o conselho de credito e a apresentacao
+// dela — nunca o contrario.
+func lendable(b *Balance, t *Tank, plan CyclePlan, debt, cash, want Coins) Coins {
+	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(debt)))
+	if room <= 0 {
+		return 0
+	}
+
+	// Tanque com lote dentro nao pede ciclo, pede racao: o menor emprestimo util e o saco que
+	// a loja vende, e exigir dele o piso de povoamento deixaria o lote passar fome com o
+	// limite de credito livre do lado.
+	if t.Fish() > 0 {
+		if sack := feedSackAt(b, plan.At); sack <= room {
+			return max(min(want, room), sack)
+		}
+
+		return 0
+	}
+
+	if want > 0 && want <= room && fundsFloor(b, t, plan, debt, cash, want) {
+		return want
+	}
+
+	if floor := cycleFloor(b, t, plan, debt); floor <= room &&
+		fundsFloor(b, t, plan, debt, cash, floor) {
+		return floor
+	}
+
+	return 0
+}
+
 func probeStocking(b *Balance, kind TankKind) int64 {
 	spec := b.Tanks[kind]
 
@@ -161,7 +228,7 @@ func probeStep(s *State, b *Balance, at Tick, day int64, start Coins) (probeDay,
 		int64(s.Tanks[0].FeedStock), int64(MicrogramsPerKilogram))
 
 	return probeDay{
-		plan: CyclePlan{Days: day + 1, Mass: batch.MeanMass, PricePerKg: price},
+		plan: CyclePlan{Days: day + 1, At: at, Mass: batch.MeanMass, PricePerKg: price},
 		cash: s.Cash - start + Coins(value+left),
 	}, true
 }

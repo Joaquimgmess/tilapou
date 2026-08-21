@@ -334,17 +334,20 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 	// Nunca menos que um saco de racao: um emprestimo dimensionado pelos poucos peixes que
 	// faltam nao paga o proximo gasto obrigatorio, e o jogador fica com a divida sem poder
 	// alimentar o que tem.
-	wanted := max(s.loanFor(b, t, plan, short, perFish), int64(s.feedSack(b)))
-	if wanted > int64(room) {
-		// Oferecer o que cabe no limite seria oferecer uma jogada estritamente pior: ele
-		// nao povoa nada e ainda sobe o custo fixo do ciclo com mais juro.
+	wanted := int64(lendable(b, t, plan, s.Debt, s.Cash,
+		Coins(max(s.loanFor(b, t, plan, short, perFish), int64(s.feedSack(b))))))
+	if wanted <= 0 {
+		// Nem o piso do ciclo cabe no limite: aceitar so sobe o juro sem povoar nada, e e
+		// esse o estado em que a fazenda precisa do resgate, nao de mais divida.
 		return LoanOffer{Block: LoanNoCycle}
 	}
 
 	// Os peixes saem sempre da inversa do dimensionamento, e nunca de short: o arredondamento
 	// para cima que dimensiona o emprestimo sobra um peixe, e prometer um a mais do que o
 	// povoar entrega e o defeito que esta conta existe para nao ter.
-	buys := min(s.fishFor(b, t, plan, Coins(wanted), perFish), short)
+	// O que a oferta promete e o ACRESCIMO: fishFor devolve o total que o caixa mais o
+	// emprestimo povoam, e o jogador ja podia povoar fish deles sem divida nenhuma.
+	buys := min(s.fishFor(b, t, plan, Coins(wanted), perFish)-int64(fish), short)
 	if buys <= 0 {
 		// Cabe no limite e mesmo assim nao povoa um peixe: aceitar so sobe o juro, e o juro
 		// e o que ja esta engolindo o ciclo. E a mesma jogada pior que LoanNoCycle recusa.
@@ -383,5 +386,9 @@ func (s *State) loanFor(b *Balance, t *Tank, plan CyclePlan, short int64, perFis
 
 // feedSack is the smallest restock that keeps a batch fed, in cents.
 func (s *State) feedSack(b *Balance) Coins {
-	return Coins(mulDivCeil(int64(MarketAt(b, s.Tick).FeedKg), loanFeedFloorKg, 1))
+	return feedSackAt(b, s.Tick)
+}
+
+func feedSackAt(b *Balance, at Tick) Coins {
+	return Coins(mulDivCeil(int64(MarketAt(b, at).FeedKg), loanFeedFloorKg, 1))
 }

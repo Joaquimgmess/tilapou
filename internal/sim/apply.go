@@ -75,7 +75,9 @@ func applyBuyTank(s *State, b *Balance, a Action, at Tick, sink *eventSink) (rea
 }
 
 func applyStock(s *State, b *Balance, a Action, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
-	if a.Amount <= 0 || a.Amount > maxInt32 {
+	// Abaixo do piso nao ha ciclo: povoar um punhado de alevinos gasta o caixa, cobra o custo
+	// fixo do ciclo inteiro e nao paga nem a manutencao. O resgate ja conta com este piso.
+	if a.Amount < MinStockFish || a.Amount > maxInt32 {
 		return RejectBadAmount, 0
 	}
 

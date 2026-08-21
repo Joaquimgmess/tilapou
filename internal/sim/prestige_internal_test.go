@@ -118,15 +118,25 @@ func TestTilaparZeraADividaEDaPrestigio(t *testing.T) {
 	}
 }
 
-func TestFazendaComCreditoLivreNaoEstaQuebrada(t *testing.T) {
+// Limite livre so e saida quando o galpao solta o dinheiro: com o tanque vazio e caixa que
+// nao povoa o piso do ciclo, o emprestimo e recusado, e ai a fazenda esta quebrada mesmo com
+// o limite intacto. Contar o limite bruto deixava o jogador com toda tecla negando.
+func TestOuOGalpaoSoltaOCreditoOuAFazendaEstaQuebrada(t *testing.T) {
 	t.Parallel()
 
 	b := testBalance(t)
 	s := brokeFarm(t, b)
 	s.Debt = 0
 
-	if s.Broke(b, plansOf(t, b)) {
-		t.Fatal("com o limite de credito inteiro livre a fazenda ainda tem como se virar")
+	plans := plansOf(t, b)
+	offer := s.LoanAdvice(b, s.Tanks[0].ID, plans[s.Tanks[0].Kind])
+
+	if offer.Block != LoanOpen && !s.Broke(b, plans) {
+		t.Fatalf("o galpao recusou (%v) e a fazenda nao contou como quebrada: nao sobra jogada nenhuma",
+			offer.Block)
+	}
+	if offer.Block == LoanOpen && s.Broke(b, plans) {
+		t.Fatalf("o galpao empresta %d e mesmo assim a fazenda conta como quebrada", offer.Cents)
 	}
 }
 
@@ -371,13 +381,15 @@ func TestOCreditoQueSobraContaDosDoisLados(t *testing.T) {
 	var plans Plans
 	plans[TankEarthPond] = plan
 
-	// Sem divida, o limite inteiro esta na mao: ha jogada, e o resgate nao tem o que resgatar.
+	// Sem divida o limite inteiro esta na mao, mas quem decide e o que o galpao solta: as
+	// duas contas tem de dar a mesma resposta, e a mesma que o conselho de credito da.
 	folgado := novo(0)
-	if folgado.stuck(b, plans) {
-		t.Error("fazenda com o limite de credito inteiro livre contou como travada")
+	if folgado.stuck(b, plans) != folgado.Broke(b, plans) {
+		t.Errorf("stuck = %v e Broke = %v na mesma fazenda: a tecla e o cronometro respondem perguntas diferentes",
+			folgado.stuck(b, plans), folgado.Broke(b, plans))
 	}
-	if folgado.Broke(b, plans) {
-		t.Error("fazenda com o limite de credito inteiro livre contou como quebrada")
+	if offer := folgado.LoanAdvice(b, folgado.Tanks[0].ID, plan); offer.Block == LoanOpen && folgado.stuck(b, plans) {
+		t.Errorf("o galpao empresta %d e a fazenda conta como travada", offer.Cents)
 	}
 
 	// Com o limite quase todo consumido, o que sobra nao paga um ciclo: as duas concordam.

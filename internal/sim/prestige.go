@@ -35,9 +35,6 @@ func (s *State) Broke(b *Balance, plans Plans) bool {
 	return s.stuck(b, plans)
 }
 
-// MinStockFish is the smallest stocking worth the name; below it the farm has no cycle.
-const MinStockFish = 100
-
 // stuck reports whether nothing can improve the farm any more: no cash for the smallest
 // cycle, no fish worth harvesting, and no feed left to grow the ones that are small. Feed
 // in a tank is a way out on its own — the batch keeps growing without the player.
@@ -46,12 +43,13 @@ const MinStockFish = 100
 // nunca contava como preso, e o jogador ficava semanas de tela olhando o juro comer o caixa
 // sem que nenhuma tecla fizesse nada.
 func (s *State) stuck(b *Balance, plans Plans) bool {
-	// O credito que ainda da para tomar e jogada na mao do jogador, e conta como caixa: sem
-	// ele, a fazenda com o limite inteiro livre era marcada presa e resgatada em tres dias.
-	reach := s.Cash + Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
-
 	for i := range s.TankCount {
 		t := &s.Tanks[i]
+		// So conta como saida o credito que o galpao de fato solta: somar o limite livre
+		// inteiro dizia que havia jogada onde o emprestimo e recusado, e a fazenda ficava
+		// com toda tecla negando e o cronometro do resgate zerado.
+		reach := Coins(addSat(int64(s.Cash),
+			int64(lendable(b, t, plans[t.Kind], s.Debt, s.Cash, 0))))
 		if reach >= s.cheapestCycle(b, t, plans[t.Kind]) {
 			return false
 		}
@@ -71,13 +69,10 @@ func (s *State) stuck(b *Balance, plans Plans) bool {
 	return true
 }
 
-// cheapestCycle e o menor caixa que ainda comeca um ciclo no tanque: um peixe mais o custo
-// fixo que corre enquanto ele cresce, e nunca menos que um saco de racao, que e a menor
-// compra que o mercado aceita.
+// cheapestCycle e o piso do ciclo: dimensionar um alevino dizia que havia saida onde o jogo
+// nao deixa povoar tao pouco e o galpao nao empresta tao pouco.
 func (s *State) cheapestCycle(b *Balance, t *Tank, plan CyclePlan) Coins {
-	cycle := s.fixedCost(b, t, plan) + b.Economy.FingerlingPrice + feedToRaise(b, s.Tick)
-
-	return max(cycle, s.feedSack(b))
+	return cycleFloor(b, t, plan, s.Debt)
 }
 
 func restart(s *State, b *Balance, at Tick, sink *eventSink, plans Plans) RejectReason {
