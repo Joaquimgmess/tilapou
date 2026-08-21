@@ -73,3 +73,36 @@ func TestRegistroDeJogadasCobreTodaAcao(t *testing.T) {
 		}
 	}
 }
+
+// A entrada do registro replica o piso do applyX correspondente, e nao um piso proprio: com
+// o saco de 100 kg como piso, a fazenda com caixa para 1 kg contava como quebrada, a tela
+// mandava recomecar — irreversivel — e comprar 3,27 TC de racao a trazia de volta.
+func TestComprarRacaoContaComOQueOJogoAceita(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	s := NewState(1, 0, 0)
+	s.Debt = b.Credit.MaxPrincipal
+	s.Cash = MarketAt(b, s.Tick).FeedKg
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+	s.StockTank(id, 500, 100*MicrogramsPerGram, 1_000)
+	s.tank(id).FeedStock = 0
+
+	var plans Plans
+	plans[TankEarthPond] = b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+
+	antes := s
+	reason, _ := applyBuyFeed(&s, b, Action{Kind: ActionBuyFeed, Tank: id, Amount: 1}, s.Tick, &eventSink{})
+	if reason != RejectNone {
+		t.Fatalf("o jogo recusou comprar 1 kg com %d de caixa: %v", antes.Cash, reason)
+	}
+
+	if antes.Broke(b, plans) {
+		t.Errorf("o jogo aceita comprar racao com %d de caixa e a tela manda recomecar do zero", antes.Cash)
+	}
+}

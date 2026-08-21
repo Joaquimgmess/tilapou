@@ -22,8 +22,13 @@ var playable = [...]playableFor{
 
 		return int64(s.Cash) >= mulDivCeil(int64(b.Economy.FingerlingPrice), MinStockFish, 1)
 	},
-	ActionBuyFeed: func(s *State, b *Balance, _ *Tank, plan CyclePlan) bool {
-		return s.Cash >= feedSackAt(b, plan.At)
+	// O piso e o que applyBuyFeed aceita — um quilo —, e nao o saco de 100 kg do conselho de
+	// credito: com o saco aqui, a fazenda com caixa para 1 kg contava como quebrada e comprar
+	// 3,27 TC de racao a trazia de volta, com a tela mandando recomecar no meio.
+	ActionBuyFeed: func(s *State, b *Balance, t *Tank, plan CyclePlan) bool {
+		// Racao so muda o rumo com lote para comer: no tanque vazio ela e caixa que vira
+		// estoque parado, a mesma regra que o ramo do FeedStock ja aplicava.
+		return t.Fish() > 0 && s.Cash >= MarketAt(b, plan.At).FeedKg
 	},
 	ActionFeed: func(_ *State, _ *Balance, t *Tank, _ CyclePlan) bool {
 		return t.FeedStock > 0 && t.Fish() > 0
