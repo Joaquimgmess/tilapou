@@ -14,7 +14,8 @@ func TestALinhaDoCreditoMostraOCustoENaoPrometeResultado(t *testing.T) {
 	t.Parallel()
 
 	tank := api.Tank{
-		ID: 1, Fish: 0, BreakEven: 824, StockAdvice: 0,
+		// LoanFish cobre o que falta: sem a ressalva, a linha e a completa, com a margem.
+		ID: 1, Fish: 0, BreakEven: 400, StockAdvice: 0,
 		LoanAdvice: 188_336, LoanFish: 400, LoanBlock: api.LoanOpen,
 		LoanOwed: 224_000, CycleDays: 189, CycleMargin: 223_932,
 	}
@@ -22,12 +23,16 @@ func TestALinhaDoCreditoMostraOCustoENaoPrometeResultado(t *testing.T) {
 
 	got := loanHint(snap, tank)
 
-	for _, want := range []string{"1883,36", "2240,00", "189 d", "2239,32"} {
+	// O juro e o numero que decide a jogada: 4740,00 TC de juro contra 2239,32 de margem
+	// projetada e um negocio que perde, e sem ele a linha parece boa.
+	for _, want := range []string{"2240,00", "189 d", "356,64", "18,9%", "2239,32"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("a linha do credito nao mostra %q: %q", want, got)
 		}
 	}
-	for _, avoid := range []string{"cobre", "Pegue"} {
+	// O principal ja esta no rotulo do item ("Pegar emprestimo de X"): repeti-lo no hint
+	// custava as 19 colunas que o juro precisa.
+	for _, avoid := range []string{"cobre", "Pegue", "1883,36 TC agora"} {
 		if strings.Contains(got, avoid) {
 			t.Errorf("a linha do credito ainda afirma resultado com %q: %q", avoid, got)
 		}
@@ -101,6 +106,30 @@ func TestObjetivoDoTopoEConselhoDoTanqueContamAMesmaHistoria(t *testing.T) {
 		if caso.snap.CashCents > 0 && strings.Contains(topo, "sem grana") {
 			t.Errorf("%s: o topo afirma 'sem grana' com %s no caixa: %q",
 				caso.nome, coins(caso.snap.CashCents), topo)
+		}
+	}
+}
+
+// Com a ressalva do lote parcial os dois textos nao cabem juntos no campo do menu (99 colunas
+// num campo de 81). O juro fica e a margem sai: a margem e do ciclo e nao muda com o
+// principal, o juro e o numero que decide a jogada.
+func TestComRessalvaDeLoteParcialOJuroFicaEAMargemSai(t *testing.T) {
+	t.Parallel()
+
+	tank := api.Tank{
+		ID: 1, Fish: 0, BreakEven: 824, StockAdvice: 0,
+		LoanAdvice: 1_270_000, LoanFish: 400, LoanBlock: api.LoanOpen,
+		LoanOwed: 1_753_870, CycleDays: 381, CycleMargin: 368_637,
+	}
+
+	got := loanHint(api.Snapshot{CashCents: 50_000}, tank)
+
+	if len([]rune(got)) > 81 {
+		t.Errorf("a dica tem %d colunas e o campo do menu tem 81: %q", len([]rune(got)), got)
+	}
+	for _, want := range []string{"400 de 824", "juro", "38,1%"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("a dica com ressalva perdeu %q: %q", want, got)
 		}
 	}
 }

@@ -218,7 +218,9 @@ func loanHint(s api.Snapshot, t api.Tank) string {
 	// quantos peixes ele povoa e o daemon, que ja desconta o custo fixo do ciclo.
 	short := t.BreakEven - int64(t.Fish) - t.StockAdvice
 	if short > 0 && t.LoanFish > 0 && t.LoanFish < short {
-		return fmt.Sprintf("da para %d de %d; %s", t.LoanFish, short, creditCost(t))
+		// Os dois juntos dao 99 colunas num campo de 81. Quem sai e a margem, que e do ciclo
+		// e nao muda com o principal; o juro fica, porque e o numero que decide a jogada.
+		return fmt.Sprintf("da para %d de %d; %s", t.LoanFish, short, creditOwed(t))
 	}
 
 	return creditCost(t)
@@ -228,12 +230,42 @@ func loanHint(s api.Snapshot, t api.Tank) string {
 // que entra hoje, o que volta no fim do ciclo e a margem que o ciclo projeta. Nenhum verbo de
 // recomendacao: o texto mostra o custo e a conclusao e do jogador (decision-012).
 func creditCost(t api.Tank) string {
-	custo := fmt.Sprintf("%s agora, %s de volta em %d d", coins(t.LoanAdvice), coins(t.LoanOwed), t.CycleDays)
+	// O principal nao se repete aqui: o rotulo do item ja diz "Pegar emprestimo de X", e a
+	// repeticao custava as colunas que o juro precisa — e o juro e o numero que decide.
+	custo := creditOwed(t)
+
+	// "o ciclo projeta", e nao "margem projetada": a margem e do ciclo e nao muda com o
+	// principal. Sem sujeito e colada em "volta X", o olho empresta o sujeito da frase
+	// anterior — o emprestimo — e le como lucro daquele negocio.
 	if t.CycleMargin <= 0 {
 		return custo + "; o ciclo nao projeta margem"
 	}
 
-	return custo + "; margem projetada " + coins(t.CycleMargin)
+	return custo + "; o ciclo projeta " + coins(t.CycleMargin)
+}
+
+// creditOwed e quanto o emprestimo devolve no fim e quanto disso e juro, em TC e em %.
+func creditOwed(t api.Tank) string {
+	juro := t.LoanOwed - t.LoanAdvice
+
+	return fmt.Sprintf("volta %s em %d d; juro %s (%s)",
+		coins(t.LoanOwed), t.CycleDays, coins(juro), shareOf(juro, t.LoanAdvice))
+}
+
+// shareOf formata a fatia de base em pontos percentuais com uma casa. Separado do percent do
+// painel, que recebe PPM e arredonda para inteiro: aqui a casa decimal muda a leitura.
+func shareOf(part, base int64) string {
+	if base <= 0 {
+		return "-"
+	}
+
+	// Decimos de ponto percentual: a casa decimal muda a leitura de "18,9%" para "19%", e a
+	// diferenca entre juro e margem cabe justamente ali.
+	const tenthsPerPercent = 10
+
+	tenths := part * centiUnit * tenthsPerPercent / base
+
+	return fmt.Sprintf("%d,%d%%", tenths/tenthsPerPercent, tenths%tenthsPerPercent)
 }
 
 func stockBlocked(t api.Tank) string {
