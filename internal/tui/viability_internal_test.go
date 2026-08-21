@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/charmbracelet/x/ansi"
+
+	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
 // O painel do mercado fala de PRECO do dia; resultado do lote e do painel ao lado. Dizer "da
@@ -42,5 +44,53 @@ func TestADecisaoContinuaDizendoQuandoOLotePerde(t *testing.T) {
 
 	if frame := ansi.Strip(m.renderDashboard()); !strings.Contains(frame, "ABAIXO DO CUSTO") {
 		t.Errorf("com o preco abaixo do custo a DECISAO deixou de avisar:\n%s", frame)
+	}
+}
+
+// Com caixa que povoa mas nao alimenta, a tela nao pode apontar o recomeco: o [b] responde
+// not_broke e o [s] funciona. O aviso e sobre a racao, e a tecla citada e a que age.
+func TestComCaixaQuePovoaMasNaoAlimentaATelaNaoMandaRecomecar(t *testing.T) {
+	t.Parallel()
+
+	snap := api.Snapshot{
+		CashCents: 20_000,
+		Tanks: []api.Tank{{
+			ID: 1, StockBlock: api.StockShortFeed, StockShort: 826_900,
+			LoanBlock: api.LoanNoCycle,
+		}},
+	}
+
+	linha := emptyTankAdvice(snap, snap.Tanks[0])
+	topo := farmGoal(snap)
+
+	for nome, got := range map[string]string{"linha do tanque": linha, "objetivo do topo": topo} {
+		if strings.Contains(got, "[b]") {
+			t.Errorf("%s aponta o recomeco num estado em que o [s] funciona: %q", nome, got)
+		}
+		if !strings.Contains(got, "[s]") {
+			t.Errorf("%s nao aponta a tecla que age: %q", nome, got)
+		}
+		if !strings.Contains(got, "racao") {
+			t.Errorf("%s nao avisa que a racao nao esta paga: %q", nome, got)
+		}
+	}
+}
+
+// A fazenda quebrada diz o que e verdade — que nao resta jogada — em vez de enumerar motivos
+// que a propria tela desmente duas linhas abaixo.
+func TestAFazendaQuebradaNaoEnumeraMotivos(t *testing.T) {
+	t.Parallel()
+
+	quebrada := api.Snapshot{Broke: true, Debt: 700_000, CashCents: 0, Fish: 500}
+
+	got, ok := broke(quebrada)
+	if !ok {
+		t.Fatal("com a fazenda quebrada o objetivo nao apareceu")
+	}
+	if strings.Contains(got.text, "sem peixe") {
+		t.Errorf("a frase afirma 'sem peixe' com 500 peixes na fazenda: %q", got.text)
+	}
+	if !strings.Contains(got.text, "jogada") {
+		t.Errorf("a frase nao diz o que e verdade — que nao resta jogada: %q", got.text)
 	}
 }

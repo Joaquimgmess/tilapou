@@ -82,6 +82,10 @@ const (
 	StockNoBatch StockBlock = "no_batch"
 	StockNoCash  StockBlock = "no_cash"
 	StockNoCycle StockBlock = "no_cycle"
+	// StockShortFeed e o oposto de StockNoCycle: o jogo ACEITA povoar o minimo, o que falta e
+	// a racao ate a despesca. Os dois moravam no mesmo valor e a tela apontava [b] onde o [s]
+	// funciona.
+	StockShortFeed StockBlock = "short_feed"
 )
 
 // Event is the event in the API, with mass in grams and cash in cents.

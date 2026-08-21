@@ -180,7 +180,19 @@ func (d *driver) stockedAtLeast(step string, querido int64) {
 func (d *driver) moved(step string, antes api.Snapshot) {
 	d.t.Helper()
 
+	// O snapshot chega por pedido assincrono: um unico refresh pode ler o estado de antes do
+	// salto. Insistir algumas vezes e o que o proprio jogo faz, e troca uma falha de corrida
+	// por uma falha de verdade.
 	depois := d.snap()
+	for range 5 {
+		if depois.Tick > antes.Tick {
+			break
+		}
+
+		d.refresh()
+		depois = d.snap()
+	}
+
 	if depois.Tick <= antes.Tick {
 		d.t.Fatalf("%s: o relogio nao andou (%d -> %d)", step, antes.Tick, depois.Tick)
 	}

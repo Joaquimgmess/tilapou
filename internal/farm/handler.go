@@ -379,12 +379,13 @@ var loanBlockAPI = [...]api.LoanBlock{
 var _ [len(loanBlockAPI) - int(sim.LoanBlockCount)]struct{}
 
 var stockBlockAPI = [...]api.StockBlock{
-	sim.StockOpen:    api.StockOpen,
-	sim.StockNoTank:  api.StockNoTank,
-	sim.StockNoRoom:  api.StockNoRoom,
-	sim.StockNoBatch: api.StockNoBatch,
-	sim.StockNoCash:  api.StockNoCash,
-	sim.StockNoCycle: api.StockNoCycle,
+	sim.StockOpen:      api.StockOpen,
+	sim.StockNoTank:    api.StockNoTank,
+	sim.StockNoRoom:    api.StockNoRoom,
+	sim.StockNoBatch:   api.StockNoBatch,
+	sim.StockNoCash:    api.StockNoCash,
+	sim.StockNoCycle:   api.StockNoCycle,
+	sim.StockShortFeed: api.StockShortFeed,
 }
 
 var _ [len(stockBlockAPI) - int(sim.StockBlockCount)]struct{}

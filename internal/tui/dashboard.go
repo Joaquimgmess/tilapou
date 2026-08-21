@@ -170,6 +170,10 @@ func emptyTankAdvice(s api.Snapshot, t api.Tank) string {
 		hint, _ := raiseCashHint(s, t)
 
 		return "sem caixa: " + hint
+	case api.StockShortFeed:
+		// O jogo aceita povoar aqui: apontar o recomeco seria mandar apertar a tecla
+		// irreversivel num estado em que ela responde que a fazenda nao quebrou.
+		return "povoe com [s]: racao curta"
 	}
 
 	return ""

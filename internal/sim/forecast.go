@@ -210,16 +210,18 @@ const (
 	StockNoBatch
 	StockNoCash
 	StockNoCycle
+	StockShortFeed
 	StockBlockCount
 )
 
 var stockBlockNames = [...]string{
-	StockOpen:    "open",
-	StockNoTank:  "no_tank",
-	StockNoRoom:  "no_room",
-	StockNoBatch: "no_batch",
-	StockNoCash:  "no_cash",
-	StockNoCycle: "no_cycle",
+	StockOpen:      "open",
+	StockNoTank:    "no_tank",
+	StockNoRoom:    "no_room",
+	StockNoBatch:   "no_batch",
+	StockNoCash:    "no_cash",
+	StockNoCycle:   "no_cycle",
+	StockShortFeed: "short_feed",
 }
 
 var _ [len(stockBlockNames) - int(StockBlockCount)]struct{}
@@ -273,11 +275,16 @@ func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) StockOffer 
 	// alevino solto, que sugeria 51 peixes para o [s] recusar depois.
 	need := Coins(addSat(int64(s.fixedCost(b, t, plan)), mulDivCeil(int64(perFish), MinStockFish, 1)))
 	if s.Cash < need {
-		// Caixa zero e caixa que nao fecha o ciclo sao estados diferentes, e a saida de cada
-		// um e outra: um pede dinheiro de qualquer fonte, o outro pede so mais um tanto.
-		block := StockNoCycle
-		if s.Cash <= 0 {
-			block = StockNoCash
+		// Tres estados diferentes moravam neste zero, e dois deles sao OPOSTOS: com caixa
+		// abaixo do alevino o jogo recusa povoar, e com caixa acima dele o jogo ACEITA — o
+		// que falta e a racao ate a despesca. A tela nao tem como separar sem readivinhar o
+		// piso, que foi o que gerou as regressoes 179, 180 e 183.
+		block := StockNoCash
+		switch {
+		case int64(s.Cash) >= mulDivCeil(int64(b.Economy.FingerlingPrice), MinStockFish, 1):
+			block = StockShortFeed
+		case s.Cash > 0:
+			block = StockNoCycle
 		}
 
 		return StockOffer{PerFish: perFish, Short: Coins(subSat(int64(need), int64(s.Cash))), Block: block}

@@ -17,7 +17,9 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
+	"github.com/Joaquimgmess/tilapou/internal/sim"
 )
 
 const (
@@ -256,4 +258,63 @@ func qaFreshFarm(t *testing.T) {
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("recomecando a fazenda: %v: %s", err, out)
 	}
+
+	// O daemon mantem a fazenda em memoria: apagar a linha por baixo dele nao reinicia a
+	// sessao, e a proxima leitura pode devolver o estado velho — com o relogio adiantado, ele
+	// entra num catch-up que estoura o prazo do cliente e o erro que aparece e "deadline
+	// exceeded", que nao diz nada. Esperar aqui troca o misterio por um diagnostico.
+	waitFreshFarm(t)
+}
+
+// freshFarm le a fazenda e diz se ela ja e a nova. Erro de rede aqui e o daemon ainda
+// remontando, e nao defeito: quem decide desistir e o laco de espera.
+func freshFarm(t *testing.T, poller *http.Client, addr string) bool {
+	t.Helper()
+
+	req, err := httpRequest(t, addr+"/v1/farm")
+	if err != nil {
+		return false
+	}
+
+	resp, err := poller.Do(req)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var snap api.Snapshot
+	if json.NewDecoder(resp.Body).Decode(&snap) != nil {
+		return false
+	}
+
+	return snap.FarmID != "" && snap.Tick < int64(sim.TicksPerDay)
+}
+
+func httpRequest(t *testing.T, url string) (*http.Request, error) {
+	t.Helper()
+
+	req, err := http.NewRequestWithContext(t.Context(), http.MethodGet, url, http.NoBody)
+	if err != nil {
+		return nil, fmt.Errorf("montando o pedido para %s: %w", url, err)
+	}
+
+	return req, nil
+}
+
+// waitFreshFarm espera o daemon devolver uma fazenda nova depois do banco ser limpo.
+func waitFreshFarm(t *testing.T) {
+	t.Helper()
+
+	addr := os.Getenv("TILAPOU_DAEMON")
+	poller := &http.Client{Timeout: 5 * time.Second}
+
+	for range 20 {
+		if freshFarm(t, poller, addr) {
+			return
+		}
+
+		time.Sleep(time.Second)
+	}
+
+	t.Fatal("o daemon continua servindo a fazenda velha depois do banco ser limpo: ele guarda a sessao em memoria, entao reinicie o daemon antes de rodar o portao")
 }

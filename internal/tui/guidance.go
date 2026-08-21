@@ -235,6 +235,8 @@ func farmGoal(s api.Snapshot) string {
 		case api.StockNoTank, api.StockNoRoom, api.StockNoBatch:
 		case api.StockNoCycle:
 			return "Tanque vazio: " + emptyTankAdvice(s, tank)
+		case api.StockShortFeed:
+			return "Tanque vazio: da para povoar com [s], mas o caixa nao paga a racao"
 		case api.StockNoCash:
 			if !creditRoom(s) {
 				return "Tanque vazio, sem caixa e sem credito: so recomecando com [b]"
@@ -294,7 +296,10 @@ func broke(s api.Snapshot) (advice, bool) {
 		return advice{}, false
 	}
 
-	return advice{text: "A fazenda quebrou: sem peixe, sem caixa e sem credito. Recomece do zero com [b]", urgent: true}, true
+	// Diz o que e verdade e nada mais: enumerar motivos obriga a verificar cada um, e a lista
+	// antiga afirmava "sem peixe" com 500 peixes vivos e "sem credito" com o galpao aberto na
+	// mesma tela.
+	return advice{text: "A fazenda quebrou: nao resta jogada possivel. Recomece do zero com [b]", urgent: true}, true
 }
 
 func suffocating(s api.Snapshot) (advice, bool) {
@@ -363,7 +368,8 @@ func crushingDebt(s api.Snapshot) (advice, bool) {
 		return advice{text: "Sem caixa e com divida: os juros crescem. Venda peixe com [h]", urgent: true}, true
 	}
 
-	return advice{text: "Sem caixa, sem peixe e sem credito: so os juros crescem. Recomece com [b]", urgent: true}, true
+	// Sem enumerar de novo: o que vale dizer e que nao ha jogada, e isso o Broke ja sabe.
+	return advice{text: "Sem caixa e com divida, e nao resta jogada: recomece do zero com [b]", urgent: true}, true
 }
 
 func outOfFeed(s api.Snapshot) (advice, bool) {
