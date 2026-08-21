@@ -404,7 +404,7 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 	// Nunca menos que um saco de racao: um emprestimo dimensionado pelos poucos peixes que
 	// faltam nao paga o proximo gasto obrigatorio, e o jogador fica com a divida sem poder
 	// alimentar o que tem.
-	wanted := int64(lendable(b, t, plan, s.Debt, s.Cash,
+	wanted := int64(lendableFor(b, t, plan, s.Debt, s.Cash,
 		Coins(max(s.loanFor(b, t, plan, short, perFish), int64(s.feedSack(b))))))
 	if wanted <= 0 {
 		// Nem o piso do ciclo cabe no limite: aceitar so sobe o juro sem povoar nada, e e

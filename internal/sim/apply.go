@@ -41,7 +41,7 @@ func dispatch(s *State, b *Balance, a Action, at Tick, sink *eventSink, plans Pl
 	case ActionPrestige:
 		return prestige(s, b, at, sink), 0
 	case ActionBorrow:
-		return borrow(s, b, Coins(a.Amount), at, sink)
+		return borrow(s, b, Coins(a.Amount), at, sink, plans)
 	case ActionRepay:
 		return repay(s, Coins(a.Amount), at, sink)
 	case ActionTreat:

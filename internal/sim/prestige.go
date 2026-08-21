@@ -49,7 +49,7 @@ func (s *State) stuck(b *Balance, plans Plans) bool {
 		// inteiro dizia que havia jogada onde o emprestimo e recusado, e a fazenda ficava
 		// com toda tecla negando e o cronometro do resgate zerado.
 		reach := Coins(addSat(int64(s.Cash),
-			int64(lendable(b, t, plans[t.Kind], s.Debt, s.Cash, 0))))
+			int64(lendable(b, t, plans[t.Kind], s.Debt, s.Cash))))
 		if reach >= s.cheapestCycle(b, t, plans[t.Kind]) {
 			return false
 		}

@@ -92,7 +92,7 @@ func accrueInterest(s *State, b *Balance) {
 	charge(s, Coins(due))
 }
 
-func borrow(s *State, b *Balance, amount Coins, at Tick, sink *eventSink) (reason RejectReason, needed Coins) {
+func borrow(s *State, b *Balance, amount Coins, at Tick, sink *eventSink, plans Plans) (reason RejectReason, needed Coins) {
 	if amount <= 0 {
 		return RejectBadAmount, 0
 	}
@@ -100,6 +100,12 @@ func borrow(s *State, b *Balance, amount Coins, at Tick, sink *eventSink) (reaso
 	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(s.Debt)))
 	if room <= 0 || amount > room {
 		return RejectCreditLimit, room
+	}
+	// A acao passa pela mesma conta do conselho e do resgate. Sem isto o emprestimo tinha uma
+	// quarta conta so dele — aceitava qualquer valor dentro do limite — e a divergencia entre
+	// elas reabria, por outro caminho, o estado em que a tela e a acao discordam.
+	if maximo := s.lendableAnywhere(b, plans); amount > maximo {
+		return RejectCreditLimit, maximo
 	}
 
 	s.Debt = Coins(addSat(int64(s.Debt), int64(amount)))

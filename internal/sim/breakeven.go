@@ -165,11 +165,12 @@ func fundsFloor(b *Balance, t *Tank, plan CyclePlan, debt, cash, principal Coins
 	return spendable >= mulDivCeil(int64(perFish), MinStockFish, 1)
 }
 
-// lendable e quanto o galpao de fato solta neste tanque: o que o conselho pediu quando cabe no
-// limite e ainda povoa o piso do ciclo, senao o proprio piso nas mesmas condicoes, senao nada.
-// Quem pergunta "da para comecar?" usa esta funcao, e o conselho de credito e a apresentacao
-// dela — nunca o contrario.
-func lendable(b *Balance, t *Tank, plan CyclePlan, debt, cash, want Coins) Coins {
+// lendable e o MAXIMO que o galpao solta neste tanque. fundsFloor cresce com o principal (o
+// emprestimo traz mais caixa do que cobra de juro dentro do ciclo), entao o limite livre e o
+// candidato exaustivo: se nem ele financia o piso, nada financia.
+//
+// Quem pergunta "da para comecar?" — stuck, Broke, o cronometro do resgate — usa esta funcao.
+func lendable(b *Balance, t *Tank, plan CyclePlan, debt, cash Coins) Coins {
 	room := Coins(subSat(int64(b.Credit.MaxPrincipal), int64(debt)))
 	if room <= 0 {
 		return 0
@@ -179,23 +180,55 @@ func lendable(b *Balance, t *Tank, plan CyclePlan, debt, cash, want Coins) Coins
 	// a loja vende, e exigir dele o piso de povoamento deixaria o lote passar fome com o
 	// limite de credito livre do lado.
 	if t.Fish() > 0 {
-		if sack := feedSackAt(b, plan.At); sack <= room {
-			return max(min(want, room), sack)
+		if feedSackAt(b, plan.At) <= room {
+			return room
 		}
 
 		return 0
 	}
 
-	if want > 0 && want <= room && fundsFloor(b, t, plan, debt, cash, want) {
-		return want
-	}
-
-	if floor := cycleFloor(b, t, plan, debt); floor <= room &&
-		fundsFloor(b, t, plan, debt, cash, floor) {
-		return floor
+	if floor := cycleFloor(b, t, plan, debt); floor <= room {
+		if fundsFloor(b, t, plan, debt, cash, floor) {
+			return room
+		}
+		if fundsFloor(b, t, plan, debt, cash, room) {
+			return room
+		}
 	}
 
 	return 0
+}
+
+// lendableAnywhere e o maior emprestimo que algum tanque da fazenda justifica. E a conta que
+// a ACAO usa: a regra unica governa tambem o que o jogo aceita, e nao so o que a tela diz.
+func (s *State) lendableAnywhere(b *Balance, plans Plans) Coins {
+	var most Coins
+	for i := range s.TankCount {
+		t := &s.Tanks[i]
+		most = max(most, lendable(b, t, plans[t.Kind], s.Debt, s.Cash))
+	}
+
+	return most
+}
+
+// lendableFor e quanto o galpao solta para um alvo: o que se pediu, preso entre o piso util da
+// unidade (saco no tanque com lote, ciclo no vazio) e o maximo. Separar as duas perguntas e o
+// que faz "a oferta abriu" implicar "a fazenda tem jogada" por construcao, e nao por sorte.
+func lendableFor(b *Balance, t *Tank, plan CyclePlan, debt, cash, want Coins) Coins {
+	maximo := lendable(b, t, plan, debt, cash)
+	if maximo <= 0 {
+		return 0
+	}
+
+	piso := cycleFloor(b, t, plan, debt)
+	if t.Fish() > 0 {
+		piso = feedSackAt(b, plan.At)
+	}
+	if piso > maximo {
+		return 0
+	}
+
+	return max(min(want, maximo), piso)
 }
 
 func probeStocking(b *Balance, kind TankKind) int64 {
