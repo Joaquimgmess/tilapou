@@ -296,37 +296,34 @@ func TestBrokeOlhaOCustoDePovoarOMinimo(t *testing.T) {
 // jogador semanas de tela parada antes do resgate chegar.
 func TestOCaixaPresoEmDividaContaComoFazendaTravada(t *testing.T) {
 	t.Parallel()
-
 	b := testBalance(t)
 
 	s := NewState(1, 0, 0)
 
-	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
-	if !ok {
+	if _, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres); !ok {
 		t.Fatal("sem tanque")
 	}
 
-	plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
-
 	var plans Plans
-	plans[TankEarthPond] = plan
+	plans[TankEarthPond] = b.CycleAt(TankEarthPond, s.Tick, s.Zone)
 
-	// A divida entra antes da conta: o juro dela corre durante o ciclo e faz parte do que o
-	// caixa precisa cobrir, e o que sobra do limite conta junto com o caixa.
+	// Limite de credito consumido: o que sobra de saida e o proprio caixa.
 	s.Debt = b.Credit.MaxPrincipal
 
-	tank := s.tank(id)
-	cycle := s.cheapestCycle(b, tank, plan)
+	// A conta e a da JOGADA mais barata, e nao a do ciclo inteiro: [b] e irreversivel, entao
+	// marcar como quebrada uma fazenda que ainda povoa custa a fazenda, e foi assim que a tela
+	// mandou recomecar com 4532,83 TC na barra e o [s] funcionando.
+	povoar := Coins(mulDivCeil(int64(b.Economy.FingerlingPrice), MinStockFish, 1))
 
-	s.Cash = cycle - 1
+	s.Cash = povoar - 1
 	if !s.stuck(b, plans) {
-		t.Errorf("caixa %d nao paga o ciclo mais barato (%d) e a fazenda ainda conta como viva",
-			s.Cash, cycle)
+		t.Errorf("caixa %d nao paga nem o povoamento minimo (%d) e a fazenda ainda conta como viva",
+			s.Cash, povoar)
 	}
 
-	s.Cash = cycle
+	s.Cash = povoar
 	if s.stuck(b, plans) {
-		t.Errorf("caixa %d paga o ciclo mais barato e a fazenda conta como travada", s.Cash)
+		t.Errorf("caixa %d povoa o minimo e a fazenda conta como travada", s.Cash)
 	}
 }
 

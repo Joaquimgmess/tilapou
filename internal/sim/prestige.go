@@ -45,41 +45,22 @@ func (s *State) Broke(b *Balance, plans Plans) bool {
 func (s *State) stuck(b *Balance, plans Plans) bool {
 	for i := range s.TankCount {
 		t := &s.Tanks[i]
-		// So conta como saida o credito que o galpao de fato solta: somar o limite livre
-		// inteiro dizia que havia jogada onde o emprestimo e recusado, e a fazenda ficava
-		// com toda tecla negando e o cronometro do resgate zerado.
-		reach := Coins(addSat(int64(s.Cash),
-			int64(lendable(b, t, plans[t.Kind], s.Debt, s.Cash))))
-		if reach >= s.cheapestCycle(b, t, plans[t.Kind]) {
+		// A pergunta e "existe jogada possivel", e nao "existe ciclo viavel": [b] e
+		// irreversivel, entao falso positivo custa a fazenda e falso negativo custa uma tela
+		// feia. O piso e a acao mais barata que muda o estado, e cada acao responde por si no
+		// registro de playable.
+		if s.anyPlay(b, t, plans[t.Kind]) {
 			return false
 		}
 		// Racao so e saida enquanto houver lote comendo: com o tanque vazio ela e caixa que
-		// virou estoque parado, e nao um ciclo que anda sozinho.
+		// virou estoque parado, e nao um ciclo que anda sozinho. O lote no ponto de abate ja
+		// e coberto pela entrada de ActionHarvest no registro.
 		if t.FeedStock > 0 && t.Fish() > 0 {
 			return false
-		}
-
-		for j := range t.BatchCount {
-			if t.Batches[j].MeanMass >= b.Growth.HarvestMass {
-				return false
-			}
 		}
 	}
 
 	return true
-}
-
-// cheapestCycle e a menor compra que ainda melhora este tanque, e tem de ser a mesma unidade
-// que lendable solta: tanque com lote dentro pede racao, e ai o piso e o saco; tanque vazio
-// pede ciclo, e ai o piso e o povoamento minimo. Medir um lado em ciclo e o outro em saco
-// marcava como quebrada a fazenda com o lote vivo, e a falencia por dias sem saida trocava o
-// lote crescido pelo inicial.
-func (s *State) cheapestCycle(b *Balance, t *Tank, plan CyclePlan) Coins {
-	if t.Fish() > 0 {
-		return feedSackAt(b, plan.At)
-	}
-
-	return cycleFloor(b, t, plan, s.Debt)
 }
 
 func restart(s *State, b *Balance, at Tick, sink *eventSink, plans Plans) RejectReason {
