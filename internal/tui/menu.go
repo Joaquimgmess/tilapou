@@ -48,7 +48,7 @@ func (m *menu) current() (menuItem, bool) {
 
 // tankMenu acts on one batch of the tank: the actions that carry a batch id use it, and the
 // tank-wide ones ignore it.
-func tankMenu(s api.Snapshot, t api.Tank, batch api.Batch) *menu {
+func tankMenu(s api.Snapshot, t api.Tank, batch api.Batch, mapFits bool) *menu {
 	items := make([]menuItem, 0, len(t.Upgrades)+fixedTankItems)
 	items = append(items,
 		feedItem(t),
@@ -64,12 +64,16 @@ func tankMenu(s api.Snapshot, t api.Tank, batch api.Batch) *menu {
 		items = append(items, upgradeItem(s, t, upgrade))
 	}
 
-	items = append(items, menuItem{
-		label:   "Ver painel de numeros",
-		hint:    "tecla tab",
-		enabled: true,
-		panel:   true,
-	})
+	// Com o mapa sem caber, o painel de numeros ja e a tela: oferecer "ver" o que esta na
+	// frente do jogador gasta uma linha do menu e nao leva a lugar nenhum.
+	if mapFits {
+		items = append(items, menuItem{
+			label:   "Ver painel de numeros",
+			hint:    "tecla tab",
+			enabled: true,
+			panel:   true,
+		})
+	}
 
 	return &menu{title: fmt.Sprintf("TANQUE %d", t.ID), items: items}
 }

@@ -121,7 +121,7 @@ func TestTheFooterOnlyPromisesKeysThatWork(t *testing.T) {
 		m := New(nil)
 		m.snapshot, m.mode = snap, mode
 		m.width, m.height = 120, 40
-		m.menu = tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0])
+		m.menu = tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0], true)
 
 		footer := plain(m.render())
 		footer = footer[strings.LastIndex(footer, "\n")+1:]
@@ -143,7 +143,7 @@ func TestJAndKMoveTheMenuCursor(t *testing.T) {
 	snap := sizedSnapshot()
 	m := New(nil)
 	m.snapshot = snap
-	m.menu = tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0])
+	m.menu = tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0], true)
 
 	next, _ := m.onMenuKey("j")
 	moved, ok := next.(Model)

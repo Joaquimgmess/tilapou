@@ -221,7 +221,7 @@ func TestMudarAFormaDoCorpoPedeLimparATela(t *testing.T) {
 	// o boneco esta.
 	m.mode = ModeDashboard
 
-	menu := tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0])
+	menu := tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0], true)
 
 	aberto := m
 	aberto.menu = menu

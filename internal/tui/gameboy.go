@@ -136,6 +136,12 @@ func (m Model) fitsGameBoy() bool {
 	return m.width >= gbCols && m.height >= gbRows
 }
 
+// gameBoyDeficit e a mesma medida que o painel explica quando o mapa nao cabe, na forma de
+// resposta a tecla: a recusa e a explicacao sao a mesma frase, nao duas.
+func (m Model) gameBoyDeficit() string {
+	return fmt.Sprintf("o mapa precisa de %dx%d e o terminal tem %dx%d", gbCols, gbRows, m.width, m.height)
+}
+
 func (m Model) renderGameBoy() string {
 	snapshot := m.snapshot
 

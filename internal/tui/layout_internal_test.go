@@ -65,7 +65,7 @@ func TestOMenuCabeNoTamanhoMinimo(t *testing.T) {
 	snap.Tanks[0].Upgrades = everyUpgrade()
 
 	menus := map[string]*menu{
-		"tanque": tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0]),
+		"tanque": tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0], true),
 		"galpao": shedMenu(snap, snap.Tanks[0]),
 	}
 

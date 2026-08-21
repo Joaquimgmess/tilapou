@@ -67,7 +67,7 @@ func TestFrameFitsCommonTerminals(t *testing.T) {
 
 	overlays := map[string]*menu{
 		"painel":         nil,
-		"menu do tanque": tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0]),
+		"menu do tanque": tankMenu(snap, snap.Tanks[0], snap.Tanks[0].Batches[0], true),
 		"menu do galpao": shedMenu(snap, snap.Tanks[0]),
 	}
 

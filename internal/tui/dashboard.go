@@ -517,7 +517,14 @@ func (m Model) keyHints() []string {
 		hints = append(hints, "p tilapar")
 	}
 
-	return append(hints, "tab mapa", "s povoar", "a aerador")
+	hints = append(hints, "s povoar", "a aerador")
+	// Prometer "tab mapa" numa tela que nao comporta o mapa e anunciar uma tecla que so
+	// responde com a recusa da medida.
+	if m.fitsGameBoy() {
+		hints = append(hints, "tab mapa")
+	}
+
+	return hints
 }
 
 func sparkline(values []int64) string {

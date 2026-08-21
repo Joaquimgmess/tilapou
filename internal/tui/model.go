@@ -255,7 +255,7 @@ func (m Model) onKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
 
 	if move, ok := movementFor(key); ok {
-		if m.mode == ModeGameBoy || m.menu != nil {
+		if m.activeMode() == ModeGameBoy || m.menu != nil {
 			return m.move(move.dx, move.dy, move.facing), nil
 		}
 		if move.dy != 0 {
@@ -300,9 +300,7 @@ func (m Model) onCommand(key string) (tea.Model, tea.Cmd) {
 		return m.onRetry()
 
 	case "tab":
-		m.mode = m.otherMode()
-
-		return m, nil
+		return m.onToggleMode()
 
 	case "z", "enter":
 		return m.onInteract()
@@ -417,14 +415,27 @@ func (m Model) openShed() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// onToggleMode troca a tela, ou recusa com a medida que falta: trocar para um mapa que nao
+// cabe deixaria a tela igual e as teclas mudas, que e o defeito que a recusa existe para nao
+// ter.
+func (m Model) onToggleMode() (tea.Model, tea.Cmd) {
+	if m.mode == ModeDashboard && !m.fitsGameBoy() {
+		return m.say(m.gameBoyDeficit()), nil
+	}
+
+	m.mode = m.otherMode()
+
+	return m, nil
+}
+
 func (m Model) onInteract() (tea.Model, tea.Cmd) {
-	if m.mode == ModeDashboard {
+	if m.activeMode() == ModeDashboard {
 		tank, ok := m.tank()
 		if !ok {
 			return m, nil
 		}
 		batch, _ := m.batch()
-		m.menu, m.message = tankMenu(m.snapshot, tank, batch), ""
+		m.menu, m.message = tankMenu(m.snapshot, tank, batch, m.fitsGameBoy()), ""
 
 		return m, nil
 	}
@@ -443,7 +454,7 @@ func (m Model) onInteract() (tea.Model, tea.Cmd) {
 		m.selected = m.firstRowOf(index)
 
 		batch, _ := m.batch()
-		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[index], batch)
+		m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[index], batch, m.fitsGameBoy())
 	case targetNone:
 		return m.say("nao ha nada aqui: ande ate um viveiro ou o galpao"), nil
 	}
@@ -609,13 +620,24 @@ func (m Model) refreshedMenu() *menu {
 
 	batch, _ := m.batch()
 
-	rebuilt := tankMenu(m.snapshot, tank, batch)
+	rebuilt := tankMenu(m.snapshot, tank, batch, m.fitsGameBoy())
 	if m.menu.title == shedTitle {
 		rebuilt = shedMenu(m.snapshot, tank)
 	}
 	rebuilt.cursor = min(m.menu.cursor, len(rebuilt.items)-1)
 
 	return rebuilt
+}
+
+// activeMode e o modo que esta de fato na tela. render() cai para o painel de numeros quando
+// o mapa nao cabe, e ler m.mode cru fazia as teclas conversarem com um mapa que ninguem
+// desenhou: as setas moviam um boneco invisivel e o z caia no vazio.
+func (m Model) activeMode() Mode {
+	if m.mode == ModeGameBoy && !m.fitsGameBoy() {
+		return ModeDashboard
+	}
+
+	return m.mode
 }
 
 func (m Model) otherMode() Mode {

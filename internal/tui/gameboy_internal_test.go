@@ -71,7 +71,7 @@ func TestNenhumaLinhaDoQuadroFicaCurtaDemais(t *testing.T) {
 				m.message = message
 				m.menu = nil
 				if open {
-					m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0])
+					m.menu = tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0], true)
 				}
 
 				frame := m.render()
@@ -119,7 +119,7 @@ func TestOQuadroTemSempreAMesmaAltura(t *testing.T) {
 		// Todo menu que o jogo abre, com e sem mensagem: e a diferenca de altura entre dois
 		// frames que fica na tela, e cada menu tem um tamanho.
 		menus := map[string]*menu{
-			"tanque": tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0]),
+			"tanque": tankMenu(m.snapshot, m.snapshot.Tanks[0], m.snapshot.Tanks[0].Batches[0], true),
 			"galpao": shedMenu(m.snapshot, m.snapshot.Tanks[0]),
 		}
 
