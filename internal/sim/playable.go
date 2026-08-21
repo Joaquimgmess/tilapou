@@ -1,7 +1,12 @@
 package sim
 
-// playableFor responde se esta acao, sozinha, ainda muda o rumo da fazenda neste estado. Cada
-// entrada replica o piso do applyX correspondente: e a mesma pergunta que a acao fara.
+// playableFor responde se esta acao, sozinha, ainda muda o rumo da fazenda neste estado.
+//
+// O contrato tem DUAS partes, e o comentario antigo so dizia a primeira: (1) a entrada nunca
+// e mais permissiva que o applyX correspondente — prometer jogada que o jogo recusa deixa o
+// jogador preso sem resgate; e (2) ela pode ser mais rigorosa quando a acao e aceita mas nao
+// muda o rumo, e ai a excecao e declarada na tabela do teste, nao descoberta depois. Comprar
+// racao sem lote e despescar lote verde sao as duas de hoje.
 type playableFor func(s *State, b *Balance, t *Tank, plan CyclePlan) bool
 
 // playable e o registro exaustivo por ActionKind. Ele existe para que uma acao nova quebre a
@@ -67,7 +72,14 @@ var playable = [...]playableFor{
 	// Pagar divida nao levanta caixa nem lote: com caixa e divida ela seria sempre possivel, e
 	// a fazenda nunca quebraria.
 	ActionRepay: never,
-	ActionTreat: func(_ *State, _ *Balance, t *Tank, _ CyclePlan) bool {
+	// Tratar cobra o custo do tratamento: pedir so o lote doente marcava como jogada uma acao
+	// que o jogo recusa por caixa, e ai a fazenda com lote doente e caixa zero nao contava
+	// como quebrada, nenhuma tecla funcionava e o cronometro do resgate nem corria.
+	ActionTreat: func(s *State, b *Balance, t *Tank, _ CyclePlan) bool {
+		if s.Cash < b.Shock.TreatmentCost {
+			return false
+		}
+
 		for i := range t.BatchCount {
 			if t.Batches[i].Sick > 0 {
 				return true
