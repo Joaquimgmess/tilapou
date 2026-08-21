@@ -65,6 +65,6 @@ semente: 2  fuso: -180  dias: 60
 
 eventos
 action_rejected         227
-feed_exhausted            6
+feed_exhausted            1
 growth                   67
 starvation_deaths       824

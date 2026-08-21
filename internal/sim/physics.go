@@ -54,7 +54,11 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink, plans Plans) {
 
 			var eaten Micrograms
 			if feeding {
-				eaten = feedAndGrow(t, batch, b, tempMult, s.prestigeBonus(b))
+				var emptied bool
+				eaten, emptied = feedAndGrow(t, batch, b, tempMult, s.prestigeBonus(b))
+				if emptied {
+					sink.emit(Event{Kind: EventFeedExhausted, From: tick, To: tick, Tank: t.ID})
+				}
 			}
 
 			killByHypoxia(t, batch, b, oxygen, tick, s.Seed)
@@ -62,15 +66,14 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink, plans Plans) {
 			killByStarvation(t, batch, b, eaten, tick, s.Seed)
 		}
 
-		if t.FeedStock <= 0 && feeding && t.Fish() > 0 && tick%WindowTicks == 0 {
-			sink.emit(Event{Kind: EventFeedExhausted, From: tick, To: tick, Tank: t.ID})
-		}
-
 		t.compact()
 	}
 }
 
-func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) Micrograms {
+// feedAndGrow devolve tambem se o silo cruzou o zero nesta refeicao: o cruzamento e o fato,
+// e e ele que vira evento. Amostrar "esta vazio" a cada janela enchia o log de um tanque em
+// seca e empurrava para fora dele o que o jogador precisa ler.
+func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) (Micrograms, bool) {
 	maintenance := carryTake(
 		mulDivFloor(int64(batch.Biomass()), int64(b.Ration.MaintenancePPM), int64(UnitPPM)),
 		int64(TicksPerDay), &t.FeedCarry)
@@ -81,15 +84,19 @@ func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) Microgr
 	wanted := addSat(maintenance, mulDivCeil(int64(gain), int64(b.Ration.TargetFCRPPM), int64(UnitPPM)))
 	wanted = min(wanted, rationCap(batch, b, tempMult))
 	if wanted <= 0 {
-		return 0
+		return 0, false
 	}
 
 	eaten := min(wanted, int64(t.FeedStock))
 	if eaten <= 0 {
-		return 0
+		return 0, false
 	}
 
+	had := t.FeedStock > 0
 	t.FeedStock = Micrograms(subSat(int64(t.FeedStock), eaten))
+	// O rearme e a propria compra de racao: so quem volta a ter estoque positivo pode zerar
+	// de novo, entao carregar o save no meio da seca nao reemite.
+	emptied := had && t.FeedStock <= 0
 	batch.FeedEaten = Micrograms(addSat(int64(batch.FeedEaten), eaten))
 	batch.Cost = Coins(addSat(int64(batch.Cost),
 		carryTake(eaten*int64(t.FeedUnitCost), int64(MicrogramsPerKilogram), &batch.CostCarry)))
@@ -100,7 +107,7 @@ func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) Microgr
 	if forGrowth <= 0 || available <= 0 {
 		batch.GrowthCarry = addSat(batch.GrowthCarry, delta)
 
-		return Micrograms(eaten)
+		return Micrograms(eaten), emptied
 	}
 	if forGrowth < available {
 		delta = mulDivFloor(delta, forGrowth, available)
@@ -108,7 +115,7 @@ func feedAndGrow(t *Tank, batch *Batch, b *Balance, tempMult, bonus PPM) Microgr
 
 	applyGrowth(batch, delta)
 
-	return Micrograms(eaten)
+	return Micrograms(eaten), emptied
 }
 
 func rationCap(batch *Batch, b *Balance, tempMult PPM) int64 {

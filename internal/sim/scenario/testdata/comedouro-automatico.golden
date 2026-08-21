@@ -50,5 +50,6 @@ semente: 6  fuso: -180  dias: 45
 
 eventos
 feed_bought               3
+feed_exhausted            3
 growth                  990
 upgrade_bought            1
