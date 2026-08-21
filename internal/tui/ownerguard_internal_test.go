@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/Joaquimgmess/tilapou/internal/api"
@@ -110,5 +111,40 @@ func TestOPortaoConfereOBancoQueODaemonDiz(t *testing.T) {
 	// dizer isso em vez de seguir achando que conferiu.
 	if err := sameDatabase("tilapou_qa", ""); err == nil {
 		t.Error("o portao aceitou um daemon que nao diz em que banco escreve")
+	}
+}
+
+// A frase de recusa nao pode ser um balde: o @qa mostrou quatro causas caindo em "o daemon
+// nao publica o banco (build velho?)" — sem daemon, daemon antigo, daemon com erro, e daemon
+// de HEAD com a URL sem banco. So a segunda e verdade, e nas outras a frase manda cacar o
+// problema errado.
+func TestARecusaDoBancoDizACausaCerta(t *testing.T) {
+	t.Parallel()
+
+	casos := []struct {
+		nome    string
+		leitura healthRead
+		quer    string
+	}{
+		{"sem daemon", healthRead{}, "nao respondeu"},
+		{"daemon com erro", healthRead{status: 500}, "respondeu 500"},
+		{"daemon sem o campo", healthRead{status: 200}, "nao publica"},
+		{"banco diferente", healthRead{status: 200, database: "tilapou"}, "escreve em"},
+	}
+
+	for _, caso := range casos {
+		err := checkDatabase("tilapou_qa", caso.leitura)
+		if err == nil {
+			t.Errorf("%s: o portao aceitou", caso.nome)
+
+			continue
+		}
+		if !strings.Contains(err.Error(), caso.quer) {
+			t.Errorf("%s: a recusa diz %q, e nao menciona %q", caso.nome, err, caso.quer)
+		}
+	}
+
+	if err := checkDatabase("tilapou_qa", healthRead{status: 200, database: "tilapou_qa"}); err != nil {
+		t.Errorf("banco igual foi recusado: %v", err)
 	}
 }

@@ -146,12 +146,18 @@ func buildRevision() (string, bool) {
 	return revision, modified
 }
 
-// databaseName tira o nome do banco da URL de conexao. Publicar isso e o que permite a guarda
-// morar do lado que sabe: quem escreve e o daemon, e so ele conhece o destino de verdade.
+// databaseName tira o nome do banco da URL de conexao, pela MESMA leitura que o driver faz:
+// o pgx honra dbname= na query, e ela vence o path. Publicar o path deixava o daemon anunciar
+// um banco e escrever em outro — foi o quinto caminho ate o save do jogador, e o unico que
+// rachava o portao em dois, mandando a limpeza para um banco e as teclas para outro.
 func databaseName(url string) string {
 	parsed, err := neturl.Parse(url)
 	if err != nil {
 		return ""
+	}
+
+	if name := parsed.Query().Get("dbname"); name != "" {
+		return name
 	}
 
 	return strings.TrimPrefix(parsed.Path, "/")

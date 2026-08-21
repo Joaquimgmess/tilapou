@@ -253,7 +253,7 @@ func qaFreshFarm(t *testing.T) {
 	// Antes de escrever, pergunta ao daemon em que banco ELE esta: a variavel e o que alguem
 	// digitou, e quem escreve e ele. Recusar aqui e o que impede a limpeza de cair no save do
 	// dono por env errada.
-	if err := sameDatabase(name, daemonDatabase(t)); err != nil {
+	if err := checkDatabase(name, daemonHealth(t)); err != nil {
 		t.Fatalf("recomecar a fazenda: %v", err)
 	}
 
@@ -272,19 +272,37 @@ func qaFreshFarm(t *testing.T) {
 	waitFreshFarm(t)
 }
 
-var errDatabaseMismatch = errors.New("o daemon escreve em outro banco")
+var errDatabaseMismatch = errors.New("o daemon nao confirma o banco de teste")
+
+// healthRead e o que a leitura do /healthz devolveu. Guardar o status e o erro separados e o
+// que permite a recusa dizer a causa: quatro estados diferentes caiam na mesma frase, e so
+// um deles era o que ela afirmava.
+type healthRead struct {
+	status   int
+	database string
+	err      error
+}
+
+// checkDatabase decide se da para escrever, e diz por que nao quando nao da.
+func checkDatabase(want string, got healthRead) error {
+	switch {
+	case got.err != nil || got.status == 0:
+		return fmt.Errorf("%w: o daemon nao respondeu", errDatabaseMismatch)
+	case got.status != http.StatusOK:
+		return fmt.Errorf("%w: o daemon respondeu %d no /healthz", errDatabaseMismatch, got.status)
+	case got.database == "":
+		return fmt.Errorf("%w: o daemon nao publica o banco (build anterior ao /healthz com banco?)", errDatabaseMismatch)
+	case got.database != want:
+		return fmt.Errorf("%w: o daemon escreve em %q e o teste usaria %q", errDatabaseMismatch, got.database, want)
+	}
+
+	return nil
+}
 
 // sameDatabase confere o banco que o daemon PUBLICA contra o que o teste pretende usar. A
 // guarda mora do lado que sabe: QA_DATABASE e o que alguem digitou, e o daemon e quem escreve.
 func sameDatabase(want, daemon string) error {
-	if daemon == "" {
-		return fmt.Errorf("%w: o daemon nao publica o banco (build velho?)", errDatabaseMismatch)
-	}
-	if daemon != want {
-		return fmt.Errorf("%w: o daemon escreve em %q e o teste usaria %q", errDatabaseMismatch, daemon, want)
-	}
-
-	return nil
+	return checkDatabase(want, healthRead{status: http.StatusOK, database: daemon})
 }
 
 // farmState diz em qual dos tres estados a leitura caiu. Sem isso, daemon fora do ar e daemon
@@ -328,29 +346,29 @@ func freshness(t *testing.T, snap *api.Snapshot, err error) farmState {
 	return farmFresh
 }
 
-// daemonDatabase pergunta ao daemon em que banco ele escreve.
-func daemonDatabase(t *testing.T) string {
+// daemonHealth pergunta ao daemon em que banco ele escreve, guardando o que deu errado.
+func daemonHealth(t *testing.T) healthRead {
 	t.Helper()
 
 	req, err := httpRequest(t, os.Getenv("TILAPOU_DAEMON")+"/healthz")
 	if err != nil {
-		return ""
+		return healthRead{err: err}
 	}
 
 	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
 	if err != nil {
-		return ""
+		return healthRead{err: err}
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	var health struct {
 		Database string `json:"database"`
 	}
-	if json.NewDecoder(resp.Body).Decode(&health) != nil {
-		return ""
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&health); decodeErr != nil {
+		return healthRead{status: resp.StatusCode, err: decodeErr}
 	}
 
-	return health.Database
+	return healthRead{status: resp.StatusCode, database: health.Database}
 }
 
 // freshFarm le a fazenda e classifica o que veio.
