@@ -222,7 +222,14 @@ func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) (fish FishC
 		return 0, perFish
 	}
 
-	return FishCount(min(room, spendable/int64(perFish))), perFish
+	// Abaixo do piso o jogo recusa a acao: sugerir 51 peixes manda o jogador apertar [s] para
+	// ouvir "quantidade invalida" por um numero que quem escolheu foi a propria tela.
+	advice := min(room, spendable/int64(perFish))
+	if advice < MinStockFish {
+		return 0, perFish
+	}
+
+	return FishCount(advice), perFish
 }
 
 // fixedCost is the upkeep and the interest that run while the batch grows, whether or not
@@ -348,6 +355,16 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 	// O que a oferta promete e o ACRESCIMO: fishFor devolve o total que o caixa mais o
 	// emprestimo povoam, e o jogador ja podia povoar fish deles sem divida nenhuma.
 	buys := min(s.fishFor(b, t, plan, Coins(wanted), perFish)-int64(fish), short)
+	// Abaixo do piso nao ha povoamento nenhum a prometer: no tanque vazio o emprestimo perde
+	// a razao de ser e e recusado; no tanque com lote ele continua valendo pela racao, mas para
+	// de prometer um lote que o povoar recusa.
+	if buys < MinStockFish {
+		if t.Fish() == 0 {
+			return LoanOffer{Block: LoanNoCycle}
+		}
+
+		return LoanOffer{Cents: Coins(wanted), Block: LoanOpen}
+	}
 	if buys <= 0 {
 		// Cabe no limite e mesmo assim nao povoa um peixe: aceitar so sobe o juro, e o juro
 		// e o que ja esta engolindo o ciclo. E a mesma jogada pior que LoanNoCycle recusa.
