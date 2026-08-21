@@ -1,6 +1,32 @@
 package tui
 
-import "strings"
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
+// ownerPort e a porta do daemon do dono, com o save de verdade.
+const ownerPort = "8099"
+
+var errOwnerDaemon = errors.New("o endereco e o daemon do dono")
+
+// qaDaemon recusa o daemon do dono. O roteiro aperta teclas de verdade contra o endereco
+// apontado, e QA_DATABASE so protege o salto de dias — sem esta guarda, um make test-live sem
+// env escreve no save do jogador, que foi exatamente o que aconteceu.
+func qaDaemon(addr string) error {
+	host := addr
+	if _, rest, found := strings.Cut(addr, "://"); found {
+		host = rest
+	}
+	host = strings.TrimSuffix(strings.TrimSuffix(host, "/"), "/")
+
+	if _, port, found := strings.Cut(host, ":"); found && strings.TrimSuffix(port, "/") == ownerPort {
+		return fmt.Errorf("%w: %s", errOwnerDaemon, addr)
+	}
+
+	return nil
+}
 
 // Estes dois testes falam com um processo externo, e o cache do go test nao sabe disso: sem
 // -count=1 ele devolve (cached) e o relatorio vira o de uma sessao antiga. Quem os roda como

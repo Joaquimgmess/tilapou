@@ -32,8 +32,15 @@ test-db:
 # test-live roda os tres testes que falam com um daemon de verdade. Eles moram atras da tag
 # live: sem ela um go test ./... limpo os pulava com SKIP verde. Fora do check de proposito —
 # regra que depende de daemon de pe nao converge.
-test-live: export TILAPOU_DAEMON ?= http://localhost:8098
-test-live: export QA_DATABASE ?= tilapou_qa
+#
+# O endereco tem variavel PROPRIA e atribuicao incondicional: com `?=` o TILAPOU_DAEMON do
+# topo (que sai do API_PORT do .env, a porta do jogador) vencia, e o roteiro apertava teclas
+# no save de verdade. Os testes ainda recusam a porta do dono por conta propria.
+TILAPOU_QA_DAEMON ?= http://localhost:8098
+TILAPOU_QA_DATABASE ?= tilapou_qa
+
+test-live: export TILAPOU_DAEMON = $(TILAPOU_QA_DAEMON)
+test-live: export QA_DATABASE = $(TILAPOU_QA_DATABASE)
 test-live:
 	go test -tags live ./internal/tui/ -count=1 -run "TestLiveSession|TestProgression|TestQASession"
 

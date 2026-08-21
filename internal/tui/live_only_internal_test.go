@@ -26,6 +26,9 @@ func TestLiveSession(t *testing.T) {
 	if addr == "" {
 		t.Fatal("TILAPOU_DAEMON vazio: dentro da tag live isto e erro de uso, e nao motivo de pular")
 	}
+	if err := qaDaemon(addr); err != nil {
+		t.Fatalf("recusado: %v — o roteiro aperta teclas de verdade, e este e o save do jogador", err)
+	}
 
 	var model tea.Model = New(client.New(addr, 5*time.Second))
 	d := &driver{t: t, model: model}
@@ -79,6 +82,9 @@ func TestProgression(t *testing.T) {
 	addr := os.Getenv("TILAPOU_DAEMON")
 	if addr == "" {
 		t.Fatal("TILAPOU_DAEMON vazio: dentro da tag live isto e erro de uso, e nao motivo de pular")
+	}
+	if err := qaDaemon(addr); err != nil {
+		t.Fatalf("recusado: %v — o roteiro aperta teclas de verdade, e este e o save do jogador", err)
 	}
 
 	var model tea.Model = New(client.New(addr, 10*time.Second))
@@ -139,10 +145,16 @@ func TestQASession(t *testing.T) {
 	if addr == "" {
 		t.Fatal("TILAPOU_DAEMON vazio: dentro da tag live isto e erro de uso, e nao motivo de pular")
 	}
+	if err := qaDaemon(addr); err != nil {
+		t.Fatalf("recusado: %v — o roteiro aperta teclas de verdade, e este e o save do jogador", err)
+	}
 
 	d := &driver{t: t, model: New(client.New(addr, 10*time.Second))}
 	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
 	d.refresh()
+	// Sem isto o teste passava com o daemon morto: script vazio nao da um passo, e o unico
+	// que ele checava era o endereco nao ser string vazia. Era o mesmo SKIP verde com outro nome.
+	d.requireLive("sessao de QA")
 
 	qaPlay(t, d, os.Getenv("QA_SCRIPT"))
 
