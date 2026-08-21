@@ -17,11 +17,11 @@ func (d *driver) requireLive(step string) {
 		d.t.Fatalf("%s: o driver nao esta com um Model", step)
 	}
 
-	if m.err != nil {
-		d.t.Fatalf("%s: a sessao nao falou com o daemon: %v", step, m.err)
-	}
+	// O que se cobra e ter falado com o daemon, e nao a acao ter sido aceita: recusa de jogo
+	// (despescar lote que nao esta no ponto) e resposta legitima e prova que houve conversa.
+	// Daemon fora do ar nao devolve fazenda nenhuma, e ai o portao fecha.
 	if m.snapshot.FarmID == "" {
-		d.t.Fatalf("%s: o daemon nao devolveu fazenda nenhuma", step)
+		d.t.Fatalf("%s: o daemon nao devolveu fazenda nenhuma (erro: %v)", step, m.err)
 	}
 	if len(m.snapshot.Tanks) == 0 {
 		d.t.Fatalf("%s: a fazenda voltou sem tanque", step)

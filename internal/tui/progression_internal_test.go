@@ -2,14 +2,7 @@ package tui
 
 import (
 	"fmt"
-	"os"
 	"strings"
-	"testing"
-	"time"
-
-	tea "charm.land/bubbletea/v2"
-
-	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
 func (d *driver) line(label string) string {
@@ -43,61 +36,4 @@ func (d *driver) line(label string) string {
 		label, coins(s.CashCents), t.Fish, front.MeanGrams, t.FeedKg, strings.Join(auto, ","),
 		"", signedPlain(front.MarginCents), coins(front.CostPerKg), coins(front.PriceKgCents), note,
 		"", goal)
-}
-
-func TestProgression(t *testing.T) {
-	addr := os.Getenv("TILAPOU_DAEMON")
-	if addr == "" {
-		t.Skip("defina TILAPOU_DAEMON")
-	}
-
-	var model tea.Model = New(client.New(addr, 10*time.Second))
-	d := &driver{t: t, model: model}
-	d.run(model.Init())
-	d.requireLive("inicio")
-
-	var out strings.Builder
-	out.WriteString(d.line("inicio"))
-
-	d.press("f")
-	d.press("h")
-	out.WriteString(d.line("vendi o lote herdado"))
-
-	d.press("1")
-	d.press("2")
-	out.WriteString(d.line("comprei comedouro e aerador"))
-
-	d.press("g")
-	for range 2 {
-		d.press("down")
-	}
-	d.press("z")
-	d.press("x")
-	out.WriteString(d.line("peguei o credito que a tela sugeriu"))
-
-	d.press("s")
-	out.WriteString(d.line("povoei ate o equilibrio"))
-
-	for _, days := range []int{60, 60, 60} {
-		qaJumpDays(t, days)
-		out.WriteString(d.line(fmt.Sprintf("+%d dias", days)))
-	}
-
-	d.press("h")
-	d.requireLive("despesquei")
-	out.WriteString(d.line("despesquei"))
-
-	d.press("g")
-	for range 3 {
-		d.press("down")
-	}
-	d.press("z")
-	d.press("x")
-	out.WriteString(d.line("quitei a divida"))
-
-	d.press("s")
-	d.requireLive("povoei o ciclo seguinte")
-	out.WriteString(d.line("povoei o ciclo seguinte"))
-
-	fmt.Fprint(os.Stdout, "\n"+out.String())
 }

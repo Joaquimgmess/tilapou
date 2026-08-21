@@ -83,23 +83,6 @@ func qaKey(name string) tea.KeyPressMsg {
 	return tea.KeyPressMsg{Code: rune(name[0]), Text: name}
 }
 
-func TestQASession(t *testing.T) {
-	t.Parallel()
-
-	addr := os.Getenv("TILAPOU_DAEMON")
-	if addr == "" {
-		t.Skip("defina TILAPOU_DAEMON")
-	}
-
-	d := &driver{t: t, model: New(client.New(addr, 10*time.Second))}
-	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.refresh()
-
-	qaPlay(t, d, os.Getenv("QA_SCRIPT"))
-
-	fmt.Fprintf(os.Stdout, "\n%s\n", plain(d.model.(Model).render()))
-}
-
 func qaPlay(t *testing.T, d *driver, script string) {
 	t.Helper()
 

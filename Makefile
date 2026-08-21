@@ -3,7 +3,7 @@ export
 
 TILAPOU_DAEMON ?= http://localhost:$(or $(API_PORT),8080)
 
-.PHONY: build run play status test test-db lint fmt tidy check up down golden migrate-create vuln dead
+.PHONY: build run play status test test-db test-live lint fmt tidy check up down golden migrate-create vuln dead
 
 BIN := bin/tilapou
 
@@ -28,6 +28,14 @@ test:
 test-db: export TILAPOU_TEST_DATABASE_URL = postgres://$(or $(POSTGRES_USER),tilapou):$(or $(POSTGRES_PASSWORD),tilapou)@localhost:5433/tilapou_qa?sslmode=disable
 test-db:
 	go test ./internal/farm/ -race -count=1
+
+# test-live roda os tres testes que falam com um daemon de verdade. Eles moram atras da tag
+# live: sem ela um go test ./... limpo os pulava com SKIP verde. Fora do check de proposito —
+# regra que depende de daemon de pe nao converge.
+test-live: export TILAPOU_DAEMON ?= http://localhost:8098
+test-live: export QA_DATABASE ?= tilapou_qa
+test-live:
+	go test -tags live ./internal/tui/ -count=1 -run "TestLiveSession|TestProgression|TestQASession"
 
 lint:
 	golangci-lint config verify
@@ -58,5 +66,5 @@ vuln:
 	go run golang.org/x/vuln/cmd/govulncheck@latest ./...
 
 dead:
-	@out=$$(go run golang.org/x/tools/cmd/deadcode@latest -test ./...); \
+	@out=$$(go run golang.org/x/tools/cmd/deadcode@latest -tags live -test ./...); \
 	if [ -n "$$out" ]; then echo "$$out"; echo "codigo morto encontrado"; exit 1; fi
