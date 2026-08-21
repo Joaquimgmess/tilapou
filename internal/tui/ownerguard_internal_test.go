@@ -91,3 +91,24 @@ func TestAEsperaSeparaDaemonForaDoArDeFazendaVelha(t *testing.T) {
 		t.Errorf("com a fazenda nova a espera classificou como %v", nova)
 	}
 }
+
+// A guarda do banco passa a vir do daemon: e ele quem sabe em que banco escreve, e o QA_DATABASE
+// e so o que alguem digitou. Quando os dois discordam, quem manda e o daemon — foi por uma
+// variavel errada que o save do dono ficou a um passo quatro vezes.
+func TestOPortaoConfereOBancoQueODaemonDiz(t *testing.T) {
+	t.Parallel()
+
+	if err := sameDatabase("tilapou_qa", "tilapou_qa"); err != nil {
+		t.Errorf("bancos iguais foram recusados: %v", err)
+	}
+
+	if err := sameDatabase("tilapou_qa", "tilapou"); err == nil {
+		t.Error("o portao aceitou o daemon escrevendo no banco do dono com QA_DATABASE de teste")
+	}
+
+	// Daemon que nao publica o banco nao serve de guarda: e build velho, e o teste tem de
+	// dizer isso em vez de seguir achando que conferiu.
+	if err := sameDatabase("tilapou_qa", ""); err == nil {
+		t.Error("o portao aceitou um daemon que nao diz em que banco escreve")
+	}
+}

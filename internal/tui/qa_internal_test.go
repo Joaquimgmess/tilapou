@@ -250,6 +250,12 @@ func qaFreshFarm(t *testing.T) {
 	if err := qaDatabase(name); err != nil {
 		t.Fatalf("recomecar a fazenda escreve no banco: %v (QA_DATABASE=%q)", err, name)
 	}
+	// Antes de escrever, pergunta ao daemon em que banco ELE esta: a variavel e o que alguem
+	// digitou, e quem escreve e ele. Recusar aqui e o que impede a limpeza de cair no save do
+	// dono por env errada.
+	if err := sameDatabase(name, daemonDatabase(t)); err != nil {
+		t.Fatalf("recomecar a fazenda: %v", err)
+	}
 
 	cmd := exec.CommandContext(t.Context(), "docker", "compose", "exec", "-T", "postgres",
 		"psql", "-U", "tilapou", "-d", name, "-c", "DELETE FROM farm_events; DELETE FROM farm_actions; DELETE FROM farms;")
@@ -264,6 +270,21 @@ func qaFreshFarm(t *testing.T) {
 	// entra num catch-up que estoura o prazo do cliente e o erro que aparece e "deadline
 	// exceeded", que nao diz nada. Esperar aqui troca o misterio por um diagnostico.
 	waitFreshFarm(t)
+}
+
+var errDatabaseMismatch = errors.New("o daemon escreve em outro banco")
+
+// sameDatabase confere o banco que o daemon PUBLICA contra o que o teste pretende usar. A
+// guarda mora do lado que sabe: QA_DATABASE e o que alguem digitou, e o daemon e quem escreve.
+func sameDatabase(want, daemon string) error {
+	if daemon == "" {
+		return fmt.Errorf("%w: o daemon nao publica o banco (build velho?)", errDatabaseMismatch)
+	}
+	if daemon != want {
+		return fmt.Errorf("%w: o daemon escreve em %q e o teste usaria %q", errDatabaseMismatch, daemon, want)
+	}
+
+	return nil
 }
 
 // farmState diz em qual dos tres estados a leitura caiu. Sem isso, daemon fora do ar e daemon
@@ -305,6 +326,31 @@ func freshness(t *testing.T, snap *api.Snapshot, err error) farmState {
 	}
 
 	return farmFresh
+}
+
+// daemonDatabase pergunta ao daemon em que banco ele escreve.
+func daemonDatabase(t *testing.T) string {
+	t.Helper()
+
+	req, err := httpRequest(t, os.Getenv("TILAPOU_DAEMON")+"/healthz")
+	if err != nil {
+		return ""
+	}
+
+	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+	if err != nil {
+		return ""
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	var health struct {
+		Database string `json:"database"`
+	}
+	if json.NewDecoder(resp.Body).Decode(&health) != nil {
+		return ""
+	}
+
+	return health.Database
 }
 
 // freshFarm le a fazenda e classifica o que veio.

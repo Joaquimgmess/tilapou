@@ -7,8 +7,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	neturl "net/url"
 	"os"
 	"os/signal"
+	"runtime/debug"
+	"strings"
 	"syscall"
 	"time"
 
@@ -82,7 +85,9 @@ func runServe(args []string) error {
 		httpx.WithTrustedProxies(int(cfg.TrustedProxies)),
 		httpx.WithErrorDocs(errorDocsPrefix),
 	)
-	httpx.RegisterHealth(router, pool.Ping)
+	httpx.RegisterHealth(router, pool.Ping,
+		httpx.WithBuild(buildRevision()),
+		httpx.WithDatabase(databaseName(cfg.DatabaseURL)))
 	farm.RegisterRoutes(api, sessions, player, &rules)
 
 	server := &http.Server{
@@ -116,6 +121,40 @@ func runServe(args []string) error {
 	}
 
 	return nil
+}
+
+// buildRevision le o commit do proprio binario. E o que deixa o portao de teste falhar com
+// "daemon rodando build X, teste esperando Y" em vez de deixar alguem medir binario velho e
+// reportar regressao que nao existe.
+func buildRevision() (string, bool) {
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return "", false
+	}
+
+	var revision string
+	var modified bool
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			revision = setting.Value
+		case "vcs.modified":
+			modified = setting.Value == "true"
+		}
+	}
+
+	return revision, modified
+}
+
+// databaseName tira o nome do banco da URL de conexao. Publicar isso e o que permite a guarda
+// morar do lado que sabe: quem escreve e o daemon, e so ele conhece o destino de verdade.
+func databaseName(url string) string {
+	parsed, err := neturl.Parse(url)
+	if err != nil {
+		return ""
+	}
+
+	return strings.TrimPrefix(parsed.Path, "/")
 }
 
 func runHealth(args []string) error {
