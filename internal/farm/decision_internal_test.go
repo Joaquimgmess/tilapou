@@ -183,3 +183,49 @@ func TestAColunaValorNaoTruncaEmQuilos(t *testing.T) {
 		t.Errorf("onze lotes diferentes imprimiram %d valores distintos: a coluna esta congelada num degrau de quilo", len(vistos))
 	}
 }
+
+// "Vender agora" tem de ser o que a venda credita: com contrato, o caixa recebe 25% a mais e
+// a tela prometia o valor de mercado — o @qa mediu 21510 na tela contra 26887 no caixa. O
+// bonus e do tanque, entao quem tem o tanque na mao usa TankPayout.
+func TestVenderAgoraIncluiOBonusDoContrato(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	semContrato := stockedForDecision(t, &b)
+	comContrato := stockedForDecision(t, &b)
+	comContrato.Tanks[0].Upgrades |= 1 << sim.AutoContract
+
+	prometido := func(s sim.State) int64 {
+		view := viewOf(Snapshot{Farm: Farm{State: s}, Projection: sim.Project(&s)}, &b, newPlans())
+
+		return view.Tanks[0].Batches[0].Decision.SellNowCents
+	}
+
+	creditado := func(s sim.State) int64 {
+		antes := s.LifetimeEarned
+		out, advErr := sim.Advance(sim.Input{State: s, Until: s.Tick + 1, Balance: &b,
+			Actions: []sim.Action{{
+				ID: 1, Kind: sim.ActionHarvest, Tank: s.Tanks[0].ID,
+				Batch: s.Tanks[0].Batches[0].ID, At: s.Tick,
+			}}})
+		if advErr != nil {
+			t.Fatalf("despescando: %v", advErr)
+		}
+
+		return int64(out.State.LifetimeEarned - antes)
+	}
+
+	if got, want := prometido(comContrato), creditado(comContrato); got != want {
+		t.Errorf("com contrato a tela promete %d e a despesca credita %d", got, want)
+	}
+	if got, want := prometido(semContrato), creditado(semContrato); got != want {
+		t.Errorf("sem contrato a tela promete %d e a despesca credita %d", got, want)
+	}
+	if prometido(comContrato) <= prometido(semContrato) {
+		t.Error("o contrato nao aparece na tela: os dois tanques prometem o mesmo")
+	}
+}

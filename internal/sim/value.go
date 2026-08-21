@@ -25,6 +25,11 @@ func TankPayout(b *Balance, t *Tank, at Tick) Coins {
 	return applyContract(b, t, Coins(total))
 }
 
+// BatchPayout is what selling this batch alone would credit, bonus included.
+func BatchPayout(b *Balance, t *Tank, batch *Batch, at Tick) Coins {
+	return applyContract(b, t, GrossValue(b.PriceFor(batch.MeanMass, at), batch.Biomass()))
+}
+
 // applyContract e a formula do bonus num lugar so: sell e TankPayout tem de creditar e
 // prometer o mesmo numero, senao a tela e a decisao voltam a divergir por outro caminho.
 func applyContract(b *Balance, t *Tank, revenue Coins) Coins {

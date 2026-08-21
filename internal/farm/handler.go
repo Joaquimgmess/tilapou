@@ -283,7 +283,10 @@ func batchViewOf(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 	in := newDecisionInput(state, tank, batch)
 
 	bv.Decision = p.decision(in, func() api.Decision { return decisionFor(b, in) })
-	bv.Decision.SellNowCents = bv.ValueCents
+	// "Vender agora" e o que a venda credita, e nao o valor de mercado: o bonus de contrato e
+	// do tanque, entao quem tem o tanque na mao usa TankPayout. A coluna VALOR ao lado segue
+	// sendo mercado, por decisao do @arquiteto — sao duas contas com dois nomes.
+	bv.Decision.SellNowCents = int64(sim.BatchPayout(b, tank, batch, state.Tick))
 	bv.Decision.SellNowMargin = bv.MarginCents
 	bv.Decision.BreakEvenPerKg = bv.CostPerKg
 	bv.Decision.HoldMargin = bv.Decision.HoldCents - bv.CostCents - bv.Decision.HoldCostCents
