@@ -492,52 +492,49 @@ func affords(s api.Snapshot, t *api.Tank, index int) bool {
 	return s.CashCents >= t.Upgrades[index].CostCents
 }
 
-// rejectMessageMore continua a tabela de rejectMessage: uma so estourava o limite de galhos.
-func rejectMessageMore(reason string) (string, bool) {
+// rejectMessage traduz o motivo da recusa. Switch UNICO e sem default, sobre o tipo do
+// contrato: dividido em dois, o exhaustive nao cobrava nada — ele mede por switch — e motivo
+// novo no dominio sumia da tela sem quebrar coisa alguma. O custo declarado e a exclusao
+// dirigida de complexidade para esta funcao, no .golangci.yml.
+func rejectMessage(reason api.RejectReason) (string, bool) {
 	switch reason {
-	case "stale_view":
+	case api.RejectNone:
+		return "", false
+	case api.RejectStaleView:
 		return "a tela ja estava velha quando isso chegou: olhe os numeros e decida de novo", true
-	case "too_dense":
+	case api.RejectTooDense:
 		return "densidade estourada: esse tanque nao suporta tanto peixe", true
-	case "already_owned":
+	case api.RejectAlreadyOwned:
 		return "esse tanque ja tem essa automacao", true
-	case "not_enough_lifetime":
+	case api.RejectNotEnoughLifetime:
 		return "ainda nao da para tilapar: fature mais primeiro", true
-	}
-
-	return "", false
-}
-
-func rejectMessage(reason string) (string, bool) {
-	if message, ok := rejectMessageMore(reason); ok {
-		return message, true
-	}
-
-	switch reason {
-	case "not_broke":
+	case api.RejectNotBroke:
 		return "a fazenda ainda tem como se virar", true
-	case "prestige_first":
+	case api.RejectPrestigeFirst:
 		return "ha prestigio a colher: [p] recomeca do zero igual, e ainda da as matrizes", true
-	case "credit_limit":
+	case api.RejectCreditLimit:
 		return "o emprestimo passa do limite de credito: pague o que deve antes", true
-	case "no_debt":
+	case api.RejectNoDebt:
 		return "nao ha divida para pagar", true
-	case "nothing_sick":
+	case api.RejectNothingSick:
 		return "nao ha doenca nesse tanque", true
-	case "no_such_tank":
+	case api.RejectNoSuchTank:
 		return "esse tanque nao existe", true
-	case "no_such_batch":
+	case api.RejectNoSuchBatch:
 		return "nao ha lote nesse tanque", true
-	case "not_enough_feed":
+	case api.RejectNotEnoughFeed:
 		return "sem racao no tanque: compre com [c]", true
-	case "tank_full":
+	case api.RejectTankFull:
 		return "o tanque ja tem lotes demais", true
-	case "farm_full":
+	case api.RejectFarmFull:
 		return "a fazenda nao cabe mais tanques", true
-	case "bad_amount":
+	case api.RejectBadAmount:
 		return "quantidade invalida", true
-	case "unknown_kind":
+	case api.RejectUnknownKind:
 		return "acao desconhecida", true
+	case api.RejectNotEnoughCash:
+		// Esta tem numero e sai no explain, que sabe o que falta.
+		return "", false
 	}
 
 	return "", false
@@ -548,7 +545,7 @@ func explain(outcome *api.Outcome, cash int64) string {
 		return ""
 	}
 
-	if outcome.Reason == "not_enough_cash" {
+	if outcome.Reason == api.RejectNotEnoughCash {
 		if outcome.NeededCash > 0 {
 			return fmt.Sprintf("Sem grana: custa %s e faltam %s",
 				coins(outcome.NeededCash), coins(outcome.NeededCash-cash))
@@ -561,5 +558,5 @@ func explain(outcome *api.Outcome, cash int64) string {
 		return "Nao deu: " + message
 	}
 
-	return "Nao deu: " + outcome.Reason
+	return "Nao deu: " + string(outcome.Reason)
 }

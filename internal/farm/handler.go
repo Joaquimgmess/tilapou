@@ -192,7 +192,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) api.Snapshot {
 	if snap.Outcome != nil {
 		view.LastOutcome = &api.Outcome{
 			Applied:    snap.Outcome.Applied,
-			Reason:     snap.Outcome.Reason.String(),
+			Reason:     rejectReasonAPI[snap.Outcome.Reason],
 			NeededCash: int64(snap.Outcome.Needed),
 		}
 	}
@@ -246,7 +246,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) api.Snapshot {
 			Fish:      int32(e.Fish),
 			MassGrams: e.Mass.Grams(),
 			CashCents: int64(e.Cash),
-			Reason:    e.Reason,
+			Reason:    api.ParseRejectReason(e.Reason),
 		})
 	}
 
@@ -377,6 +377,32 @@ var _ [len(upgradeOrder) - sim.AutoKindCount]struct{}
 // loanBlockAPI e stockBlockAPI convertem os enums do sim para o contrato. A tabela indexada
 // pelo enum, e nao o String(), e o que faz o compilador cobrar o motivo novo: valor sem
 // entrada aqui derruba a sentinela abaixo, e nao vira string desconhecida na tela.
+// rejectReasonAPI converte o motivo do dominio para o contrato. Tabela indexada pelo enum, e
+// nao String(): motivo novo no sim sem entrada aqui derruba a sentinela abaixo, em vez de
+// virar string desconhecida que a tela nao sabe traduzir.
+var rejectReasonAPI = [...]api.RejectReason{
+	sim.RejectNone:              api.RejectNone,
+	sim.RejectUnknownKind:       api.RejectUnknownKind,
+	sim.RejectNoSuchTank:        api.RejectNoSuchTank,
+	sim.RejectNoSuchBatch:       api.RejectNoSuchBatch,
+	sim.RejectNotEnoughCash:     api.RejectNotEnoughCash,
+	sim.RejectNotEnoughFeed:     api.RejectNotEnoughFeed,
+	sim.RejectTankFull:          api.RejectTankFull,
+	sim.RejectFarmFull:          api.RejectFarmFull,
+	sim.RejectBadAmount:         api.RejectBadAmount,
+	sim.RejectTooDense:          api.RejectTooDense,
+	sim.RejectAlreadyOwned:      api.RejectAlreadyOwned,
+	sim.RejectNotEnoughLifetime: api.RejectNotEnoughLifetime,
+	sim.RejectCreditLimit:       api.RejectCreditLimit,
+	sim.RejectNoDebt:            api.RejectNoDebt,
+	sim.RejectNotBroke:          api.RejectNotBroke,
+	sim.RejectNothingSick:       api.RejectNothingSick,
+	sim.RejectStaleView:         api.RejectStaleView,
+	sim.RejectPrestigeFirst:     api.RejectPrestigeFirst,
+}
+
+var _ [len(rejectReasonAPI) - int(sim.RejectReasonCount)]struct{}
+
 var loanBlockAPI = [...]api.LoanBlock{
 	sim.LoanOpen:     api.LoanOpen,
 	sim.LoanNoCredit: api.LoanNoCredit,

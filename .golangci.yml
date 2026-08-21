@@ -214,9 +214,26 @@ linters:
       # Tabelas de conversao do enum do sim para o contrato: sao imutaveis e existem
       # justamente para o compilador cobrar o motivo novo pela sentinela de tamanho.
       - path: internal/farm/handler\.go
-        text: "(loanBlockAPI|stockBlockAPI) is a global variable"
+        text: "(loanBlockAPI|stockBlockAPI|rejectReasonAPI) is a global variable"
         linters:
           - gochecknoglobals
+      # Conjunto imutavel dos motivos que o contrato conhece: existe para o motivo lido do
+      # banco nao chegar cru na tela.
+      - path: internal/api/api\.go
+        text: "rejectReasons is a global variable"
+        linters:
+          - gochecknoglobals
+      # A traducao dos motivos e um switch unico DE PROPOSITO: dividido em dois, o exhaustive
+      # nao cobra nada (ele mede por switch) e motivo novo some da tela sem quebrar nada. O
+      # custo aceito e este, e a trava vale mais que o galho a menos.
+      - path: internal/tui/guidance\.go
+        text: "(function rejectMessage has cyclomatic complexity|identical-switch-branches)"
+        linters:
+          - revive
+      - path: internal/tui/guidance\.go
+        text: "cyclomatic complexity for function rejectMessage"
+        linters:
+          - cyclop
       - path: internal/platform/httpx/metrics\.go
         text: "durationBuckets is a global variable"
         linters:

@@ -71,6 +71,54 @@ const (
 	LoanNoCycle  LoanBlock = "no_cycle"
 )
 
+// RejectReason e o motivo pelo qual o jogo recusou a acao. Tipado, e nao string nua: motivo
+// novo no dominio passava a existir sem que nada obrigasse a escrever a frase, e o jogador
+// via a mensagem generica.
+type RejectReason string
+
+// Motivos de recusa que o jogo devolve.
+const (
+	RejectNone              RejectReason = "none"
+	RejectUnknownKind       RejectReason = "unknown_kind"
+	RejectNoSuchTank        RejectReason = "no_such_tank"
+	RejectNoSuchBatch       RejectReason = "no_such_batch"
+	RejectNotEnoughCash     RejectReason = "not_enough_cash"
+	RejectNotEnoughFeed     RejectReason = "not_enough_feed"
+	RejectTankFull          RejectReason = "tank_full"
+	RejectFarmFull          RejectReason = "farm_full"
+	RejectBadAmount         RejectReason = "bad_amount"
+	RejectTooDense          RejectReason = "too_dense"
+	RejectAlreadyOwned      RejectReason = "already_owned"
+	RejectNotEnoughLifetime RejectReason = "not_enough_lifetime"
+	RejectCreditLimit       RejectReason = "credit_limit"
+	RejectNoDebt            RejectReason = "no_debt"
+	RejectNotBroke          RejectReason = "not_broke"
+	RejectNothingSick       RejectReason = "nothing_sick"
+	RejectStaleView         RejectReason = "stale_view"
+	RejectPrestigeFirst     RejectReason = "prestige_first"
+)
+
+// rejectReasons e o conjunto dos motivos que o contrato conhece.
+var rejectReasons = map[RejectReason]struct{}{
+	RejectNone: {}, RejectUnknownKind: {}, RejectNoSuchTank: {}, RejectNoSuchBatch: {},
+	RejectNotEnoughCash: {}, RejectNotEnoughFeed: {}, RejectTankFull: {}, RejectFarmFull: {},
+	RejectBadAmount: {}, RejectTooDense: {}, RejectAlreadyOwned: {}, RejectNotEnoughLifetime: {},
+	RejectCreditLimit: {}, RejectNoDebt: {}, RejectNotBroke: {}, RejectNothingSick: {},
+	RejectStaleView: {}, RejectPrestigeFirst: {},
+}
+
+// ParseRejectReason converte o motivo lido do banco. Evento gravado por uma versao antiga
+// pode trazer motivo que o contrato de hoje nao conhece: devolver a string crua faria a tela
+// exibir um identificador de dominio, entao o desconhecido vira vazio e some.
+func ParseRejectReason(raw string) RejectReason {
+	reason := RejectReason(raw)
+	if _, ok := rejectReasons[reason]; !ok {
+		return ""
+	}
+
+	return reason
+}
+
 // StockBlock e o motivo pelo qual povoar esta ou nao na mesa.
 type StockBlock string
 
@@ -90,15 +138,15 @@ const (
 
 // Event is the event in the API, with mass in grams and cash in cents.
 type Event struct {
-	Seq       uint64 `json:"seq"`
-	Kind      string `json:"kind"`
-	From      int64  `json:"from_tick"`
-	To        int64  `json:"to_tick"`
-	Tank      uint32 `json:"tank_id"`
-	Fish      int32  `json:"fish"`
-	MassGrams int64  `json:"mass_grams"`
-	CashCents int64  `json:"cash_cents"`
-	Reason    string `json:"reason"`
+	Seq       uint64       `json:"seq"`
+	Kind      string       `json:"kind"`
+	From      int64        `json:"from_tick"`
+	To        int64        `json:"to_tick"`
+	Tank      uint32       `json:"tank_id"`
+	Fish      int32        `json:"fish"`
+	MassGrams int64        `json:"mass_grams"`
+	CashCents int64        `json:"cash_cents"`
+	Reason    RejectReason `json:"reason"`
 }
 
 // Upgrade carries the automation cost in cents.
@@ -110,9 +158,9 @@ type Upgrade struct {
 
 // Outcome carries the reason for the refusal and the cash that was missing, in cents.
 type Outcome struct {
-	Applied    bool   `json:"applied"`
-	Reason     string `json:"reason"`
-	NeededCash int64  `json:"needed_cents"`
+	Applied    bool         `json:"applied"`
+	Reason     RejectReason `json:"reason"`
+	NeededCash int64        `json:"needed_cents"`
 }
 
 // Prices carries the current tick's prices in cents and the feed-to-fish exchange in PPM.

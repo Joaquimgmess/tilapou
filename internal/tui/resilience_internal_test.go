@@ -183,15 +183,17 @@ func TestABlockedLoanSaysWhyItIsBlocked(t *testing.T) {
 func TestEveryRejectReasonHasAMessage(t *testing.T) {
 	t.Parallel()
 
-	reasons := []string{
-		"no_such_tank", "no_such_batch", "not_enough_cash", "not_enough_feed", "tank_full",
-		"farm_full", "bad_amount", "too_dense", "already_owned", "not_enough_lifetime",
-		"credit_limit", "no_debt", "nothing_sick", "not_broke", "unknown_kind",
+	reasons := []api.RejectReason{
+		api.RejectNoSuchTank, api.RejectNoSuchBatch, api.RejectNotEnoughCash,
+		api.RejectNotEnoughFeed, api.RejectTankFull, api.RejectFarmFull, api.RejectBadAmount,
+		api.RejectTooDense, api.RejectAlreadyOwned, api.RejectNotEnoughLifetime,
+		api.RejectCreditLimit, api.RejectNoDebt, api.RejectNothingSick, api.RejectNotBroke,
+		api.RejectUnknownKind, api.RejectStaleView, api.RejectPrestigeFirst,
 	}
 
 	for _, reason := range reasons {
 		got := explain(&api.Outcome{Reason: reason}, 0)
-		if strings.Contains(got, reason) {
+		if strings.Contains(got, string(reason)) {
 			t.Errorf("o motivo %q chega cru na tela: %q", reason, got)
 		}
 	}

@@ -92,7 +92,7 @@ const (
 	RejectNothingSick
 	RejectStaleView
 	RejectPrestigeFirst
-	rejectReasonCount
+	RejectReasonCount
 )
 
 var rejectReasonNames = [...]string{
@@ -127,11 +127,11 @@ func RejectReasonNamed(name string) (RejectReason, bool) {
 	return RejectNone, false
 }
 
-var _ [len(rejectReasonNames) - int(rejectReasonCount)]struct{}
+var _ [len(rejectReasonNames) - int(RejectReasonCount)]struct{}
 
 // String returns "invalid" outside the enum.
 func (r RejectReason) String() string {
-	if r >= rejectReasonCount {
+	if r >= RejectReasonCount {
 		return invalidName
 	}
 
