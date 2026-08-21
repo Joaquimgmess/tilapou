@@ -99,9 +99,15 @@ func TestLiveSession(t *testing.T) {
 	var model tea.Model = New(client.New(addr, 5*time.Second))
 	d := &driver{t: t, model: model}
 	d.run(model.Init())
+	// Sem tamanho a sessao roda num terminal de 0x0 e o relatorio sai de uma tela que ninguem
+	// ve. O tamanho e o mesmo dos outros testes de layout.
+	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
+	d.requireLive("1. abertura")
 
 	var out strings.Builder
-	out.WriteString(d.frame("1. abertura"))
+	abertura := d.frame("1. abertura")
+	d.requireFrame("1. abertura", abertura, "TILAPOU", "OBJETIVO")
+	out.WriteString(abertura)
 
 	for range 3 {
 		d.press("up")
@@ -109,7 +115,9 @@ func TestLiveSession(t *testing.T) {
 	out.WriteString(d.frame("2. de frente para o viveiro"))
 
 	d.press("z")
-	out.WriteString(d.frame("3. menu do tanque"))
+	menu := d.frame("3. menu do tanque")
+	d.requireFrame("3. menu do tanque", menu, "TANQUE")
+	out.WriteString(menu)
 
 	d.press("z")
 	out.WriteString(d.frame("4. servi o trato"))
@@ -121,9 +129,13 @@ func TestLiveSession(t *testing.T) {
 	d.press("down")
 	out.WriteString(d.frame("5. menu com cursor em outra opcao"))
 
+	// O painel de numeros abre com tab: o roteiro apertava x e m, que nao trocam de tela, e o
+	// quadro rotulado "painel de numeros" saia sendo o mapa.
 	d.press("x")
-	d.press("m")
-	out.WriteString(d.frame("6. painel de numeros"))
+	d.press("tab")
+	painel := d.frame("6. painel de numeros")
+	d.requireFrame("6. painel de numeros", painel, "MERCADO")
+	out.WriteString(painel)
 
 	fmt.Fprint(os.Stdout, out.String())
 

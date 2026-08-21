@@ -54,6 +54,7 @@ func TestProgression(t *testing.T) {
 	var model tea.Model = New(client.New(addr, 10*time.Second))
 	d := &driver{t: t, model: model}
 	d.run(model.Init())
+	d.requireLive("inicio")
 
 	var out strings.Builder
 	out.WriteString(d.line("inicio"))
@@ -83,6 +84,7 @@ func TestProgression(t *testing.T) {
 	}
 
 	d.press("h")
+	d.requireLive("despesquei")
 	out.WriteString(d.line("despesquei"))
 
 	d.press("g")
@@ -94,6 +96,7 @@ func TestProgression(t *testing.T) {
 	out.WriteString(d.line("quitei a divida"))
 
 	d.press("s")
+	d.requireLive("povoei o ciclo seguinte")
 	out.WriteString(d.line("povoei o ciclo seguinte"))
 
 	fmt.Fprint(os.Stdout, "\n"+out.String())
