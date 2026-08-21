@@ -193,14 +193,7 @@ func treatItem(t api.Tank, batch api.Batch) menuItem {
 func loanHint(s api.Snapshot, t api.Tank) string {
 	// A saida sai do estado, e nao de um palpite sobre o caixa: mandar pagar divida com caixa
 	// zerado, ou vender peixe sem peixe, e mandar fazer o que a tela ao lado ja nega.
-	pagar := "pague o que deve antes"
-	switch {
-	case s.CashCents > 0:
-	case s.Fish > 0:
-		pagar = "venda peixe com [h] antes"
-	default:
-		pagar = "sem peixe para vender, so [b]"
-	}
+	pagar := raiseCash(s)
 
 	switch t.LoanBlock {
 	case api.LoanOpen:
@@ -242,6 +235,22 @@ func creditCost(t api.Tank) string {
 	}
 
 	return custo + "; o ciclo projeta " + coins(t.CycleMargin)
+}
+
+// raiseCash aponta a saida que o estado sustenta, na ordem em que ela existe: pagar o que se
+// deve so quando ha divida E caixa, vender peixe so quando ha peixe, e o recomeco quando nao
+// sobra nem uma coisa nem outra. Cada palpite a mais aqui ja virou um defeito proprio.
+func raiseCash(s api.Snapshot) string {
+	switch {
+	case s.Debt > 0 && s.CashCents > 0:
+		return "pague o que deve antes"
+	case s.Fish > 0:
+		return "venda peixe com [h] antes"
+	case s.CashCents > 0:
+		return "junte caixa antes"
+	default:
+		return "sem peixe para vender, so [b]"
+	}
 }
 
 // creditOwed e quanto o emprestimo devolve no fim e quanto disso e juro, em TC e em %.

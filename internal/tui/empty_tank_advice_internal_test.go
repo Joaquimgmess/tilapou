@@ -98,9 +98,9 @@ func TestDicaDoGalpaoApontaSaidaQueResponde(t *testing.T) {
 		quer    string
 		naoQuer string
 	}{
-		{nome: "com caixa", snap: api.Snapshot{CashCents: 100_000, Fish: 2_000}, quer: "pague o que deve", naoQuer: "vendendo peixe"},
-		{nome: "sem caixa, com peixe", snap: api.Snapshot{CashCents: 0, Fish: 2_000}, quer: "venda peixe", naoQuer: "pague o que deve"},
-		{nome: "sem caixa, sem peixe", snap: api.Snapshot{CashCents: 0, Fish: 0}, quer: "[b]", naoQuer: "pague o que deve"},
+		{nome: "com caixa e divida", snap: api.Snapshot{CashCents: 100_000, Debt: 700_000, Fish: 2_000}, quer: "pague o que deve", naoQuer: "vendendo peixe"},
+		{nome: "sem caixa, com peixe", snap: api.Snapshot{CashCents: 0, Debt: 700_000, Fish: 2_000}, quer: "venda peixe", naoQuer: "pague o que deve"},
+		{nome: "sem caixa, sem peixe", snap: api.Snapshot{CashCents: 0, Debt: 700_000, Fish: 0}, quer: "[b]", naoQuer: "pague o que deve"},
 	}
 
 	for _, caso := range casos {
@@ -135,5 +135,23 @@ func TestObjetivoDoTopoNaoMandaVenderPeixeQueNaoExiste(t *testing.T) {
 	}
 	if !strings.Contains(comPeixe.text, "Venda peixe") {
 		t.Errorf("com peixe na fazenda o objetivo deixou de apontar a despesca: %q", comPeixe.text)
+	}
+}
+
+// Mandar pagar divida sem divida e mandar fazer o que nao existe: com Debt zero o galpao
+// mostrava "pague o que deve antes" e o menu nem tinha o item de pagar. A dica so pode
+// apontar a saida que o estado sustenta.
+func TestDicaDoGalpaoNaoMandaPagarDividaQuandoNaoHaDivida(t *testing.T) {
+	t.Parallel()
+
+	semDivida := api.Snapshot{CashCents: 100_000, Debt: 0, Fish: 2_000}
+	comDivida := api.Snapshot{CashCents: 100_000, Debt: 700_000, Fish: 2_000}
+	tank := api.Tank{ID: 1, LoanBlock: api.LoanNoCycle}
+
+	if got := loanHint(semDivida, tank); strings.Contains(got, "pague o que deve") {
+		t.Errorf("sem divida a dica manda pagar o que deve: %q", got)
+	}
+	if got := loanHint(comDivida, tank); !strings.Contains(got, "pague o que deve") {
+		t.Errorf("com divida e caixa a dica deixou de apontar o pagamento: %q", got)
 	}
 }
