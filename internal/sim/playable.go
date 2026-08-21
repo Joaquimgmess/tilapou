@@ -40,16 +40,14 @@ var playable = [...]playableFor{
 	},
 	// Ligar o aerador gasta energia e nao levanta caixa: muda a agua, nao o rumo.
 	ActionAerate: never,
-	// Despescar so muda o rumo com lote no ponto: tres alevinos minusculos sao aceitos pela
-	// acao e nao levantam nada, e contar isso como saida deixava a fazenda morta de pe.
-	ActionHarvest: func(_ *State, b *Balance, t *Tank, _ CyclePlan) bool {
-		for i := range t.BatchCount {
-			if t.Batches[i].MeanMass >= b.Growth.HarvestMass {
-				return true
-			}
-		}
+	// O criterio e VALOR, e nao massa: applyHarvest esvazia o lote inteiro, entao a jogada
+	// que a despesca destrava e sempre povoar, e o piso dela e o mesmo da jogada mais barata.
+	// Medindo por massa, a fazenda dizia "nao resta jogada possivel" com 7553,00 TC de peixe
+	// dentro; medindo por valor, tres alevinos de 30 g continuam nao sendo saida.
+	ActionHarvest: func(s *State, b *Balance, t *Tank, _ CyclePlan) bool {
+		worth := int64(s.Cash) + int64(tankWorth(b, t, s.Tick))
 
-		return false
+		return worth >= mulDivCeil(int64(b.Economy.FingerlingPrice), MinStockFish, 1)
 	},
 	ActionBuyUpgrade: func(s *State, b *Balance, t *Tank, _ CyclePlan) bool {
 		for kind := range autoKindCount {
@@ -94,6 +92,29 @@ var playable = [...]playableFor{
 // no mesmo molde das tabelas de nomes. Ela nao pega buraco no meio — para isso existe o teste
 // que percorre o registro e recusa entrada vazia.
 var _ [len(playable) - int(actionKindCount)]struct{}
+
+// tankWorth e a receita bruta a mercado dos lotes do tanque, no tick de agora.
+func tankWorth(b *Balance, t *Tank, at Tick) Coins {
+	var total int64
+	for i := range t.BatchCount {
+		batch := &t.Batches[i]
+		price := b.PriceFor(batch.MeanMass, at)
+		total = addSat(total, mulDivFloor(int64(price), int64(batch.Biomass()), int64(MicrogramsPerKilogram)))
+	}
+
+	return Coins(total)
+}
+
+// harvestWorth e o que a fazenda inteira levantaria despescando agora. Existe para o teste
+// nomear o numero que a decisao usa.
+func (s *State) harvestWorth(b *Balance) Coins {
+	var total int64
+	for i := range s.TankCount {
+		total = addSat(total, int64(tankWorth(b, &s.Tanks[i], s.Tick)))
+	}
+
+	return Coins(total)
+}
 
 func never(_ *State, _ *Balance, _ *Tank, _ CyclePlan) bool {
 	return false

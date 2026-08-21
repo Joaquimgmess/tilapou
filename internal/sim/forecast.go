@@ -287,7 +287,23 @@ func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) StockOffer 
 			block = StockNoCycle
 		}
 
-		return StockOffer{PerFish: perFish, Short: Coins(subSat(int64(need), int64(s.Cash))), Block: block}
+		// Na faixa em que o jogo ACEITA povoar, o conselho devolve o numero que ele aceita: o
+		// zero fazia a tela recusar a tecla sozinha, sem nunca falar com o dominio, e o
+		// jogador ficava com tres linhas mandando [s] e o [s] sem sair do cliente.
+		// So no tanque VAZIO: o piso e o de comecar um ciclo. Com lote dentro, sugerir o piso
+		// de novo a cada aperto enchia o tanque de cem em cem, que foi o que o teste do
+		// povoar repetido pegou.
+		fish := FishCount(0)
+		if block == StockShortFeed && t.Fish() == 0 {
+			fish = MinStockFish
+		}
+
+		return StockOffer{
+			Fish:    fish,
+			PerFish: perFish,
+			Short:   Coins(subSat(int64(need), int64(s.Cash))),
+			Block:   block,
+		}
 	}
 
 	// O que sobra depois de guardar o custo fixo do ciclo: povoar com o caixa inteiro deixa

@@ -122,7 +122,7 @@ func TestOPisoDoRegistroEOPisoDaAcao(t *testing.T) {
 
 	// A direcao que a suite deixava aberta e a cara: registro mais rigoroso que a acao marca
 	// a fazenda como quebrada com jogada na mao, e o [b] e irreversivel.
-	soUmaDirecao := map[ActionKind]bool{ActionBuyFeed: true, ActionHarvest: true}
+	soUmaDirecao := map[ActionKind]bool{ActionBuyFeed: true}
 
 	casos := map[ActionKind]func(id TankID) Action{
 		ActionStock:   func(id TankID) Action { return Action{Kind: ActionStock, Tank: id, Amount: MinStockFish} },
@@ -233,5 +233,80 @@ func TestRecomecarRecusaEnquantoDaParaTilapar(t *testing.T) {
 
 	if reason := restart(&sem, b, sem.Tick, &eventSink{}, plans); reason != RejectNone {
 		t.Errorf("sem prestigio a colher o jogo recusou recomecar: %v", reason)
+	}
+}
+
+// Na faixa em que o jogo aceita povoar mas o caixa nao paga a racao, o conselho tem de dizer
+// o numero que o jogo aceita. Devolver zero fazia a tela recusar a tecla sozinha, sem nunca
+// falar com o dominio: as tres linhas mandavam [s], o [s] nao saia do cliente, e o estado
+// nao mudava — sem saida por conta da propria tela.
+func TestOConselhoDaONumeroQueOJogoAceitaMesmoSemRacaoPaga(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	s := NewState(1, 0, 0)
+	s.Cash = Coins(mulDivCeil(int64(b.Economy.FingerlingPrice), MinStockFish, 1))
+
+	id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+	if !ok {
+		t.Fatal("sem tanque")
+	}
+
+	plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+
+	offer := s.StockAdvice(b, id, plan)
+	if offer.Block != StockShortFeed {
+		t.Fatalf("este teste precisa da faixa em que falta racao, e o bloco veio %v", offer.Block)
+	}
+	if offer.Fish <= 0 {
+		t.Fatal("o conselho devolveu zero na faixa em que o jogo aceita povoar: a tela recusa a tecla sozinha")
+	}
+
+	reason, _ := applyStock(&s, b, Action{Kind: ActionStock, Tank: id, Amount: int64(offer.Fish)},
+		s.Tick, &eventSink{})
+	if reason != RejectNone {
+		t.Errorf("o jogo recusou o numero que o conselho sugeriu: %v", reason)
+	}
+}
+
+// Despescar e jogada quando a despesca levanta o piso da jogada mais barata: o criterio e
+// VALOR, e nao massa. Com massa, a fazenda dizia "nao resta jogada possivel" e oferecia o
+// recomeco irreversivel com 7553,00 TC de peixe no tanque.
+func TestDespescarEJogadaPeloValorENaoPelaMassa(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	monta := func(fish FishCount, mass Micrograms) State {
+		s := NewState(1, 0, 0)
+		s.Cash = 0
+		s.Debt = b.Credit.MaxPrincipal
+
+		id, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres)
+		if !ok {
+			t.Fatal("sem tanque")
+		}
+		s.StockTank(id, fish, mass, 1_000)
+
+		return s
+	}
+
+	var plans Plans
+	plans[TankEarthPond] = b.CycleAt(TankEarthPond, 0, 0)
+
+	// Lote verde, mas que vale muito mais que o piso: e saida, e das grandes.
+	gordo := monta(2_000, 400*MicrogramsPerGram)
+	if gordo.Broke(b, plans) {
+		t.Errorf("fazenda com %d de peixe no tanque contou como quebrada: o [b] e irreversivel",
+			gordo.harvestWorth(b))
+	}
+
+	// Tres alevinos minusculos continuam nao sendo saida: o piso e o mesmo da jogada mais
+	// barata, e o lote magro nao chega la.
+	magro := monta(3, 30*MicrogramsPerGram)
+	if !magro.Broke(b, plans) {
+		t.Errorf("fazenda com %d de peixe contou como viva: nao da nem para povoar o minimo",
+			magro.harvestWorth(b))
 	}
 }
