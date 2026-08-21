@@ -63,7 +63,7 @@ func step(s *State, b *Balance, tick Tick, sink *eventSink, plans Plans) {
 
 			killByHypoxia(t, batch, b, oxygen, tick, s.Seed)
 			killByDisease(s, b, t, batch, tick)
-			killByStarvation(t, batch, b, eaten, tick, s.Seed)
+			killByStarvation(t, batch, b, eaten, tick, s.Seed, sink)
 		}
 
 		t.compact()
@@ -210,9 +210,15 @@ func killByHypoxia(t *Tank, batch *Batch, b *Balance, oxygen MicrogramsPerLiter,
 	t.Accrual.HypoxiaDeaths = FishCount(addSat(int64(t.Accrual.HypoxiaDeaths), int64(deaths)))
 }
 
-func killByStarvation(t *Tank, batch *Batch, b *Balance, eaten Micrograms, tick Tick, seed Seed) {
+// killByStarvation mata quem passou da graca sem comer e delimita o EPISODIO: abre no
+// primeiro morto, fecha quando o lote volta a comer ou acaba. Amostrar "morreram N nesta
+// janela" a cada janela enchia o log de um evento so e empurrava a falencia para fora dele —
+// o fato aqui e a seca, e nao o instante.
+func killByStarvation(t *Tank, batch *Batch, b *Balance, eaten Micrograms, tick Tick, seed Seed, sink *eventSink) {
 	if eaten > 0 {
 		batch.StarvationTicks = 0
+		endStarvation(t, batch, tick, sink)
+
 		return
 	}
 
@@ -223,7 +229,34 @@ func killByStarvation(t *Tank, batch *Batch, b *Balance, eaten Micrograms, tick 
 
 	deaths := killFish(batch, int64(b.Death.StarvationRatePPM), seed,
 		RollKey{Tick: tick, Tank: t.ID, Batch: batch.ID, Purpose: PurposeStarvation})
+	if deaths <= 0 {
+		return
+	}
+
+	// O rearme e o proprio prato de comida: so quem voltou a comer pode abrir outra seca.
+	if batch.StarvationEpisodeDeaths == 0 {
+		sink.emit(Event{Kind: EventStarvationBegan, From: tick, To: tick, Tank: t.ID, Batch: batch.ID, Fish: deaths})
+	}
+
+	batch.StarvationEpisodeDeaths = FishCount(addSat(int64(batch.StarvationEpisodeDeaths), int64(deaths)))
 	t.Accrual.StarvationDeaths = FishCount(addSat(int64(t.Accrual.StarvationDeaths), int64(deaths)))
+
+	if batch.Empty() {
+		endStarvation(t, batch, tick, sink)
+	}
+}
+
+// endStarvation fecha o episodio com o total, se havia um aberto.
+func endStarvation(t *Tank, batch *Batch, tick Tick, sink *eventSink) {
+	if batch.StarvationEpisodeDeaths <= 0 {
+		return
+	}
+
+	sink.emit(Event{
+		Kind: EventStarvationEnded, From: tick, To: tick,
+		Tank: t.ID, Batch: batch.ID, Fish: batch.StarvationEpisodeDeaths,
+	})
+	batch.StarvationEpisodeDeaths = 0
 }
 
 func killFish(batch *Batch, ratePPM int64, seed Seed, key RollKey) FishCount {

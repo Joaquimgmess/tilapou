@@ -24,4 +24,4 @@ semente: 7  fuso: -180  dias: 20
   20     1455      300     3000         4820     6608       436
 
 eventos
-starvation_deaths       303
+starvation_began          1

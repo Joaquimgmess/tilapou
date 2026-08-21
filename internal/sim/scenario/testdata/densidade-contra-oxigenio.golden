@@ -10,4 +10,4 @@ semente: 3  fuso: -180  dias: 5
 
 eventos
 hypoxia_deaths           16
-starvation_deaths        47
+starvation_began          1

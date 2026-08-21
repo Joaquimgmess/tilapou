@@ -88,6 +88,10 @@ type batchDocument struct {
 	Sick            int32  `json:"sick"`
 	HypoxiaTicks    int32  `json:"hypoxia_ticks"`
 	StarvationTicks int32  `json:"starvation_ticks"`
+	// StarvationEpisodeDeaths ausente vira zero, que e "nenhuma seca aberta": save antigo
+	// carregado no meio de uma seca so deixa de contar os mortos de antes da carga, e nao
+	// reemite nada. Por isso nao ha bump de StateVersion.
+	StarvationEpisodeDeaths int32 `json:"starvation_episode_deaths,omitempty"`
 }
 
 // Encode serializes the state to JSON, writing only the tanks and batches in use.
@@ -161,6 +165,8 @@ func Encode(s sim.State) ([]byte, error) {
 				Sick:            batch.Sick,
 				HypoxiaTicks:    batch.HypoxiaTicks,
 				StarvationTicks: batch.StarvationTicks,
+
+				StarvationEpisodeDeaths: int32(batch.StarvationEpisodeDeaths),
 			})
 		}
 
@@ -210,6 +216,8 @@ type batchFields struct {
 	Sick            int32
 	HypoxiaTicks    int32
 	StarvationTicks int32
+
+	StarvationEpisodeDeaths sim.FishCount
 }
 
 // Decode rebuilds the state from the JSON, recomputing what is derived.
@@ -298,6 +306,8 @@ func Decode(raw []byte) (sim.State, error) {
 				Sick:            batch.Sick,
 				HypoxiaTicks:    batch.HypoxiaTicks,
 				StarvationTicks: batch.StarvationTicks,
+
+				StarvationEpisodeDeaths: sim.FishCount(batch.StarvationEpisodeDeaths),
 			})
 		}
 	}

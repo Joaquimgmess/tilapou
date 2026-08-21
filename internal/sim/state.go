@@ -95,6 +95,9 @@ type Batch struct {
 	Sick            int32
 	HypoxiaTicks    int32
 	StarvationTicks int32
+	// StarvationEpisodeDeaths conta os mortos da seca em curso. E o payload do fechamento, e
+	// nao gatilho: quem abre e fecha o episodio sao as transicoes.
+	StarvationEpisodeDeaths FishCount
 }
 
 // Biomass saturates instead of overflowing.

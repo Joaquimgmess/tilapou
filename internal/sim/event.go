@@ -12,6 +12,8 @@ const (
 	EventGrowth
 	EventHypoxiaDeaths
 	EventStarvationDeaths
+	EventStarvationBegan
+	EventStarvationEnded
 	EventFeedExhausted
 	EventHarvest
 	EventStocked
@@ -35,6 +37,8 @@ var eventKindNames = [...]string{
 	EventGrowth:           "growth",
 	EventHypoxiaDeaths:    "hypoxia_deaths",
 	EventStarvationDeaths: "starvation_deaths",
+	EventStarvationBegan:  "starvation_began",
+	EventStarvationEnded:  "starvation_ended",
 	EventFeedExhausted:    "feed_exhausted",
 	EventHarvest:          "harvest",
 	EventStocked:          "stocked",
@@ -117,15 +121,6 @@ func (t *Tank) flushAccrual(sink *eventSink, upTo Tick) {
 			To:   to,
 			Tank: t.ID,
 			Fish: t.Accrual.HypoxiaDeaths,
-		})
-	}
-	if t.Accrual.StarvationDeaths > 0 {
-		sink.emit(Event{
-			Kind: EventStarvationDeaths,
-			From: from,
-			To:   to,
-			Tank: t.ID,
-			Fish: t.Accrual.StarvationDeaths,
 		})
 	}
 	if t.Accrual.DiseaseDeaths > 0 {

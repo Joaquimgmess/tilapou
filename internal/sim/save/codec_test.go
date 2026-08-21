@@ -58,6 +58,7 @@ func sample(t *testing.T) sim.State {
 	batch.Sick = 9
 	batch.HypoxiaTicks = 11
 	batch.StarvationTicks = 13
+	batch.StarvationEpisodeDeaths = 7
 
 	return s
 }

@@ -52,6 +52,8 @@ type batchFields struct {
 	Sick            int32
 	HypoxiaTicks    int32
 	StarvationTicks int32
+
+	StarvationEpisodeDeaths sim.FishCount
 }
 
 // newDecisionInput quantizes what churns every tick so the cache survives the day: the
@@ -117,6 +119,10 @@ func quantizedBatches(batch *sim.Batch) [sim.MaxBatchesPerTank]sim.Batch {
 		Sick:            batch.Sick,
 		HypoxiaTicks:    0,
 		StarvationTicks: 0,
+
+		// Zerado: o contador do episodio de fome anda dentro do dia e nao muda a decisao de
+		// segurar ou vender. Deixa-lo na chave derrubaria o cache a cada morte.
+		StarvationEpisodeDeaths: 0,
 	})
 	return only
 }
