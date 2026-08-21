@@ -99,7 +99,8 @@ func (d *driver) choose(label string) {
 	}
 
 	rotulos := make([]string, 0, len(m.menu.items))
-	for i, item := range m.menu.items {
+	for i := range m.menu.items {
+		item := &m.menu.items[i]
 		rotulos = append(rotulos, item.label)
 		if !strings.Contains(item.label, label) {
 			continue
@@ -135,6 +136,52 @@ func (d *driver) applied(step string) {
 	}
 	if !out.Applied {
 		d.t.Fatalf("%s: a acao foi recusada (%s), e o rotulo diz que ela aconteceu", step, out.Reason)
+	}
+}
+
+// cashRose cobra que o caixa tenha subido no passo. Cada asercao dessas vira um galho no
+// roteiro, e o roteiro inteiro estourou a complexidade que o lint aceita — entao elas moram
+// aqui, com nome, e o roteiro fica legivel como roteiro.
+func (d *driver) cashRose(step string, antes api.Snapshot) {
+	d.t.Helper()
+
+	if depois := d.snap(); depois.CashCents <= antes.CashCents {
+		d.t.Fatalf("%s: o caixa nao subiu (%d -> %d)", step, antes.CashCents, depois.CashCents)
+	}
+}
+
+// cashFell cobra que o caixa tenha caido: compra que nao cobra nada nao aconteceu.
+func (d *driver) cashFell(step string, antes api.Snapshot) {
+	d.t.Helper()
+
+	if depois := d.snap(); depois.CashCents >= antes.CashCents {
+		d.t.Fatalf("%s: o caixa nao caiu (%d -> %d)", step, antes.CashCents, depois.CashCents)
+	}
+}
+
+// stockedAtLeast cobra que o tanque tenha recebido o que a tela sugeriu.
+func (d *driver) stockedAtLeast(step string, querido int64) {
+	d.t.Helper()
+
+	if got := int64(d.snap().Tanks[0].Fish); got < querido {
+		d.t.Fatalf("%s: a tela sugeriu %d peixes e o tanque ficou com %d", step, querido, got)
+	}
+}
+
+// moved cobra que sessenta dias tenham mexido em alguma coisa. Nao se exige que o lote da
+// frente cresca: com o peao de despesca ligado o ciclo fecha dentro da janela e o lote da
+// frente passa a ser outro, mais novo. O que e defeito e nada mudar.
+func (d *driver) moved(step string, antes api.Snapshot) {
+	d.t.Helper()
+
+	depois := d.snap()
+	if depois.Tick <= antes.Tick {
+		d.t.Fatalf("%s: o relogio nao andou (%d -> %d)", step, antes.Tick, depois.Tick)
+	}
+	if cresceu(antes) == cresceu(depois) && depois.LifetimeCents == antes.LifetimeCents &&
+		depois.CashCents == antes.CashCents && depois.Fish == antes.Fish {
+		d.t.Fatalf("%s e nada mudou: %d g, %d de caixa, %d peixes, %d faturado",
+			step, cresceu(depois), depois.CashCents, depois.Fish, depois.LifetimeCents)
 	}
 }
 

@@ -18,6 +18,7 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
+	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
@@ -87,6 +88,11 @@ func TestProgression(t *testing.T) {
 		t.Fatalf("recusado: %v — o roteiro aperta teclas de verdade, e este e o save do jogador", err)
 	}
 
+	// O roteiro prepara a propria entrada: dependendo do save que estiver la, ele vira
+	// relatorio do save e nao teste do jogo — foi assim que ele passou verde com todos os
+	// passos recusados.
+	qaFreshFarm(t)
+
 	var model tea.Model = New(client.New(addr, 10*time.Second))
 	d := &driver{t: t, model: model}
 	d.run(model.Init())
@@ -95,68 +101,77 @@ func TestProgression(t *testing.T) {
 	var out strings.Builder
 	out.WriteString(d.line("inicio"))
 
+	antes := d.snap()
 	d.press("f")
 	d.press("h")
+	d.applied("vendi o lote herdado")
+	d.cashRose("vendi o lote herdado", antes)
+	if got := d.snap().Tanks[0].Fish; got != 0 {
+		t.Fatalf("vendi o lote herdado e sobraram %d peixes no tanque", got)
+	}
 	out.WriteString(d.line("vendi o lote herdado"))
 
+	antes = d.snap()
 	d.press("1")
 	d.press("2")
+	d.applied("comprei comedouro e aerador")
+	d.cashFell("comprei comedouro e aerador", antes)
 	out.WriteString(d.line("comprei comedouro e aerador"))
 
+	antes = d.snap()
 	d.press("g")
-	for range 2 {
-		d.press("down")
-	}
-	d.press("z")
+	d.choose("Pegar emprestimo")
 	d.press("x")
+	d.applied("peguei o credito que a tela sugeriu")
+	d.cashRose("peguei o credito que a tela sugeriu", antes)
+	if depois := d.snap(); depois.Debt <= antes.Debt {
+		t.Fatalf("peguei o credito e a divida foi de %d para %d", antes.Debt, depois.Debt)
+	}
 	out.WriteString(d.line("peguei o credito que a tela sugeriu"))
 
+	querido := d.snap().Tanks[0].StockAdvice
 	d.press("s")
+	d.applied("povoei ate o equilibrio")
+	d.stockedAtLeast("povoei ate o equilibrio", querido)
 	out.WriteString(d.line("povoei ate o equilibrio"))
 
 	for _, days := range []int{60, 60, 60} {
+		antes = d.snap()
 		qaJumpDays(t, days)
+		d.press("r")
+		d.moved(fmt.Sprintf("+%d dias", days), antes)
 		out.WriteString(d.line(fmt.Sprintf("+%d dias", days)))
 	}
 
+	antes = d.snap()
 	d.press("h")
-	d.requireLive("despesquei")
+	d.applied("despesquei")
+	d.cashRose("despesquei", antes)
 	out.WriteString(d.line("despesquei"))
 
 	d.press("g")
-	for range 3 {
-		d.press("down")
-	}
-	d.press("z")
+	d.choose("Pagar divida")
 	d.press("x")
+	d.applied("quitei a divida")
+	if depois := d.snap(); depois.Debt != 0 {
+		t.Fatalf("quitei a divida: sobraram %d de divida", depois.Debt)
+	}
 	out.WriteString(d.line("quitei a divida"))
 
+	querido = d.snap().Tanks[0].StockAdvice
 	d.press("s")
-	d.requireLive("povoei o ciclo seguinte")
+	d.applied("povoei o ciclo seguinte")
+	d.stockedAtLeast("povoei o ciclo seguinte", querido)
 	out.WriteString(d.line("povoei o ciclo seguinte"))
 
 	fmt.Fprint(os.Stdout, "\n"+out.String())
 }
 
-func TestQASession(t *testing.T) {
-	t.Parallel()
-
-	addr := os.Getenv("TILAPOU_DAEMON")
-	if addr == "" {
-		t.Fatal("TILAPOU_DAEMON vazio: dentro da tag live isto e erro de uso, e nao motivo de pular")
-	}
-	if err := qaDaemon(addr); err != nil {
-		t.Fatalf("recusado: %v — o roteiro aperta teclas de verdade, e este e o save do jogador", err)
+// cresceu e o peso do lote da frente, em gramas; zero quando nao ha lote.
+func cresceu(s api.Snapshot) int64 {
+	if len(s.Tanks) == 0 || len(s.Tanks[0].Batches) == 0 {
+		return 0
 	}
 
-	d := &driver{t: t, model: New(client.New(addr, 10*time.Second))}
-	d.model, _ = d.model.Update(tea.WindowSizeMsg{Width: qaWidth, Height: qaHeight})
-	d.refresh()
-	// Sem isto o teste passava com o daemon morto: script vazio nao da um passo, e o unico
-	// que ele checava era o endereco nao ser string vazia. Era o mesmo SKIP verde com outro nome.
-	d.requireLive("sessao de QA")
-
-	qaPlay(t, d, os.Getenv("QA_SCRIPT"))
-
-	fmt.Fprintf(os.Stdout, "\n%s\n", plain(d.model.(Model).render()))
+	return s.Tanks[0].Batches[0].MeanGrams
 }

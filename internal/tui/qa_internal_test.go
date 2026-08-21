@@ -225,3 +225,22 @@ func TestApertarZNoSegundoViveiroTrocaOTanqueSelecionado(t *testing.T) {
 		t.Fatal("apertar z de frente para o viveiro nao abriu o menu do tanque")
 	}
 }
+
+// qaFreshFarm recomeca a fazenda do banco de QA para o roteiro nao depender do save que
+// estiver la. Roteiro que herda estado alheio e relatorio do save, e nao teste do jogo.
+func qaFreshFarm(t *testing.T) {
+	t.Helper()
+
+	name := os.Getenv("QA_DATABASE")
+	if err := qaDatabase(name); err != nil {
+		t.Fatalf("recomecar a fazenda escreve no banco: %v (QA_DATABASE=%q)", err, name)
+	}
+
+	cmd := exec.CommandContext(t.Context(), "docker", "compose", "exec", "-T", "postgres",
+		"psql", "-U", "tilapou", "-d", name, "-c", "DELETE FROM farm_events; DELETE FROM farm_actions; DELETE FROM farms;")
+	cmd.Dir = "../.."
+
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("recomecando a fazenda: %v: %s", err, out)
+	}
+}
