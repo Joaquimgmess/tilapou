@@ -232,7 +232,9 @@ func TestNenhumaTelaMandaPovoarQuandoOConselhoEZero(t *testing.T) {
 	for i := range m.snapshot.Tanks {
 		m.snapshot.Tanks[i].Fish = 0
 		m.snapshot.Tanks[i].Batches = nil
-		m.snapshot.Tanks[i].StockAdvice = 0
+		// O motivo acompanha o numero: conselho zero com bloco "open" e um estado que o daemon
+		// nao produz, e testar por ele seria testar uma fazenda que nao existe.
+		m.snapshot.Tanks[i].StockAdvice, m.snapshot.Tanks[i].StockBlock = 0, api.StockNoCash
 	}
 
 	telas := map[string]string{

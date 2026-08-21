@@ -53,3 +53,54 @@ func TestALinhaDoCreditoDizQuandoOCicloNaoProjetaMargem(t *testing.T) {
 		t.Errorf("a linha exibe a margem negativa como se fosse um ganho: %q", got)
 	}
 }
+
+// O objetivo do topo e o conselho do tanque nao podem discordar na mesma tela: o topo
+// adivinhava o motivo por StockAdvice <= 0, e por isso mandava pegar emprestimo enquanto a
+// linha do tanque, ja consertada, dizia quanto faltava e apontava outra saida.
+func TestObjetivoDoTopoEConselhoDoTanqueContamAMesmaHistoria(t *testing.T) {
+	t.Parallel()
+
+	casos := []struct {
+		nome string
+		snap api.Snapshot
+	}{
+		{
+			nome: "caixa positivo que nao fecha o ciclo, credito aberto",
+			snap: api.Snapshot{
+				CashCents: 199_845,
+				Tanks: []api.Tank{{
+					ID: 1, StockBlock: api.StockNoCycle, StockShort: 30_355,
+					LoanBlock: api.LoanOpen, LoanAdvice: 500_000,
+				}},
+			},
+		},
+		{
+			nome: "caixa zero, credito fechado, fazenda sem peixe",
+			snap: api.Snapshot{
+				CashCents: 0,
+				Tanks: []api.Tank{{
+					ID: 1, StockBlock: api.StockNoCash, LoanBlock: api.LoanNoCycle,
+				}},
+			},
+		},
+	}
+
+	for _, caso := range casos {
+		topo := farmGoal(caso.snap)
+		linha := emptyTankAdvice(caso.snap, caso.snap.Tanks[0])
+
+		for _, key := range []string{"[g]", "[h]", "[b]"} {
+			if strings.Contains(topo, key) != strings.Contains(linha, key) {
+				t.Errorf("%s: o topo diz %q e a linha do tanque diz %q — discordam sobre %s",
+					caso.nome, topo, linha, key)
+			}
+		}
+
+		// Afirmar "sem grana" com dinheiro na barra de cima e o mesmo defeito que a linha do
+		// tanque deixou de ter: o topo tem de sair do motivo, e nao de StockAdvice <= 0.
+		if caso.snap.CashCents > 0 && strings.Contains(topo, "sem grana") {
+			t.Errorf("%s: o topo afirma 'sem grana' com %s no caixa: %q",
+				caso.nome, coins(caso.snap.CashCents), topo)
+		}
+	}
+}

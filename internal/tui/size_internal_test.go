@@ -22,7 +22,7 @@ func sizedSnapshot() api.Snapshot {
 			{
 				ID: 1, Kind: "viveiro_escavado", Fish: 2_000, FeedKg: 180,
 				OxygenUgL: 5_400, DensityMilli: 600, Capacity: 5_000, ServedFor: 240,
-				BreakEven: 967, StockAdvice: 1_240,
+				BreakEven: 967, StockAdvice: 1_240, StockBlock: api.StockOpen,
 				BatchCount: 1, MaxBatches: 4,
 				Batches: []api.Batch{{
 					ID: 3, Fish: 2_000, MeanGrams: 306,

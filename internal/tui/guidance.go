@@ -226,17 +226,24 @@ func thinAdvice(t *api.Tank) (string, bool) {
 func farmGoal(s api.Snapshot) string {
 	tank := s.Tanks[0]
 	if tank.Fish == 0 {
-		// A mesma conta que a tecla usa, e nao uma parecida: o conselho ja desconta o custo
-		// fixo do ciclo, e mandar povoar por fora dele manda apertar o que vai ser recusado.
-		if tank.StockAdvice <= 0 {
+		// O motivo vem tipado do dominio, como na linha do tanque: deduzir por StockAdvice
+		// <= 0 fazia o topo afirmar "sem grana" com dinheiro na barra de cima, contradizendo
+		// a linha logo abaixo na mesma tela.
+		switch tank.StockBlock {
+		case api.StockOpen:
+			return "O tanque esta vazio. Povoe com [s]"
+		case api.StockNoTank, api.StockNoRoom, api.StockNoBatch:
+		case api.StockNoCycle:
+			return "Tanque vazio: " + emptyTankAdvice(s, tank)
+		case api.StockNoCash:
 			if !creditRoom(s) {
-				return "Tanque vazio, sem grana e sem credito: so recomecando com [b]"
+				return "Tanque vazio, sem caixa e sem credito: so recomecando com [b]"
 			}
 
-			return "Tanque vazio e sem grana para povoar. Pegue um emprestimo com [g]"
+			return "Tanque vazio e sem caixa para povoar. Veja o credito com [g]"
 		}
 
-		return "O tanque esta vazio. Povoe com [s]"
+		return "O tanque esta vazio"
 	}
 	if s.Prices.RatioPPM < s.Prices.ViablePPM {
 		return "Racao cara demais para o preco do peixe: segure a despesca e evite povoar agora"

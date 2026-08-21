@@ -427,7 +427,7 @@ func TestFazendaSemPeixeEComCaixaMandaPovoar(t *testing.T) {
 	for i := range snap.Tanks {
 		snap.Tanks[i].Fish, snap.Tanks[i].Batches[0].Fish = 0, 0
 		snap.Tanks[i].Upgrades = everyUpgrade()
-		snap.Tanks[i].StockAdvice = 500
+		snap.Tanks[i].StockAdvice, snap.Tanks[i].StockBlock = 500, api.StockOpen
 	}
 
 	told, _ := objective(snap, snap.Tanks[0].ID)
