@@ -3,7 +3,11 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"net"
+	"net/url"
 	"strings"
+
+	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
 // ownerPort e a porta do daemon do dono, com o save de verdade.
@@ -14,24 +18,36 @@ var errOwnerDaemon = errors.New("o endereco e o daemon do dono")
 // qaDaemon recusa o daemon do dono. O roteiro aperta teclas de verdade contra o endereco
 // apontado, e QA_DATABASE so protege o salto de dias — sem esta guarda, um make test-live sem
 // env escreve no save do jogador, que foi exatamente o que aconteceu.
+//
+// A porta sai de SplitHostPort, e nao de um corte no primeiro dois-pontos: com o corte,
+// http://[::1]:8099 lia a porta como ":1]:8099" e passava — e o daemon do dono escuta em
+// [::]:8099, entao esse endereco chega la.
 func qaDaemon(addr string) error {
-	host := addr
-	if _, rest, found := strings.Cut(addr, "://"); found {
-		host = rest
+	raw := addr
+	if !strings.Contains(raw, "://") {
+		raw = "http://" + raw
 	}
-	host = strings.TrimSuffix(strings.TrimSuffix(host, "/"), "/")
 
-	if _, port, found := strings.Cut(host, ":"); found && strings.TrimSuffix(port, "/") == ownerPort {
+	parsed, err := url.Parse(raw)
+	if err != nil {
+		return fmt.Errorf("endereco ilegivel %q: %w", addr, err)
+	}
+
+	port := parsed.Port()
+	if port == "" {
+		_, hostPort, splitErr := net.SplitHostPort(parsed.Host)
+		if splitErr == nil {
+			port = hostPort
+		}
+	}
+
+	if port == ownerPort {
 		return fmt.Errorf("%w: %s", errOwnerDaemon, addr)
 	}
 
 	return nil
 }
 
-// Estes dois testes falam com um processo externo, e o cache do go test nao sabe disso: sem
-// -count=1 ele devolve (cached) e o relatorio vira o de uma sessao antiga. Quem os roda como
-// portao de task tem de passar -count=1.
-//
 // requireLive falha quando a sessao nao chegou a falar com o daemon. Sem esta guarda,
 // TestLiveSession e TestProgression ficam verdes com o daemon fora do ar, e sao o
 // portao que este backlog usa para dar task por pronta.
@@ -69,4 +85,62 @@ func (d *driver) requireFrame(step, frame string, wants ...string) {
 			d.t.Errorf("%s: o quadro nao mostra %q:\n%s", step, want, frame)
 		}
 	}
+}
+
+// choose escolhe o item do menu pelo ROTULO, e nao pela posicao: navegar com N setas amarra o
+// roteiro a ordem do menu, que muda com o estado — foi assim que um passo rotulado "quitei a
+// divida" povoou 50 peixes sem ninguem perceber.
+func (d *driver) choose(label string) {
+	d.t.Helper()
+
+	m, ok := d.model.(Model)
+	if !ok || m.menu == nil {
+		d.t.Fatalf("choose(%q) sem menu aberto", label)
+	}
+
+	rotulos := make([]string, 0, len(m.menu.items))
+	for i, item := range m.menu.items {
+		rotulos = append(rotulos, item.label)
+		if !strings.Contains(item.label, label) {
+			continue
+		}
+		if !item.enabled {
+			d.t.Fatalf("o item %q esta desabilitado: %s", item.label, item.hint)
+		}
+
+		for range i - m.menu.cursor {
+			d.press("down")
+		}
+		for range m.menu.cursor - i {
+			d.press("up")
+		}
+		d.press("z")
+
+		return
+	}
+
+	d.t.Fatalf("nenhum item do menu casa com %q; a tela oferece: %s", label, strings.Join(rotulos, " | "))
+}
+
+// applied cobra que a ultima acao tenha sido aceita pelo daemon. Passo recusado com rotulo de
+// passo feito e o defeito que este portao existe para nao ter.
+func (d *driver) applied(step string) {
+	d.t.Helper()
+
+	d.requireLive(step)
+
+	out := d.model.(Model).snapshot.LastOutcome
+	if out == nil {
+		d.t.Fatalf("%s: o daemon nao registrou acao nenhuma", step)
+	}
+	if !out.Applied {
+		d.t.Fatalf("%s: a acao foi recusada (%s), e o rotulo diz que ela aconteceu", step, out.Reason)
+	}
+}
+
+// snap e o estado de agora, para o passo seguinte comparar contra ele.
+func (d *driver) snap() api.Snapshot {
+	d.t.Helper()
+
+	return d.model.(Model).snapshot
 }

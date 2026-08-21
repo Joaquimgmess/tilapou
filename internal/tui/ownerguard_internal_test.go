@@ -12,6 +12,12 @@ func TestOPortaoRecusaODaemonDoDono(t *testing.T) {
 		"http://localhost:8099",
 		"http://127.0.0.1:8099/",
 		"localhost:8099",
+		// O daemon do dono escuta em [::]:8099, entao o literal IPv6 chega la. Cortar no
+		// primeiro dois-pontos lia a porta como ":1]:8099" e deixava passar.
+		"http://[::1]:8099",
+		"http://[::1]:8099/",
+		"[::1]:8099",
+		"http://localhost:8099/x",
 	} {
 		if err := qaDaemon(addr); err == nil {
 			t.Errorf("o portao aceitou %q, que e o daemon do dono", addr)
@@ -21,6 +27,8 @@ func TestOPortaoRecusaODaemonDoDono(t *testing.T) {
 	for _, addr := range []string{
 		"http://localhost:8098",
 		"http://localhost:8106",
+		"http://[::1]:8098",
+		"http://127.0.0.1:8106/",
 	} {
 		if err := qaDaemon(addr); err != nil {
 			t.Errorf("o portao recusou %q, que e daemon de teste: %v", addr, err)
