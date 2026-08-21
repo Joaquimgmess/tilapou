@@ -319,7 +319,9 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 		return LoanOffer{Cents: room, Block: LoanOpen}
 	}
 
-	goal := int64(plan.BreakEven)
+	// O alvo nunca passa do que o tanque comporta: financiar o break-even num tanque menor
+	// que ele e prometer peixe que o povoar recusa depois, com a divida ja tomada.
+	goal := min(int64(plan.BreakEven), t.Capacity(b))
 	if int64(t.Fish())+int64(fish) >= goal {
 		goal = t.Capacity(b)
 	}
@@ -356,8 +358,11 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 // deixa: e assim que o numero prometido e o numero entregue nao podem divergir.
 func (s *State) fishFor(b *Balance, t *Tank, plan CyclePlan, loan, perFish Coins) int64 {
 	spendable := int64(s.Cash) + int64(loan) - int64(fixedCostOn(b, t, plan, s.Debt+loan))
+	// O espaco livre limita junto com o dinheiro, como em StockAdvice: e a mesma conta que o
+	// povoar fara depois, e e assim que o numero prometido e o entregue nao divergem.
+	room := t.Capacity(b) - int64(t.Fish())
 
-	return max(spendable/int64(perFish), 0)
+	return max(min(spendable/int64(perFish), room), 0)
 }
 
 // loanFor e quanto o jogador precisa pegar para de fato povoar short peixes. Nao basta o
