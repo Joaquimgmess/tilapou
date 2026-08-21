@@ -489,12 +489,17 @@ func history(points int) string {
 	return fmt.Sprintf("  %d d", points)
 }
 
-func viability(ratio, viable int64) string {
-	if ratio < viable {
-		return dangerStyle.Render("inviavel")
+// viability mostra o piso da equivalencia, e nao um veredicto. O painel do mercado fala do
+// preco do dia; resultado do lote e do painel ao lado, que tem o custo do peixe. Dizer "da
+// lucro" aqui punha os dois a discordar no mesmo quadro. A cor continua dando a leitura
+// rapida, e o numero ensina o limiar em vez de gasta-lo num adjetivo.
+func viability(now, viable int64) string {
+	piso := "piso " + ratio(viable)
+	if now < viable {
+		return dangerStyle.Render(piso)
 	}
 
-	return okStyle.Render("da lucro")
+	return okStyle.Render(piso)
 }
 
 func (m Model) renderKeys() string {
