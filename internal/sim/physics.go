@@ -223,30 +223,26 @@ func killByStarvation(t *Tank, batch *Batch, b *Balance, eaten Micrograms, tick 
 	}
 
 	batch.StarvationTicks++
-	if batch.StarvationTicks < b.Death.StarvationTicksGrace {
-		return
-	}
+	if batch.StarvationTicks >= b.Death.StarvationTicksGrace {
+		deaths := killFish(batch, int64(b.Death.StarvationRatePPM), seed,
+			RollKey{Tick: tick, Tank: t.ID, Batch: batch.ID, Purpose: PurposeStarvation})
+		if deaths > 0 {
+			// O rearme e o proprio prato de comida: so quem voltou a comer abre outra seca.
+			if batch.StarvationEpisodeDeaths == 0 {
+				batch.StarvationEpisodeFrom = tick
+				sink.emit(Event{
+					Kind: EventStarvationBegan, From: tick, To: tick,
+					Tank: t.ID, Batch: batch.ID, Fish: deaths,
+				})
+			}
 
-	deaths := killFish(batch, int64(b.Death.StarvationRatePPM), seed,
-		RollKey{Tick: tick, Tank: t.ID, Batch: batch.ID, Purpose: PurposeStarvation})
-	if deaths <= 0 {
-		// O lote pode ter acabado por outra causa no mesmo tick: sem fechar aqui, o episodio
-		// sairia junto com ele e o unico registro da seca seria a abertura.
-		if batch.Empty() {
-			endStarvation(t, batch, tick, sink)
+			batch.StarvationEpisodeDeaths = FishCount(addSat(int64(batch.StarvationEpisodeDeaths), int64(deaths)))
 		}
-
-		return
 	}
 
-	// O rearme e o proprio prato de comida: so quem voltou a comer pode abrir outra seca.
-	if batch.StarvationEpisodeDeaths == 0 {
-		batch.StarvationEpisodeFrom = tick
-		sink.emit(Event{Kind: EventStarvationBegan, From: tick, To: tick, Tank: t.ID, Batch: batch.ID, Fish: deaths})
-	}
-
-	batch.StarvationEpisodeDeaths = FishCount(addSat(int64(batch.StarvationEpisodeDeaths), int64(deaths)))
-
+	// Ponto UNICO de "o lote acabou, feche o episodio": escrito em tres lugares, dois deles
+	// nesta funcao, ele deixava um ramo sem teste — o lote que acaba por hipoxia ou doenca no
+	// meio da seca levava os mortos junto e o unico registro ficava sendo a abertura.
 	if batch.Empty() {
 		endStarvation(t, batch, tick, sink)
 	}

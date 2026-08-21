@@ -386,7 +386,7 @@ func TestOAvisoEhDoAcontecimentoMaisNovo(t *testing.T) {
 	snap.Events = []api.Event{
 		{Seq: 12, Kind: "disease", Tank: 2},
 		{Seq: 11, Kind: "starvation_ended", Tank: 1, Fish: 3},
-		{Seq: 10, Kind: "starvation_deaths", Tank: 1, Fish: 2},
+		{Seq: 10, Kind: "starvation_began", Tank: 1, Fish: 2},
 	}
 
 	told, ok := headline(snap, 9)
@@ -404,9 +404,11 @@ func TestOSurtoNaoSeAfogaNaEnxurradaDeFome(t *testing.T) {
 	snap := sizedSnapshot()
 	snap.Events = []api.Event{{Seq: 500, Kind: "disease", Tank: 2}}
 
-	// A fome emite uma linha por tick e enterra o surto que veio antes.
+	// Cem eventos de perda depois do surto: se a manchete fosse por recencia, o surto sumia.
+	// O kind precisa ser um que a tela PESA — com um kind morto, a enxurrada vale zero e o
+	// teste passa a provar nada, que foi o que aconteceu quando starvation_deaths sumiu.
 	for seq := uint64(499); seq > 400; seq-- {
-		snap.Events = append([]api.Event{{Seq: seq + 100, Kind: "starvation_deaths", Tank: 1, Fish: 1}},
+		snap.Events = append([]api.Event{{Seq: seq + 100, Kind: "hypoxia_deaths", Tank: 1, Fish: 1}},
 			snap.Events...)
 	}
 

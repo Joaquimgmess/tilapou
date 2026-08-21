@@ -345,6 +345,15 @@ func (f farmState) String() string {
 	return "desconhecido"
 }
 
+// noRedirect e o cliente do portao: ele nao segue redirect, porque um redirecionador de tres
+// linhas — que nao e daemon nenhum — era aprovado pela guarda e a limpeza rodava.
+func noRedirect() *http.Client {
+	return &http.Client{
+		Timeout:       5 * time.Second,
+		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
+	}
+}
+
 // freshness classifica a leitura. Recebe o resultado ja lido para o teste poder cobrar os
 // tres ramos sem daemon nenhum.
 func freshness(t *testing.T, snap *api.Snapshot, err error) farmState {
@@ -369,7 +378,7 @@ func daemonHealth(t *testing.T) healthRead {
 		return healthRead{err: err}
 	}
 
-	resp, err := (&http.Client{Timeout: 5 * time.Second}).Do(req)
+	resp, err := noRedirect().Do(req)
 	if err != nil {
 		return healthRead{err: err}
 	}
@@ -422,7 +431,7 @@ func waitFreshFarm(t *testing.T) {
 	t.Helper()
 
 	addr := os.Getenv("TILAPOU_DAEMON")
-	poller := &http.Client{Timeout: 5 * time.Second}
+	poller := noRedirect()
 
 	ultimo := daemonDown
 	for range 20 {
@@ -445,9 +454,15 @@ func waitFreshFarm(t *testing.T) {
 // aceita '{"database":"x"} LIXO' e devolve o primeiro valor, entao um corpo meio valido
 // passava pela guarda e a limpeza seguia — apagando fazenda por engano.
 func decodeHealth(body io.Reader) (string, error) {
-	raw, err := io.ReadAll(io.LimitReader(body, healthBodyLimit))
+	// Le um byte ALEM do teto para saber se cortou: com LimitReader puro, o que passa do teto
+	// e descartado sem ninguem ver, o prefixo truncado vira JSON valido e a guarda passa —
+	// apagando a fazenda que estiver la.
+	raw, err := io.ReadAll(io.LimitReader(body, healthBodyLimit+1))
 	if err != nil {
 		return "", fmt.Errorf("%w: %w", errJSONQuebrado, err)
+	}
+	if len(raw) > healthBodyLimit {
+		return "", fmt.Errorf("%w: corpo passa de %d bytes", errJSONQuebrado, healthBodyLimit)
 	}
 
 	var health struct {

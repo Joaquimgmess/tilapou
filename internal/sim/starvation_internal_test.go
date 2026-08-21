@@ -190,3 +190,49 @@ func TestOFechamentoDaSecaCobreOIntervalo(t *testing.T) {
 
 	t.Fatal("a seca nao fechou")
 }
+
+// O lote pode acabar por OUTRA causa no meio da seca — hipoxia, doenca — e o episodio tem de
+// fechar do mesmo jeito. Este ramo existia e nenhum teste o cobria: o @engenheiro mutou o
+// fechamento e a suite ficou verde, com o ramo vivo e medido.
+func TestOutraCausaTerminandoOLoteFechaOEpisodio(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 96)
+	s.Cash = 10_000_000
+	s.Tanks[0].Batches[0].Fish = 400
+	s.Tanks[0].FeedStock = 0
+	s.Tanks[0].ServedUntil = Tick(maxInt32)
+
+	// Seis dias de seca deixam o episodio aberto com o lote ainda vivo.
+	out, err := Advance(Input{State: s, Until: s.Tick + 6*TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando a seca: %v", err)
+	}
+
+	aberto := out.State
+	if aberto.Tanks[0].Batches[0].StarvationEpisodeDeaths <= 0 {
+		t.Fatal("o episodio nao abriu: o teste precisa da seca em curso")
+	}
+
+	// A agua sufoca o que sobrou: o lote acaba sem ser pela fome nem pela despesca.
+	aberto.Tanks[0].Oxygen = 0
+	aberto.Tanks[0].Aerating = false
+
+	depois, err := Advance(Input{State: aberto, Until: aberto.Tick + 5*TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando a hipoxia: %v", err)
+	}
+
+	if depois.State.Tanks[0].BatchCount > 0 && !depois.State.Tanks[0].Batches[0].Empty() {
+		t.Skip("o lote sobreviveu a hipoxia: este teste precisa dele acabando por outra causa")
+	}
+
+	for _, e := range depois.Events {
+		if e.Kind == EventStarvationEnded {
+			return
+		}
+	}
+
+	t.Error("o lote acabou por outra causa e o episodio de fome nunca fechou: os mortos somem com ele")
+}

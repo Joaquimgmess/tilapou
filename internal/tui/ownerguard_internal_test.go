@@ -198,3 +198,22 @@ func TestOPortaoRecusaCorpoComLixoDepoisDoJSON(t *testing.T) {
 		t.Errorf("corpo valido devolveu %q, %v", got, err)
 	}
 }
+
+// O teto de leitura nao pode truncar em silencio: com o lixo depois do byte do teto, o
+// prefixo cortado e JSON valido, a guarda passa inteira e a limpeza apaga a fazenda. O @qa
+// cravou o limiar no byte — 65510 de enchimento recusava, 65511 passava.
+func TestOPortaoRecusaCorpoQueEstouraOTeto(t *testing.T) {
+	t.Parallel()
+
+	valido := `{"database":"tilapou_qa"}`
+	enchimento := strings.Repeat(" ", healthBodyLimit-len(valido)) + "LIXO"
+
+	if _, err := decodeHealth(strings.NewReader(valido + enchimento)); err == nil {
+		t.Error("o portao aceitou um corpo que passa do teto: o lixo do fim foi jogado fora sem ser olhado")
+	}
+
+	// E o par: corpo que cabe no teto continua passando, senao a guarda recusaria tudo.
+	if _, err := decodeHealth(strings.NewReader(valido)); err != nil {
+		t.Errorf("corpo valido dentro do teto foi recusado: %v", err)
+	}
+}
