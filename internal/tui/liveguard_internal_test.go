@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
 // ownerPort e a porta do daemon do dono, com o save de verdade.
-const ownerPort = "8099"
+const ownerPort = 8099
 
 var errOwnerDaemon = errors.New("o endereco e o daemon do dono")
 
@@ -19,9 +20,10 @@ var errOwnerDaemon = errors.New("o endereco e o daemon do dono")
 // apontado, e QA_DATABASE so protege o salto de dias — sem esta guarda, um make test-live sem
 // env escreve no save do jogador, que foi exatamente o que aconteceu.
 //
-// A porta sai de SplitHostPort, e nao de um corte no primeiro dois-pontos: com o corte,
-// http://[::1]:8099 lia a porta como ":1]:8099" e passava — e o daemon do dono escuta em
-// [::]:8099, entao esse endereco chega la.
+// A porta sai de SplitHostPort e e comparada como NUMERO: com o corte no primeiro
+// dois-pontos, http://[::1]:8099 lia ":1]:8099" e passava; comparando string, :08099 passava,
+// porque o dialer normaliza o zero a esquerda e conecta no mesmo lugar. O daemon do dono
+// escuta em [::]:8099, entao os dois enderecos chegam la.
 func qaDaemon(addr string) error {
 	raw := addr
 	if !strings.Contains(raw, "://") {
@@ -41,7 +43,11 @@ func qaDaemon(addr string) error {
 		}
 	}
 
-	if port == ownerPort {
+	number, err := strconv.Atoi(port)
+	if err != nil {
+		return fmt.Errorf("porta ilegivel em %q: %w", addr, err)
+	}
+	if number == ownerPort {
 		return fmt.Errorf("%w: %s", errOwnerDaemon, addr)
 	}
 

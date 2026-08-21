@@ -18,6 +18,10 @@ func TestOPortaoRecusaODaemonDoDono(t *testing.T) {
 		"http://[::1]:8099/",
 		"[::1]:8099",
 		"http://localhost:8099/x",
+		// Porta com zero a esquerda: url.Parse devolve "08099", o dialer normaliza e conecta
+		// no mesmo lugar. Comparar string deixava passar.
+		"http://localhost:08099",
+		"http://[::1]:08099/",
 	} {
 		if err := qaDaemon(addr); err == nil {
 			t.Errorf("o portao aceitou %q, que e o daemon do dono", addr)
