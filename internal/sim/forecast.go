@@ -108,6 +108,10 @@ func keepManaged(s *State, b *Balance, tank TankID) {
 
 	t.ServedUntil = s.Tick + TicksPerDay
 	t.Aerating = wantsAeration(t, b)
+	// A projecao precifica racao a mercado, e nao pela media contabil do silo: com a media,
+	// o custo por dia projetado mudava com a ultima compra de racao e a decisao de segurar
+	// ou vender virava resposta do nivel do silo.
+	t.FeedUnitCost = MarketAt(b, s.Tick).FeedKg
 
 	if t.FeedStock >= forecastFeedFloor {
 		return
