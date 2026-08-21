@@ -148,7 +148,7 @@ func (m Model) waitMark() string {
 // emptyTankAdvice diz o que fazer com um tanque vazio. Sai do conselho de lotacao, e nao de
 // uma regra propria: e o mesmo numero que a tecla consome, entao a tela nao manda apertar o
 // que o jogo vai recusar.
-func emptyTankAdvice(t api.Tank) string {
+func emptyTankAdvice(t api.Tank, farmFish int32) string {
 	if t.StockAdvice > 0 {
 		return "povoe com [s]"
 	}
@@ -159,7 +159,13 @@ func emptyTankAdvice(t api.Tank) string {
 		return "sem caixa: veja [g]"
 	}
 
-	return "sem caixa e sem credito: venda peixe com [h]"
+	// Despescar so e saida quando ha peixe em algum tanque: sem isso a frase troca um
+	// conselho impossivel por outro, e a unica tecla que ainda responde e a do recomeco.
+	if farmFish > 0 {
+		return "sem caixa e sem credito: venda peixe com [h]"
+	}
+
+	return "sem caixa, sem credito e sem peixe: recomece com [b]"
 }
 
 // rule renders a section title followed by a line filling the width.
@@ -228,7 +234,7 @@ func (m Model) renderBatches() string {
 		if r.batch < 0 {
 			lines = append(lines, m.decorateRow(i,
 				fmt.Sprintf("%-7s %6s %6s %11s %11s  %s",
-					fmt.Sprintf("T%d", t.ID), "-", "-", "-", "-", "vazio, "+emptyTankAdvice(*t)), false))
+					fmt.Sprintf("T%d", t.ID), "-", "-", "-", "-", "vazio, "+emptyTankAdvice(*t, m.snapshot.Fish)), false))
 
 			continue
 		}
@@ -309,7 +315,7 @@ func (m Model) renderDecision() string {
 	batch, ok := m.batch()
 	if !ok {
 		return rule(fmt.Sprintf("DECISAO T%d", tank.ID), decisionCol-panelInset) + "\n" +
-			dimStyle.Render("sem lote neste tanque: "+emptyTankAdvice(tank))
+			dimStyle.Render("sem lote neste tanque: "+emptyTankAdvice(tank, m.snapshot.Fish))
 	}
 
 	d := batch.Decision
