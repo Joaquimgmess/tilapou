@@ -172,7 +172,12 @@ func emptyTankAdvice(s api.Snapshot, t api.Tank) string {
 		return "sem caixa: " + hint
 	case api.StockShortFeed:
 		// O jogo aceita povoar aqui: apontar o recomeco seria mandar apertar a tecla
-		// irreversivel num estado em que ela responde que a fazenda nao quebrou.
+		// irreversivel num estado em que ela responde que a fazenda nao quebrou. E a ordem
+		// que funciona e credito antes de povoar, entao a linha diz a sequencia.
+		if creditFor(t) {
+			return "racao curta: credito [g], depois [s]"
+		}
+
 		return "povoe com [s]: racao curta"
 	}
 

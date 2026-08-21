@@ -181,6 +181,11 @@ func current(s api.Snapshot) (advice, bool) {
 
 // creditRoom reports whether any tank can still borrow: with the limit maxed out, telling
 // the player to take credit points at an option that does nothing.
+// creditFor diz se o galpao empresta neste tanque agora.
+func creditFor(t api.Tank) bool {
+	return t.LoanBlock == api.LoanOpen && t.LoanAdvice > 0
+}
+
 func creditRoom(s api.Snapshot) bool {
 	for i := range s.Tanks {
 		if s.Tanks[i].LoanAdvice > 0 {
@@ -236,6 +241,14 @@ func farmGoal(s api.Snapshot) string {
 		case api.StockNoCycle:
 			return "Tanque vazio: " + emptyTankAdvice(s, tank)
 		case api.StockShortFeed:
+			// Os dois numeros ja vem prontos no payload: quanto falta de racao e quanto o
+			// galpao empresta. Sem o credito citado, o jogador nao via o emprestimo que paga
+			// a racao inteira.
+			if creditFor(tank) {
+				return fmt.Sprintf("Tanque vazio: faltam %s de racao. Credito em [g] paga, depois [s]",
+					coins(tank.StockShort))
+			}
+
 			return "Tanque vazio: da para povoar com [s], mas o caixa nao paga a racao"
 		case api.StockNoCash:
 			if !creditRoom(s) {
@@ -370,6 +383,16 @@ func shortRunway(s api.Snapshot) (advice, bool) {
 func crushingDebt(s api.Snapshot) (advice, bool) {
 	if s.Debt <= 0 || s.CashCents != 0 {
 		return advice{}, false
+	}
+	// Fazenda quebrada tem dono proprio na lista de conselhos: falar aqui tambem daria dois
+	// conselhos para a mesma tela.
+	if s.Broke {
+		return advice{}, false
+	}
+	// Com credito aberto a saida e o galpao, e nao o recomeco — que neste estado responde que
+	// a fazenda nao quebrou. Guardar so divida e caixa fazia isto disparar com 0,07 TC.
+	if creditRoom(s) {
+		return advice{text: "Sem caixa e com divida: o credito e a saida, veja com [g]", urgent: true}, true
 	}
 
 	// Mandar vender peixe sem peixe e o mesmo defeito do conselho do tanque vazio, uma linha

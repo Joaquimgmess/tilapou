@@ -142,3 +142,70 @@ func TestComPrestigioAColherATelaOfereceTilaparENaoRecomecar(t *testing.T) {
 		t.Errorf("sem prestigio a colher o objetivo deixou de apontar o recomeco: %q", semPrestigio.text)
 	}
 }
+
+// O objetivo de divida nao pode mandar recomecar num estado em que o [b] responde que a
+// fazenda nao quebrou: ele guardava so divida e caixa, nunca olhava o Broke nem o credito, e
+// o @qa mediu isso disparando com 0,07 TC de divida e 4831,99 TC de credito aberto na tela.
+func TestOObjetivoDeDividaNaoApontaTeclaRecusada(t *testing.T) {
+	t.Parallel()
+
+	comCredito := api.Snapshot{
+		Debt: 7, CashCents: 0, Fish: 0, Broke: false,
+		Tanks: []api.Tank{{ID: 1, LoanBlock: api.LoanOpen, LoanAdvice: 483_199}},
+	}
+
+	got, ok := crushingDebt(comCredito)
+	if !ok {
+		t.Fatal("com divida e caixa zero o objetivo nao apareceu")
+	}
+	if strings.Contains(got.text, "[b]") {
+		t.Errorf("o objetivo aponta o recomeco com a fazenda de pe e credito aberto: %q", got.text)
+	}
+	if !strings.Contains(got.text, "[g]") {
+		t.Errorf("o objetivo nao aponta o credito, que e a saida deste estado: %q", got.text)
+	}
+
+	// E o par: com a fazenda de fato quebrada, quem fala e o objetivo da quebra, e nao este.
+	quebrada := comCredito
+	quebrada.Broke = true
+	if _, apareceu := crushingDebt(quebrada); apareceu {
+		t.Error("com a fazenda quebrada o objetivo de divida ainda fala, e a tela passa a ter dois donos")
+	}
+}
+
+// Na faixa em que falta racao, a tela precisa dizer que o credito paga: o jogador via "da
+// para povoar, mas falta racao" e nao via o emprestimo que cobre a racao inteira.
+func TestAFaixaDeRacaoCurtaCitaOCreditoQuandoEleExiste(t *testing.T) {
+	t.Parallel()
+
+	comCredito := api.Snapshot{
+		CashCents: 20_000,
+		Tanks: []api.Tank{{
+			ID: 1, StockBlock: api.StockShortFeed, StockShort: 826_900,
+			LoanBlock: api.LoanOpen, LoanAdvice: 1_033_845,
+		}},
+	}
+
+	linha := emptyTankAdvice(comCredito, comCredito.Tanks[0])
+	topo := farmGoal(comCredito)
+
+	for nome, got := range map[string]string{"linha do tanque": linha, "objetivo": topo} {
+		if !strings.Contains(got, "[g]") {
+			t.Errorf("%s nao cita o credito que paga a racao: %q", nome, got)
+		}
+		if !strings.Contains(got, "[s]") {
+			t.Errorf("%s deixou de citar a tecla que o jogo aceita: %q", nome, got)
+		}
+	}
+	if !strings.Contains(topo, "8269,00") {
+		t.Errorf("o objetivo nao diz quanto falta de racao: %q", topo)
+	}
+
+	// Sem credito, a frase fica como estava: apontar [g] fechado seria a mesma mentira de
+	// antes, por outro lado.
+	semCredito := comCredito
+	semCredito.Tanks[0].LoanBlock, semCredito.Tanks[0].LoanAdvice = api.LoanNoCycle, 0
+	if got := emptyTankAdvice(semCredito, semCredito.Tanks[0]); strings.Contains(got, "[g]") {
+		t.Errorf("sem credito a linha aponta [g]: %q", got)
+	}
+}
