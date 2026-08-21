@@ -185,6 +185,15 @@ func (d *driver) moved(step string, antes api.Snapshot) {
 	}
 }
 
+// cresceu e o peso do lote da frente, em gramas; zero quando nao ha lote.
+func cresceu(s api.Snapshot) int64 {
+	if len(s.Tanks) == 0 || len(s.Tanks[0].Batches) == 0 {
+		return 0
+	}
+
+	return s.Tanks[0].Batches[0].MeanGrams
+}
+
 // snap e o estado de agora, para o passo seguinte comparar contra ele.
 func (d *driver) snap() api.Snapshot {
 	d.t.Helper()

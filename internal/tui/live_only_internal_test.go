@@ -18,7 +18,6 @@ import (
 
 	tea "charm.land/bubbletea/v2"
 
-	"github.com/Joaquimgmess/tilapou/internal/api"
 	"github.com/Joaquimgmess/tilapou/internal/client"
 )
 
@@ -165,13 +164,4 @@ func TestProgression(t *testing.T) {
 	out.WriteString(d.line("povoei o ciclo seguinte"))
 
 	fmt.Fprint(os.Stdout, "\n"+out.String())
-}
-
-// cresceu e o peso do lote da frente, em gramas; zero quando nao ha lote.
-func cresceu(s api.Snapshot) int64 {
-	if len(s.Tanks) == 0 || len(s.Tanks[0].Batches) == 0 {
-		return 0
-	}
-
-	return s.Tanks[0].Batches[0].MeanGrams
 }
