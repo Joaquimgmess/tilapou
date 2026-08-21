@@ -149,11 +149,17 @@ func (m Model) waitMark() string {
 // uma regra propria: e o mesmo numero que a tecla consome, entao a tela nao manda apertar o
 // que o jogo vai recusar.
 func emptyTankAdvice(t api.Tank) string {
-	if t.StockAdvice <= 0 {
-		return "sem caixa para o ciclo: veja o credito com [g]"
+	if t.StockAdvice > 0 {
+		return "povoe com [s]"
+	}
+	// O credito so vira conselho quando o galpao aceita: apontar [g] com o emprestimo
+	// bloqueado manda o jogador para uma tela de recusa, e a saida que ela oferece nao e
+	// executavel no mesmo estado.
+	if t.LoanAdvice > 0 && (t.LoanBlock == "" || t.LoanBlock == "open") {
+		return "sem caixa: veja [g]"
 	}
 
-	return "povoe com [s]"
+	return "sem caixa e sem credito: venda peixe com [h]"
 }
 
 // rule renders a section title followed by a line filling the width.

@@ -186,16 +186,23 @@ func treatItem(t api.Tank, batch api.Batch) menuItem {
 	return item
 }
 
-func loanHint(t api.Tank) string {
+func loanHint(s api.Snapshot, t api.Tank) string {
+	// Mandar pagar a divida com o caixa zerado e mandar fazer o que a tela ao lado ja diz
+	// que nao da: enquanto nao houver caixa, a saida e levantar caixa.
+	pagar := "pague o que deve antes"
+	if s.CashCents <= 0 {
+		pagar = "levante caixa vendendo peixe antes"
+	}
+
 	switch t.LoanBlock {
 	case "no_credit":
-		return "sem espaco no limite de credito: pague o que deve antes"
+		return "sem espaco no limite de credito: " + pagar
 	case "no_room":
 		return fmt.Sprintf("o tanque %d nao aceita mais peixe: nao ha o que financiar", t.ID)
 	case "no_need":
 		return fmt.Sprintf("o caixa ja cobre o que falta no tanque %d", t.ID)
 	case "no_cycle":
-		return "o credito que sobra nao paga um ciclo inteiro: pague o que deve antes"
+		return "o credito que sobra nao paga um ciclo inteiro: " + pagar
 	}
 
 	short := t.BreakEven - int64(t.Fish) - t.StockAdvice
@@ -342,7 +349,7 @@ func creditItems(s api.Snapshot, t api.Tank) []menuItem {
 
 	items := []menuItem{{
 		label:   label,
-		hint:    loanHint(t),
+		hint:    loanHint(s, t),
 		enabled: loan > 0,
 		status:  "pegando emprestimo",
 		action:  client.Action{Kind: "borrow", Amount: loan},
