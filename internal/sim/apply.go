@@ -163,7 +163,15 @@ func applyAerate(s *State, a Action) (reason RejectReason, needed Coins) {
 		return RejectNoSuchTank, 0
 	}
 
+	// A escolha fica gravada: sem ela, o automatico reescreve o estado no tick seguinte e a
+	// tecla do jogador vira um piscar de um segundo.
 	t.Aerating = a.Amount != 0
+	if t.Owns(AutoAerator) {
+		t.AeratorManual = aeratorOff
+		if t.Aerating {
+			t.AeratorManual = aeratorOn
+		}
+	}
 
 	return RejectNone, 0
 }

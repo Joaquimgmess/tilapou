@@ -50,20 +50,21 @@ type cycleDocument struct {
 }
 
 type tankDocument struct {
-	ID           uint32          `json:"id"`
-	Kind         uint8           `json:"kind"`
-	Litres       int64           `json:"litres"`
-	FeedStock    int64           `json:"feed_stock"`
-	ServedUntil  int64           `json:"served_until"`
-	Upgrades     uint32          `json:"upgrades"`
-	Oxygen       int32           `json:"oxygen"`
-	Aerating     bool            `json:"aerating"`
-	FeedCarry    int64           `json:"feed_carry"`
-	FeedUnitCost int64           `json:"feed_unit_cost,omitempty"`
-	UpkeepCarry  int64           `json:"upkeep_carry"`
-	CarrierUntil int64           `json:"carrier_until"`
-	Accrual      accrualDocument `json:"accrual"`
-	Batches      []batchDocument `json:"batches"`
+	ID            uint32          `json:"id"`
+	Kind          uint8           `json:"kind"`
+	Litres        int64           `json:"litres"`
+	FeedStock     int64           `json:"feed_stock"`
+	ServedUntil   int64           `json:"served_until"`
+	Upgrades      uint32          `json:"upgrades"`
+	Oxygen        int32           `json:"oxygen"`
+	Aerating      bool            `json:"aerating"`
+	AeratorManual uint8           `json:"aerator_manual,omitempty"`
+	FeedCarry     int64           `json:"feed_carry"`
+	FeedUnitCost  int64           `json:"feed_unit_cost,omitempty"`
+	UpkeepCarry   int64           `json:"upkeep_carry"`
+	CarrierUntil  int64           `json:"carrier_until"`
+	Accrual       accrualDocument `json:"accrual"`
+	Batches       []batchDocument `json:"batches"`
 }
 
 type accrualDocument struct {
@@ -127,18 +128,19 @@ func Encode(s sim.State) ([]byte, error) {
 	for i := range s.TankCount {
 		t := s.Tanks[i]
 		tank := tankDocument{
-			ID:           uint32(t.ID),
-			Kind:         uint8(t.Kind),
-			Litres:       int64(t.Litres),
-			FeedStock:    int64(t.FeedStock),
-			ServedUntil:  int64(t.ServedUntil),
-			Upgrades:     t.Upgrades,
-			Oxygen:       int32(t.Oxygen),
-			Aerating:     t.Aerating,
-			FeedCarry:    t.FeedCarry,
-			FeedUnitCost: int64(t.FeedUnitCost),
-			UpkeepCarry:  t.UpkeepCarry,
-			CarrierUntil: int64(t.CarrierUntil),
+			ID:            uint32(t.ID),
+			Kind:          uint8(t.Kind),
+			Litres:        int64(t.Litres),
+			FeedStock:     int64(t.FeedStock),
+			ServedUntil:   int64(t.ServedUntil),
+			Upgrades:      t.Upgrades,
+			Oxygen:        int32(t.Oxygen),
+			Aerating:      t.Aerating,
+			AeratorManual: uint8(t.AeratorManual),
+			FeedCarry:     t.FeedCarry,
+			FeedUnitCost:  int64(t.FeedUnitCost),
+			UpkeepCarry:   t.UpkeepCarry,
+			CarrierUntil:  int64(t.CarrierUntil),
 			Accrual: accrualDocument{
 				Window:        int64(t.Accrual.Window),
 				HypoxiaDeaths: int32(t.Accrual.HypoxiaDeaths),
@@ -185,21 +187,22 @@ func Encode(s sim.State) ([]byte, error) {
 // in Decode only compile while the mirrors match, so a new field there stops compiling here
 // until someone decides whether it becomes a document column, is derived or is left zero.
 type tankFields struct {
-	ID           sim.TankID
-	Kind         sim.TankKind
-	Litres       sim.Litres
-	Batches      [sim.MaxBatchesPerTank]sim.Batch
-	BatchCount   int32
-	FeedStock    sim.Micrograms
-	ServedUntil  sim.Tick
-	Upgrades     uint32
-	Oxygen       sim.MicrogramsPerLiter
-	Aerating     bool
-	FeedCarry    int64
-	FeedUnitCost sim.Coins
-	UpkeepCarry  int64
-	CarrierUntil sim.Tick
-	Accrual      sim.Accrual
+	ID            sim.TankID
+	Kind          sim.TankKind
+	Litres        sim.Litres
+	Batches       [sim.MaxBatchesPerTank]sim.Batch
+	BatchCount    int32
+	FeedStock     sim.Micrograms
+	ServedUntil   sim.Tick
+	Upgrades      uint32
+	Oxygen        sim.MicrogramsPerLiter
+	Aerating      bool
+	AeratorManual sim.AeratorChoice
+	FeedCarry     int64
+	FeedUnitCost  sim.Coins
+	UpkeepCarry   int64
+	CarrierUntil  sim.Tick
+	Accrual       sim.Accrual
 }
 
 type batchFields struct {
@@ -273,13 +276,14 @@ func Decode(raw []byte) (sim.State, error) {
 			FeedStock:   sim.Micrograms(tank.FeedStock),
 			ServedUntil: sim.Tick(tank.ServedUntil),
 			// doc.Upgrades e save antigo, quando a automacao era da fazenda: espalha em todo tanque.
-			Upgrades:     tank.Upgrades | doc.Upgrades,
-			Oxygen:       sim.MicrogramsPerLiter(tank.Oxygen),
-			Aerating:     tank.Aerating,
-			FeedCarry:    tank.FeedCarry,
-			FeedUnitCost: sim.Coins(tank.FeedUnitCost),
-			UpkeepCarry:  tank.UpkeepCarry,
-			CarrierUntil: sim.Tick(tank.CarrierUntil),
+			Upgrades:      tank.Upgrades | doc.Upgrades,
+			Oxygen:        sim.MicrogramsPerLiter(tank.Oxygen),
+			Aerating:      tank.Aerating,
+			AeratorManual: sim.AeratorChoice(tank.AeratorManual),
+			FeedCarry:     tank.FeedCarry,
+			FeedUnitCost:  sim.Coins(tank.FeedUnitCost),
+			UpkeepCarry:   tank.UpkeepCarry,
+			CarrierUntil:  sim.Tick(tank.CarrierUntil),
 			Accrual: sim.Accrual{
 				Window:        sim.Tick(tank.Accrual.Window),
 				HypoxiaDeaths: sim.FishCount(tank.Accrual.HypoxiaDeaths),

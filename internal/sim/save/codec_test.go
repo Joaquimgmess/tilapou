@@ -42,6 +42,7 @@ func sample(t *testing.T) sim.State {
 	tank.Upgrades = 1<<sim.AutoFeeder | 1<<sim.AutoAerator
 	tank.Oxygen = 5_100
 	tank.Aerating = true
+	tank.AeratorManual = 1
 	tank.FeedCarry = 31
 	tank.UpkeepCarry = 47
 	tank.CarrierUntil = 13_000

@@ -21,21 +21,22 @@ type decisionInput struct {
 // below only compile while the mirrors match, so a new field there stops compiling here
 // until someone decides whether it goes raw, quantized or zeroed into the key.
 type tankFields struct {
-	ID           sim.TankID
-	Kind         sim.TankKind
-	Litres       sim.Litres
-	Batches      [sim.MaxBatchesPerTank]sim.Batch
-	BatchCount   int32
-	FeedStock    sim.Micrograms
-	ServedUntil  sim.Tick
-	Upgrades     uint32
-	Oxygen       sim.MicrogramsPerLiter
-	Aerating     bool
-	FeedCarry    int64
-	FeedUnitCost sim.Coins
-	UpkeepCarry  int64
-	CarrierUntil sim.Tick
-	Accrual      sim.Accrual
+	ID            sim.TankID
+	Kind          sim.TankKind
+	Litres        sim.Litres
+	Batches       [sim.MaxBatchesPerTank]sim.Batch
+	BatchCount    int32
+	FeedStock     sim.Micrograms
+	ServedUntil   sim.Tick
+	Upgrades      uint32
+	Oxygen        sim.MicrogramsPerLiter
+	Aerating      bool
+	AeratorManual sim.AeratorChoice
+	FeedCarry     int64
+	FeedUnitCost  sim.Coins
+	UpkeepCarry   int64
+	CarrierUntil  sim.Tick
+	Accrual       sim.Accrual
 }
 
 type batchFields struct {
@@ -64,21 +65,23 @@ type batchFields struct {
 // here until someone decides whether it goes raw, quantized or zeroed.
 func newDecisionInput(state *sim.State, tank *sim.Tank, batch *sim.Batch) decisionInput {
 	quantized := sim.Tank(tankFields{
-		ID:           tank.ID,
-		Kind:         tank.Kind,
-		Litres:       tank.Litres,
-		Batches:      quantizedBatches(batch),
-		BatchCount:   1,
-		FeedStock:    tank.FeedStock / sim.MicrogramsPerKilogram * sim.MicrogramsPerKilogram,
-		ServedUntil:  0,
-		Upgrades:     tank.Upgrades,
-		Oxygen:       tank.Oxygen,
-		Aerating:     tank.Aerating,
-		FeedCarry:    0,
-		FeedUnitCost: tank.FeedUnitCost,
-		UpkeepCarry:  0,
-		CarrierUntil: tank.CarrierUntil,
-		Accrual:      sim.Accrual{},
+		ID:          tank.ID,
+		Kind:        tank.Kind,
+		Litres:      tank.Litres,
+		Batches:     quantizedBatches(batch),
+		BatchCount:  1,
+		FeedStock:   tank.FeedStock / sim.MicrogramsPerKilogram * sim.MicrogramsPerKilogram,
+		ServedUntil: 0,
+		Upgrades:    tank.Upgrades,
+		Oxygen:      tank.Oxygen,
+		Aerating:    tank.Aerating,
+		// A escolha do aerador nao muda a decisao de segurar ou vender.
+		AeratorManual: 0,
+		FeedCarry:     0,
+		FeedUnitCost:  tank.FeedUnitCost,
+		UpkeepCarry:   0,
+		CarrierUntil:  tank.CarrierUntil,
+		Accrual:       sim.Accrual{},
 	})
 
 	return decisionInput{

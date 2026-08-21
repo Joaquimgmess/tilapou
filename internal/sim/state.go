@@ -115,21 +115,26 @@ func (b *Batch) Empty() bool {
 // Tank carries feed in micrograms and oxygen in micrograms per litre; only the first
 // BatchCount elements of Batches are valid.
 type Tank struct {
-	ID           TankID
-	Kind         TankKind
-	Litres       Litres
-	Batches      [MaxBatchesPerTank]Batch
-	BatchCount   int32
-	FeedStock    Micrograms
-	ServedUntil  Tick
-	Upgrades     uint32
-	Oxygen       MicrogramsPerLiter
-	Aerating     bool
-	FeedCarry    int64
-	FeedUnitCost Coins
-	UpkeepCarry  int64
-	CarrierUntil Tick
-	Accrual      Accrual
+	ID          TankID
+	Kind        TankKind
+	Litres      Litres
+	Batches     [MaxBatchesPerTank]Batch
+	BatchCount  int32
+	FeedStock   Micrograms
+	ServedUntil Tick
+	Upgrades    uint32
+	Oxygen      MicrogramsPerLiter
+	Aerating    bool
+	// AeratorManual guarda a escolha do jogador sobre o aerador. Zero e "sem escolha": e o
+	// automatico que manda. A escolha vale ate a histerese fechar — quando o automatico quiser
+	// o mesmo valor, ela deixa de existir. Sem isso, quem comprava o aerador perdia a tecla:
+	// o automatico reescrevia o estado todo tick e o [a] durava um segundo.
+	AeratorManual AeratorChoice
+	FeedCarry     int64
+	FeedUnitCost  Coins
+	UpkeepCarry   int64
+	CarrierUntil  Tick
+	Accrual       Accrual
 }
 
 // Biomass sums the tank's batches, saturating.

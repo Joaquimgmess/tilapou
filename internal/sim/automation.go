@@ -63,9 +63,19 @@ func (t *Tank) grant(k AutoKind) {
 	t.Upgrades |= 1 << k
 }
 
+// AeratorChoice e a escolha do jogador sobre o aerador de um tanque com automacao.
+type AeratorChoice uint8
+
+// Escolhas possiveis; aeratorAuto e o zero value e quer dizer "quem manda e o automatico".
+const (
+	aeratorAuto AeratorChoice = iota
+	aeratorOn
+	aeratorOff
+)
+
 func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink, plans Plans) {
 	if t.Owns(AutoAerator) {
-		t.Aerating = wantsAeration(t, b) && s.Cash > 0
+		aerate(s, b, t)
 	}
 
 	if t.Owns(AutoFeeder) {
@@ -75,6 +85,37 @@ func automate(s *State, b *Balance, t *Tank, tick Tick, sink *eventSink, plans P
 
 	if t.Owns(AutoHarvester) {
 		harvestReady(s, b, t, tick, sink, plans[t.Kind])
+	}
+}
+
+// aerate decide o aerador do tanque automatizado. A escolha do jogador vence enquanto o
+// automatico discordar dela; quando os dois querem a mesma coisa, a escolha some e o
+// automatico volta a mandar sozinho. Falta de caixa corta os dois: sem energia nao ha
+// aeracao, e insistir criaria estado sem saida.
+func aerate(s *State, b *Balance, t *Tank) {
+	auto := wantsAeration(t, b)
+
+	if s.Cash <= 0 {
+		t.Aerating, t.AeratorManual = false, aeratorAuto
+
+		return
+	}
+
+	switch t.AeratorManual {
+	case aeratorOn:
+		if auto {
+			t.AeratorManual = aeratorAuto
+		}
+
+		t.Aerating = true
+	case aeratorOff:
+		if !auto {
+			t.AeratorManual = aeratorAuto
+		}
+
+		t.Aerating = false
+	case aeratorAuto:
+		t.Aerating = auto
 	}
 }
 
