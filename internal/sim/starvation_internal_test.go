@@ -41,9 +41,9 @@ func TestSecaEmiteAberturaEFechamento(t *testing.T) {
 		t.Errorf("a seca fechou %d vezes", fechou)
 	}
 
-	// E o que nao pode sobrar: o aviso por janela, que era o que cegava o log.
-	if porJanela := conta(EventStarvationDeaths); porJanela > 0 {
-		t.Errorf("sobraram %d avisos por janela: o evento continua amostrando o estado", porJanela)
+	// E o que nao pode sobrar: mais de um aviso pela mesma seca, que era o que cegava o log.
+	if abriu+fechou > 2 {
+		t.Errorf("a seca emitiu %d eventos: ela continua sendo amostrada, e nao registrada", abriu+fechou)
 	}
 }
 
@@ -94,4 +94,99 @@ func TestVoltarAComerFechaOEpisodioComOTotal(t *testing.T) {
 	if depois.State.Tanks[0].Batches[0].StarvationEpisodeDeaths != 0 {
 		t.Error("o contador do episodio nao zerou: a proxima seca comecaria somando a anterior")
 	}
+}
+
+// Despescar no meio da seca nao pode engolir o episodio: o lote sai com os mortos dentro, e
+// o unico registro que fica e a abertura dizendo "1 peixe". Quem perdeu o lote nunca ve o
+// tamanho da perda.
+func TestDespescarNoMeioDaSecaFechaOEpisodio(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 94)
+	s.Cash = 10_000_000
+	s.Tanks[0].Batches[0].Fish = 2_000
+	s.Tanks[0].FeedStock = 0
+	s.Tanks[0].ServedUntil = Tick(maxInt32)
+
+	// Seis dias: a seca ja matou muita coisa e o lote ainda esta vivo. Passando disso ele
+	// acaba sozinho, o episodio fecha por conta propria e o teste deixaria de medir a
+	// despesca — que e o caminho em que o episodio sumia.
+	out, err := Advance(Input{State: s, Until: s.Tick + 6*TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando a seca: %v", err)
+	}
+
+	morreram := out.State.Tanks[0].Batches[0].StarvationEpisodeDeaths
+	if morreram <= 0 {
+		t.Fatal("ninguem morreu de fome: o teste precisa da seca de verdade")
+	}
+
+	colhido := out.State
+	depois, err := Advance(Input{State: colhido, Until: colhido.Tick + 1, Balance: b,
+		Actions: []Action{{
+			ID: 1, Kind: ActionHarvest, Tank: colhido.Tanks[0].ID,
+			Batch: colhido.Tanks[0].Batches[0].ID, At: colhido.Tick,
+		}}})
+	if err != nil {
+		t.Fatalf("despescando: %v", err)
+	}
+
+	for _, e := range depois.Events {
+		if e.Kind == EventStarvationEnded && e.Fish == morreram {
+			return
+		}
+	}
+
+	t.Errorf("a despesca levou o lote com %d mortos de fome dentro e nao fechou o episodio", morreram)
+}
+
+// O fechamento cobre o intervalo do episodio: dizer que 3271 peixes morreram em um tick e
+// mentir sobre quando, e o feed do jogo e a memoria do que aconteceu.
+func TestOFechamentoDaSecaCobreOIntervalo(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+	s := stockedFarm(t, 95)
+	s.Cash = 10_000_000
+	s.Tanks[0].Batches[0].Fish = 2_000
+	s.Tanks[0].FeedStock = 0
+	s.Tanks[0].ServedUntil = Tick(maxInt32)
+
+	out, err := Advance(Input{State: s, Until: s.Tick + 8*TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando a seca: %v", err)
+	}
+
+	var abertura Tick
+	for _, e := range out.Events {
+		if e.Kind == EventStarvationBegan {
+			abertura = e.From
+		}
+	}
+
+	fed := out.State
+	fed.Tanks[0].FeedStock = 500 * MicrogramsPerKilogram
+	fed.Tanks[0].ServedUntil = Tick(maxInt32)
+
+	depois, err := Advance(Input{State: fed, Until: fed.Tick + TicksPerDay, Balance: b})
+	if err != nil {
+		t.Fatalf("avancando com racao: %v", err)
+	}
+
+	for _, e := range depois.Events {
+		if e.Kind != EventStarvationEnded {
+			continue
+		}
+		if e.From != abertura {
+			t.Errorf("o fechamento diz que a seca comecou no tick %d e ela comecou em %d", e.From, abertura)
+		}
+		if e.To <= e.From {
+			t.Errorf("o fechamento cobre %d..%d: um intervalo de um tick para uma seca de dias", e.From, e.To)
+		}
+
+		return
+	}
+
+	t.Fatal("a seca nao fechou")
 }

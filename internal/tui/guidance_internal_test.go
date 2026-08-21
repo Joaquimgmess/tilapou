@@ -277,8 +277,9 @@ func TestAcontecimentoNovoVeioParaATela(t *testing.T) {
 	}{
 		"falencia":       {event: api.Event{Seq: 9, Kind: "bankrupt", CashCents: 4_500_000}, want: "quebrou"},
 		"doenca":         {event: api.Event{Seq: 9, Kind: "disease", Tank: 2}, want: "tanque 2"},
-		"mortandade":     {event: api.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 449}, want: "449 peixes"},
-		"morte de um so": {event: api.Event{Seq: 9, Kind: "starvation_deaths", Tank: 1, Fish: 1}, want: "1 peixe do tanque 1 morreu"},
+		"mortandade":     {event: api.Event{Seq: 9, Kind: "starvation_ended", Tank: 1, Fish: 449}, want: "449 peixes"},
+		"morte de um so": {event: api.Event{Seq: 9, Kind: "starvation_ended", Tank: 1, Fish: 1}, want: "1 peixe morreu"},
+		"fome comecando": {event: api.Event{Seq: 9, Kind: "starvation_began", Tank: 1, Fish: 1}, want: "comecou a morrer de fome"},
 		"tilapada":       {event: api.Event{Seq: 9, Kind: "prestiged"}, want: "tilap"},
 	}
 
@@ -384,7 +385,7 @@ func TestOAvisoEhDoAcontecimentoMaisNovo(t *testing.T) {
 	// Como chega da API: do mais novo para o mais velho, e a fome enche o historico.
 	snap.Events = []api.Event{
 		{Seq: 12, Kind: "disease", Tank: 2},
-		{Seq: 11, Kind: "starvation_deaths", Tank: 1, Fish: 3},
+		{Seq: 11, Kind: "starvation_ended", Tank: 1, Fish: 3},
 		{Seq: 10, Kind: "starvation_deaths", Tank: 1, Fish: 2},
 	}
 

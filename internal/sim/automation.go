@@ -175,6 +175,11 @@ func sell(s *State, b *Balance, t *Tank, batch *Batch, count FishCount, tick Tic
 	closeCycle(s, batch, count, mass, revenue)
 
 	batch.Fish -= count
+	// A despesca leva o lote e levaria o episodio de fome junto: sem fechar aqui, os mortos
+	// somem com ele e o unico registro da seca fica sendo a abertura, que diz "1 peixe".
+	if batch.Empty() {
+		endStarvation(t, batch, tick, sink)
+	}
 	s.Cash = Coins(addSat(int64(s.Cash), int64(revenue)))
 	s.LifetimeEarned = Coins(addSat(int64(s.LifetimeEarned), int64(revenue)))
 

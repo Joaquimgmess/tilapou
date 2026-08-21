@@ -294,3 +294,38 @@ func TestOEstadoDizQuandoOAeradorEstaLigado(t *testing.T) {
 		t.Errorf("com o aerador ligado contra oxigenio baixo o estado diz %q", got)
 	}
 }
+
+// A fome nao pode sumir da tela quando o evento muda de nome: trocar starvation_deaths por
+// began/ended sem tocar na manchete apagou a mortandade do feed — o @qa rodou com o tanque
+// caindo para 356 peixes e nao viu manchete nenhuma.
+func TestAFomeApareceNaManchete(t *testing.T) {
+	t.Parallel()
+
+	casos := map[string]*api.Event{
+		"abertura":   {Kind: "starvation_began", Tank: 1, Fish: 1},
+		"fechamento": {Kind: "starvation_ended", Tank: 1, Fish: 3_271},
+	}
+
+	for nome, e := range casos {
+		if eventWeight(e.Kind) == weightNone {
+			t.Errorf("%s: a fome nao pesa nada e nunca vira manchete", nome)
+		}
+
+		got, ok := eventHeadline(e)
+		if !ok {
+			t.Errorf("%s: a fome nao tem manchete", nome)
+
+			continue
+		}
+		if !strings.Contains(got, "fome") {
+			t.Errorf("%s: a manchete nao fala de fome: %q", nome, got)
+		}
+	}
+
+	// O fechamento tem de dizer o TOTAL: e o unico lugar em que o jogador ve o tamanho da
+	// perda, porque a abertura sai com o morto do primeiro tick.
+	fim, _ := eventHeadline(casos["fechamento"])
+	if !strings.Contains(fim, "3271") {
+		t.Errorf("o fechamento nao diz quantos morreram: %q", fim)
+	}
+}

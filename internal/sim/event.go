@@ -11,7 +11,6 @@ const (
 	EventUnknown EventKind = iota
 	EventGrowth
 	EventHypoxiaDeaths
-	EventStarvationDeaths
 	EventStarvationBegan
 	EventStarvationEnded
 	EventFeedExhausted
@@ -33,27 +32,26 @@ const (
 )
 
 var eventKindNames = [...]string{
-	EventUnknown:          "unknown",
-	EventGrowth:           "growth",
-	EventHypoxiaDeaths:    "hypoxia_deaths",
-	EventStarvationDeaths: "starvation_deaths",
-	EventStarvationBegan:  "starvation_began",
-	EventStarvationEnded:  "starvation_ended",
-	EventFeedExhausted:    "feed_exhausted",
-	EventHarvest:          "harvest",
-	EventStocked:          "stocked",
-	EventTankBought:       "tank_bought",
-	EventFeedBought:       "feed_bought",
-	EventActionRejected:   "action_rejected",
-	EventUpgradeBought:    "upgrade_bought",
-	EventPrestiged:        "prestiged",
-	EventRestarted:        "restarted",
-	EventBorrowed:         "borrowed",
-	EventRepaid:           "repaid",
-	EventDisease:          "disease",
-	EventDiseaseDeaths:    "disease_deaths",
-	EventTreated:          "treated",
-	EventBankrupt:         "bankrupt",
+	EventUnknown:         "unknown",
+	EventGrowth:          "growth",
+	EventHypoxiaDeaths:   "hypoxia_deaths",
+	EventStarvationBegan: "starvation_began",
+	EventStarvationEnded: "starvation_ended",
+	EventFeedExhausted:   "feed_exhausted",
+	EventHarvest:         "harvest",
+	EventStocked:         "stocked",
+	EventTankBought:      "tank_bought",
+	EventFeedBought:      "feed_bought",
+	EventActionRejected:  "action_rejected",
+	EventUpgradeBought:   "upgrade_bought",
+	EventPrestiged:       "prestiged",
+	EventRestarted:       "restarted",
+	EventBorrowed:        "borrowed",
+	EventRepaid:          "repaid",
+	EventDisease:         "disease",
+	EventDiseaseDeaths:   "disease_deaths",
+	EventTreated:         "treated",
+	EventBankrupt:        "bankrupt",
 }
 
 var _ [len(eventKindNames) - int(eventKindCount)]struct{}
@@ -92,7 +90,7 @@ func (s *eventSink) emit(e Event) {
 }
 
 func (a *Accrual) empty() bool {
-	return a.HypoxiaDeaths == 0 && a.StarvationDeaths == 0 && a.DiseaseDeaths == 0 &&
+	return a.HypoxiaDeaths == 0 && a.DiseaseDeaths == 0 &&
 		a.FeedEaten == 0 && a.MassGained == 0
 }
 

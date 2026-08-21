@@ -38,7 +38,7 @@ func TestEventFishOnlyCountsFish(t *testing.T) {
 	}
 
 	counts := map[EventKind]bool{
-		EventHypoxiaDeaths: true, EventStarvationDeaths: true, EventDiseaseDeaths: true,
+		EventHypoxiaDeaths: true, EventStarvationEnded: true, EventDiseaseDeaths: true,
 		EventHarvest: true, EventStocked: true, EventGrowth: true,
 	}
 

@@ -67,12 +67,11 @@ type tankDocument struct {
 }
 
 type accrualDocument struct {
-	Window           int64 `json:"window"`
-	HypoxiaDeaths    int32 `json:"hypoxia_deaths"`
-	DiseaseDeaths    int32 `json:"disease_deaths"`
-	StarvationDeaths int32 `json:"starvation_deaths"`
-	FeedEaten        int64 `json:"feed_eaten"`
-	MassGained       int64 `json:"mass_gained"`
+	Window        int64 `json:"window"`
+	HypoxiaDeaths int32 `json:"hypoxia_deaths"`
+	DiseaseDeaths int32 `json:"disease_deaths"`
+	FeedEaten     int64 `json:"feed_eaten"`
+	MassGained    int64 `json:"mass_gained"`
 }
 
 type batchDocument struct {
@@ -92,6 +91,7 @@ type batchDocument struct {
 	// carregado no meio de uma seca so deixa de contar os mortos de antes da carga, e nao
 	// reemite nada. Por isso nao ha bump de StateVersion.
 	StarvationEpisodeDeaths int32 `json:"starvation_episode_deaths,omitempty"`
+	StarvationEpisodeFrom   int64 `json:"starvation_episode_from,omitempty"`
 }
 
 // Encode serializes the state to JSON, writing only the tanks and batches in use.
@@ -140,12 +140,11 @@ func Encode(s sim.State) ([]byte, error) {
 			UpkeepCarry:  t.UpkeepCarry,
 			CarrierUntil: int64(t.CarrierUntil),
 			Accrual: accrualDocument{
-				Window:           int64(t.Accrual.Window),
-				HypoxiaDeaths:    int32(t.Accrual.HypoxiaDeaths),
-				DiseaseDeaths:    int32(t.Accrual.DiseaseDeaths),
-				StarvationDeaths: int32(t.Accrual.StarvationDeaths),
-				FeedEaten:        int64(t.Accrual.FeedEaten),
-				MassGained:       int64(t.Accrual.MassGained),
+				Window:        int64(t.Accrual.Window),
+				HypoxiaDeaths: int32(t.Accrual.HypoxiaDeaths),
+				DiseaseDeaths: int32(t.Accrual.DiseaseDeaths),
+				FeedEaten:     int64(t.Accrual.FeedEaten),
+				MassGained:    int64(t.Accrual.MassGained),
 			},
 			Batches: make([]batchDocument, 0, t.BatchCount),
 		}
@@ -167,6 +166,7 @@ func Encode(s sim.State) ([]byte, error) {
 				StarvationTicks: batch.StarvationTicks,
 
 				StarvationEpisodeDeaths: int32(batch.StarvationEpisodeDeaths),
+				StarvationEpisodeFrom:   int64(batch.StarvationEpisodeFrom),
 			})
 		}
 
@@ -218,6 +218,7 @@ type batchFields struct {
 	StarvationTicks int32
 
 	StarvationEpisodeDeaths sim.FishCount
+	StarvationEpisodeFrom   sim.Tick
 }
 
 // Decode rebuilds the state from the JSON, recomputing what is derived.
@@ -280,12 +281,11 @@ func Decode(raw []byte) (sim.State, error) {
 			UpkeepCarry:  tank.UpkeepCarry,
 			CarrierUntil: sim.Tick(tank.CarrierUntil),
 			Accrual: sim.Accrual{
-				Window:           sim.Tick(tank.Accrual.Window),
-				HypoxiaDeaths:    sim.FishCount(tank.Accrual.HypoxiaDeaths),
-				DiseaseDeaths:    sim.FishCount(tank.Accrual.DiseaseDeaths),
-				StarvationDeaths: sim.FishCount(tank.Accrual.StarvationDeaths),
-				FeedEaten:        sim.Micrograms(tank.Accrual.FeedEaten),
-				MassGained:       sim.Micrograms(tank.Accrual.MassGained),
+				Window:        sim.Tick(tank.Accrual.Window),
+				HypoxiaDeaths: sim.FishCount(tank.Accrual.HypoxiaDeaths),
+				DiseaseDeaths: sim.FishCount(tank.Accrual.DiseaseDeaths),
+				FeedEaten:     sim.Micrograms(tank.Accrual.FeedEaten),
+				MassGained:    sim.Micrograms(tank.Accrual.MassGained),
 			},
 			BatchCount: int32(len(tank.Batches)),
 		})
@@ -308,6 +308,7 @@ func Decode(raw []byte) (sim.State, error) {
 				StarvationTicks: batch.StarvationTicks,
 
 				StarvationEpisodeDeaths: sim.FishCount(batch.StarvationEpisodeDeaths),
+				StarvationEpisodeFrom:   sim.Tick(batch.StarvationEpisodeFrom),
 			})
 		}
 	}

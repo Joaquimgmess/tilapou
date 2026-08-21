@@ -71,12 +71,11 @@ const (
 // Accrual gathers what happened in the tank in the window starting at Window to become a
 // single event; deaths in fish, masses in micrograms.
 type Accrual struct {
-	Window           Tick
-	HypoxiaDeaths    FishCount
-	StarvationDeaths FishCount
-	DiseaseDeaths    FishCount
-	FeedEaten        Micrograms
-	MassGained       Micrograms
+	Window        Tick
+	HypoxiaDeaths FishCount
+	DiseaseDeaths FishCount
+	FeedEaten     Micrograms
+	MassGained    Micrograms
 }
 
 // Batch is a batch stocked together, with mass in micrograms and cost in cents; the
@@ -95,9 +94,12 @@ type Batch struct {
 	Sick            int32
 	HypoxiaTicks    int32
 	StarvationTicks int32
-	// StarvationEpisodeDeaths conta os mortos da seca em curso. E o payload do fechamento, e
-	// nao gatilho: quem abre e fecha o episodio sao as transicoes.
+	// StarvationEpisodeDeaths conta os mortos da seca em curso e StarvationEpisodeFrom guarda
+	// o tick em que ela abriu. Sao o payload do fechamento, e nao gatilho: quem abre e fecha
+	// o episodio sao as transicoes. Sem o tick de abertura o fechamento afirmava a seca
+	// inteira num tick so.
 	StarvationEpisodeDeaths FishCount
+	StarvationEpisodeFrom   Tick
 }
 
 // Biomass saturates instead of overflowing.

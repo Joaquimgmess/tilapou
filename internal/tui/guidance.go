@@ -38,8 +38,8 @@ func headline(s api.Snapshot, seen uint64) (string, bool) {
 			continue
 		}
 
-		// Por peso, e nao por recencia: a fome emite uma linha por tick e soterraria o
-		// surto ou a falencia que decidem o lote.
+		// Por peso, e nao por recencia: um evento repetido soterraria o surto ou a falencia
+		// que decidem o lote.
 		if weight := eventWeight(e.Kind); weight > best {
 			pick, best = e, weight
 		}
@@ -66,7 +66,7 @@ func eventWeight(kind string) int {
 		return weightTurningPoint
 	case "disease", "disease_deaths":
 		return weightThreat
-	case "starvation_deaths", "hypoxia_deaths", "feed_exhausted":
+	case "starvation_began", "starvation_ended", "hypoxia_deaths", "feed_exhausted":
 		return weightLoss
 	}
 
@@ -111,8 +111,12 @@ func eventHeadline(e *api.Event) (string, bool) {
 		return fmt.Sprintf("Surto de doenca no tanque %d: trate com [z] ou aceite as perdas", e.Tank), true
 	case "disease_deaths":
 		return fmt.Sprintf("A doenca matou %s no tanque %d", fishCount(e.Fish), e.Tank), true
-	case "starvation_deaths":
-		return fmt.Sprintf("%s do tanque %d %s de fome", fishCount(e.Fish), e.Tank, died(e.Fish)), true
+	case "starvation_began":
+		return fmt.Sprintf("O lote do tanque %d comecou a morrer de fome", e.Tank), true
+	case "starvation_ended":
+		// O total so existe aqui: a abertura sai com o morto do primeiro tick, e e este numero
+		// que diz o tamanho da perda.
+		return fmt.Sprintf("A fome no tanque %d acabou: %s %s", e.Tank, fishCount(e.Fish), died(e.Fish)), true
 	case "hypoxia_deaths":
 		return fmt.Sprintf("%s do tanque %d %s sem oxigenio", fishCount(e.Fish), e.Tank, died(e.Fish)), true
 	case "feed_exhausted":

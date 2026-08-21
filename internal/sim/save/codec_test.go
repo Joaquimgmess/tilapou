@@ -46,7 +46,7 @@ func sample(t *testing.T) sim.State {
 	tank.UpkeepCarry = 47
 	tank.CarrierUntil = 13_000
 	tank.Accrual = sim.Accrual{
-		Window: 12_300, HypoxiaDeaths: 3, StarvationDeaths: 5, DiseaseDeaths: 7,
+		Window: 12_300, HypoxiaDeaths: 3, DiseaseDeaths: 7,
 		FeedEaten: 88 * sim.MicrogramsPerKilogram, MassGained: 99 * sim.MicrogramsPerKilogram,
 	}
 
@@ -59,6 +59,7 @@ func sample(t *testing.T) sim.State {
 	batch.HypoxiaTicks = 11
 	batch.StarvationTicks = 13
 	batch.StarvationEpisodeDeaths = 7
+	batch.StarvationEpisodeFrom = 4321
 
 	return s
 }
