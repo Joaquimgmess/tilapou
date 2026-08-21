@@ -198,38 +198,95 @@ func (s *State) Series(b *Balance, points int, step Tick) (fish, feed []Coins) {
 	return fish, feed
 }
 
-// StockAdvice suggests fingerlings that fit the tank and the cash, with the cost per fish in cents up to grow-out.
-func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) (fish FishCount, perFish Coins) {
-	t := s.tank(tank)
-	if t == nil {
-		return 0, 0
+// StockBlock reports why stocking is not on the table, or that it is.
+type StockBlock uint8
+
+// Reasons why stocking is allowed or blocked. Cada valor e um motivo distinto: juntar todos
+// num zero fazia a tela readivinhar o estado e afirmar "sem caixa" com caixa no bolso.
+const (
+	StockOpen StockBlock = iota
+	StockNoTank
+	StockNoRoom
+	StockNoBatch
+	StockNoCash
+	StockNoCycle
+	StockBlockCount
+)
+
+var stockBlockNames = [...]string{
+	StockOpen:    "open",
+	StockNoTank:  "no_tank",
+	StockNoRoom:  "no_room",
+	StockNoBatch: "no_batch",
+	StockNoCash:  "no_cash",
+	StockNoCycle: "no_cycle",
+}
+
+var _ [len(stockBlockNames) - int(StockBlockCount)]struct{}
+
+func (b StockBlock) String() string {
+	if b >= StockBlockCount {
+		return invalidName
 	}
 
-	perFish = b.Economy.FingerlingPrice + feedToRaise(b, s.Tick)
+	return stockBlockNames[b]
+}
+
+// StockOffer is what stocking this tank would take: the fingerlings that fit the tank and the
+// cash, the cost per fish up to grow-out, how much cash is still missing and, when Fish is
+// zero, what blocks it.
+type StockOffer struct {
+	Fish    FishCount
+	PerFish Coins
+	Short   Coins
+	Block   StockBlock
+}
+
+// StockAdvice suggests fingerlings that fit the tank and the cash, with the cost per fish in
+// cents up to grow-out and the reason when there is nothing to suggest.
+func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) StockOffer {
+	t := s.tank(tank)
+	if t == nil {
+		return StockOffer{Block: StockNoTank}
+	}
+
+	perFish := b.Economy.FingerlingPrice + feedToRaise(b, s.Tick)
 	if perFish <= 0 {
-		return 0, 0
+		return StockOffer{Block: StockNoTank}
+	}
+
+	if t.BatchCount >= MaxBatchesPerTank {
+		return StockOffer{PerFish: perFish, Block: StockNoBatch}
 	}
 
 	room := t.Capacity(b) - int64(t.Fish())
-	if room <= 0 || t.BatchCount >= MaxBatchesPerTank {
-		return 0, perFish
+	if room <= 0 {
+		return StockOffer{PerFish: perFish, Block: StockNoRoom}
+	}
+
+	// O piso do ciclo e o que o jogo aceita povoar: e ele que diz quanto ainda falta, e nao o
+	// alevino solto, que sugeria 51 peixes para o [s] recusar depois.
+	need := Coins(addSat(int64(s.fixedCost(b, t, plan)), mulDivCeil(int64(perFish), MinStockFish, 1)))
+	if s.Cash < need {
+		// Caixa zero e caixa que nao fecha o ciclo sao estados diferentes, e a saida de cada
+		// um e outra: um pede dinheiro de qualquer fonte, o outro pede so mais um tanto.
+		block := StockNoCycle
+		if s.Cash <= 0 {
+			block = StockNoCash
+		}
+
+		return StockOffer{PerFish: perFish, Short: Coins(subSat(int64(need), int64(s.Cash))), Block: block}
 	}
 
 	// O que sobra depois de guardar o custo fixo do ciclo: povoar com o caixa inteiro deixa
 	// o lote sem racao no meio do caminho, e ai ele morre de fome em vez de crescer.
 	spendable := int64(s.Cash) - int64(s.fixedCost(b, t, plan))
-	if spendable <= 0 {
-		return 0, perFish
-	}
 
-	// Abaixo do piso o jogo recusa a acao: sugerir 51 peixes manda o jogador apertar [s] para
-	// ouvir "quantidade invalida" por um numero que quem escolheu foi a propria tela.
-	advice := min(room, spendable/int64(perFish))
-	if advice < MinStockFish {
-		return 0, perFish
+	return StockOffer{
+		Fish:    FishCount(min(room, spendable/int64(perFish))),
+		PerFish: perFish,
+		Block:   StockOpen,
 	}
-
-	return FishCount(advice), perFish
 }
 
 // fixedCost is the upkeep and the interest that run while the batch grows, whether or not
@@ -275,7 +332,7 @@ const (
 	LoanNoRoom
 	LoanNoNeed
 	LoanNoCycle
-	loanBlockCount
+	LoanBlockCount
 )
 
 var loanBlockNames = [...]string{
@@ -286,10 +343,10 @@ var loanBlockNames = [...]string{
 	LoanNoCycle:  "no_cycle",
 }
 
-var _ [len(loanBlockNames) - int(loanBlockCount)]struct{}
+var _ [len(loanBlockNames) - int(LoanBlockCount)]struct{}
 
 func (l LoanBlock) String() string {
-	if l >= loanBlockCount {
+	if l >= LoanBlockCount {
 		return invalidName
 	}
 
@@ -321,7 +378,8 @@ func (s *State) LoanAdvice(b *Balance, tank TankID, plan CyclePlan) LoanOffer {
 		return LoanOffer{Block: LoanNoRoom}
 	}
 
-	fish, perFish := s.StockAdvice(b, tank, plan)
+	offer := s.StockAdvice(b, tank, plan)
+	fish, perFish := offer.Fish, offer.PerFish
 	if perFish <= 0 {
 		return LoanOffer{Cents: room, Block: LoanOpen}
 	}

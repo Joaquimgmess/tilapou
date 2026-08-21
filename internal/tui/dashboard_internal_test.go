@@ -237,7 +237,7 @@ func TestNenhumaTelaMandaPovoarQuandoOConselhoEZero(t *testing.T) {
 
 	telas := map[string]string{
 		"painel de numeros":  ansi.Strip(m.renderDashboard()),
-		"conselho do tanque": tankAdvice(m.snapshot.Tanks[0], m.snapshot.Fish),
+		"conselho do tanque": tankAdvice(m.snapshot, m.snapshot.Tanks[0]),
 	}
 
 	for name, got := range telas {

@@ -34,7 +34,8 @@ func TestOEmprestimoNaoPrometeMaisPeixeDoQueCabeNoTanque(t *testing.T) {
 		t.Skipf("o galpao recusou (%v): este teste precisa da oferta aberta", offer.Block)
 	}
 
-	fish, _ := s.StockAdvice(b, id, plan)
+	offerFish := s.StockAdvice(b, id, plan)
+	fish, _ := offerFish.Fish, offerFish.PerFish
 	livre := room - int64(fish)
 
 	if int64(offer.Fish) > livre {
@@ -44,7 +45,8 @@ func TestOEmprestimoNaoPrometeMaisPeixeDoQueCabeNoTanque(t *testing.T) {
 	s.Cash += offer.Cents
 	s.Debt += offer.Cents
 
-	depois, _ := s.StockAdvice(b, id, plan)
+	offerDepois := s.StockAdvice(b, id, plan)
+	depois, _ := offerDepois.Fish, offerDepois.PerFish
 	if int64(offer.Fish) > int64(depois)-int64(fish) {
 		t.Errorf("a oferta promete %d peixes a mais e o povoar so passa de %d para %d",
 			offer.Fish, fish, depois)

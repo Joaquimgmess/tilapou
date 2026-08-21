@@ -346,11 +346,17 @@ func shortRunway(s api.Snapshot) (advice, bool) {
 }
 
 func crushingDebt(s api.Snapshot) (advice, bool) {
-	if s.Debt > 0 && s.CashCents == 0 {
-		return advice{text: "Sem caixa e com divida: os juros estao crescendo. Venda peixe", urgent: true}, true
+	if s.Debt <= 0 || s.CashCents != 0 {
+		return advice{}, false
 	}
 
-	return advice{}, false
+	// Mandar vender peixe sem peixe e o mesmo defeito do conselho do tanque vazio, uma linha
+	// acima na mesma tela: a saida tem de ser a que responde neste estado.
+	if s.Fish > 0 {
+		return advice{text: "Sem caixa e com divida: os juros crescem. Venda peixe com [h]", urgent: true}, true
+	}
+
+	return advice{text: "Sem caixa, sem peixe e sem credito: so os juros crescem. Recomece com [b]", urgent: true}, true
 }
 
 func outOfFeed(s api.Snapshot) (advice, bool) {

@@ -40,18 +40,46 @@ type Tank struct {
 	Aerating     bool   `json:"aerating"`
 	DensityMilli int64  `json:"density_milli_kg_m3"`
 
-	Batches     []Batch   `json:"batches"`
-	Capacity    int64     `json:"capacity_fish"`
-	StockAdvice int64     `json:"stock_advice_fish"`
-	BatchCount  int32     `json:"batch_count"`
-	MaxBatches  int32     `json:"max_batches"`
-	BreakEven   int64     `json:"break_even_fish"`
-	LoanAdvice  int64     `json:"loan_advice_cents"`
-	LoanFish    int64     `json:"loan_advice_fish"`
-	LoanBlock   string    `json:"loan_block"`
-	ServedFor   int64     `json:"served_for_ticks"`
-	Upgrades    []Upgrade `json:"upgrades"`
+	Batches     []Batch    `json:"batches"`
+	Capacity    int64      `json:"capacity_fish"`
+	StockAdvice int64      `json:"stock_advice_fish"`
+	BatchCount  int32      `json:"batch_count"`
+	MaxBatches  int32      `json:"max_batches"`
+	BreakEven   int64      `json:"break_even_fish"`
+	LoanAdvice  int64      `json:"loan_advice_cents"`
+	LoanFish    int64      `json:"loan_advice_fish"`
+	LoanBlock   LoanBlock  `json:"loan_block"`
+	StockBlock  StockBlock `json:"stock_block"`
+	StockShort  int64      `json:"stock_short_cents"`
+	ServedFor   int64      `json:"served_for_ticks"`
+	Upgrades    []Upgrade  `json:"upgrades"`
 }
+
+// LoanBlock e StockBlock atravessam o contrato tipados, e nao como string nua: e o tipo que
+// faz o switch da tela ser cobrado por exaustividade quando um motivo novo nascer no sim.
+type LoanBlock string
+
+// Motivos pelos quais o credito esta aberto ou bloqueado.
+const (
+	LoanOpen     LoanBlock = "open"
+	LoanNoCredit LoanBlock = "no_credit"
+	LoanNoRoom   LoanBlock = "no_room"
+	LoanNoNeed   LoanBlock = "no_need"
+	LoanNoCycle  LoanBlock = "no_cycle"
+)
+
+// StockBlock e o motivo pelo qual povoar esta ou nao na mesa.
+type StockBlock string
+
+// Motivos pelos quais povoar esta aberto ou bloqueado.
+const (
+	StockOpen    StockBlock = "open"
+	StockNoTank  StockBlock = "no_tank"
+	StockNoRoom  StockBlock = "no_room"
+	StockNoBatch StockBlock = "no_batch"
+	StockNoCash  StockBlock = "no_cash"
+	StockNoCycle StockBlock = "no_cycle"
+)
 
 // Event is the event in the API, with mass in grams and cash in cents.
 type Event struct {

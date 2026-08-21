@@ -126,7 +126,7 @@ func TestStockAdviceRefusesATankWithNoRoomForAnotherBatch(t *testing.T) {
 		t.Fatalf("o cenario precisa de espaco de densidade sobrando, sobrou %d", room)
 	}
 
-	if fish, _ := s.StockAdvice(b, id, b.CycleAt(TankEarthPond, s.Tick, s.Zone)); fish != 0 {
+	if fish := s.StockAdvice(b, id, b.CycleAt(TankEarthPond, s.Tick, s.Zone)).Fish; fish != 0 {
 		t.Errorf("com %d lotes o tanque nao aceita povoar, mas a sugestao foi de %d alevinos",
 			tank.BatchCount, fish)
 	}
@@ -300,7 +300,8 @@ func TestPovoarDeixaCaixaParaOCustoFixoDoCiclo(t *testing.T) {
 		t.Fatal("o ciclo do viveiro nao tem plano")
 	}
 
-	fish, perFish := s.StockAdvice(b, id, plan)
+	offerFish := s.StockAdvice(b, id, plan)
+	fish, perFish := offerFish.Fish, offerFish.PerFish
 	if fish <= 0 {
 		t.Fatal("o conselho nao sugeriu povoar nada")
 	}
@@ -345,7 +346,7 @@ func TestOEmprestimoSugeridoPovoaAlgumaCoisa(t *testing.T) {
 		s.Cash += offer.Cents
 		s.Debt += offer.Cents
 
-		if fish, _ := s.StockAdvice(b, id, plan); fish <= 0 {
+		if fish := s.StockAdvice(b, id, plan).Fish; fish <= 0 {
 			t.Errorf("com caixa %d o jogo sugeriu pegar %d de emprestimo e depois nao povoa nada",
 				cash, offer.Cents)
 		}

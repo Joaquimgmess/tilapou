@@ -191,22 +191,27 @@ func treatItem(t api.Tank, batch api.Batch) menuItem {
 }
 
 func loanHint(s api.Snapshot, t api.Tank) string {
-	// Mandar pagar a divida com o caixa zerado e mandar fazer o que a tela ao lado ja diz
-	// que nao da: enquanto nao houver caixa, a saida e levantar caixa.
+	// A saida sai do estado, e nao de um palpite sobre o caixa: mandar pagar divida com caixa
+	// zerado, ou vender peixe sem peixe, e mandar fazer o que a tela ao lado ja nega.
 	pagar := "pague o que deve antes"
-	if s.CashCents <= 0 {
-		pagar = "levante caixa vendendo peixe antes"
+	switch {
+	case s.CashCents > 0:
+	case s.Fish > 0:
+		pagar = "venda peixe com [h] antes"
+	default:
+		pagar = "sem peixe para vender, so [b]"
 	}
 
 	switch t.LoanBlock {
-	case "no_credit":
+	case api.LoanOpen:
+	case api.LoanNoCredit:
 		return "sem espaco no limite de credito: " + pagar
-	case "no_room":
+	case api.LoanNoRoom:
 		return fmt.Sprintf("o tanque %d nao aceita mais peixe: nao ha o que financiar", t.ID)
-	case "no_need":
+	case api.LoanNoNeed:
 		return fmt.Sprintf("o caixa ja cobre o que falta no tanque %d", t.ID)
-	case "no_cycle":
-		return "o credito que sobra nao paga um ciclo inteiro: " + pagar
+	case api.LoanNoCycle:
+		return "o credito que sobra nao paga o ciclo: " + pagar
 	}
 
 	short := t.BreakEven - int64(t.Fish) - t.StockAdvice

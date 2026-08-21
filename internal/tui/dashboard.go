@@ -145,27 +145,48 @@ func (m Model) waitMark() string {
 	return dimStyle.Render(string(waitFrames[m.frame%len(waitFrames)]))
 }
 
-// emptyTankAdvice diz o que fazer com um tanque vazio. Sai do conselho de lotacao, e nao de
-// uma regra propria: e o mesmo numero que a tecla consome, entao a tela nao manda apertar o
-// que o jogo vai recusar.
-func emptyTankAdvice(t api.Tank, farmFish int32) string {
-	if t.StockAdvice > 0 {
+// emptyTankAdvice diz o que fazer com um tanque vazio. O motivo vem tipado do dominio: a
+// tela nao readivinha o estado por escalar solto, que e como ela acabava afirmando "sem
+// caixa" com caixa no bolso e apontando tecla que o jogo recusa.
+func emptyTankAdvice(s api.Snapshot, t api.Tank) string {
+	switch t.StockBlock {
+	case api.StockOpen:
 		return "povoe com [s]"
-	}
-	// O credito so vira conselho quando o galpao aceita: apontar [g] com o emprestimo
-	// bloqueado manda o jogador para uma tela de recusa, e a saida que ela oferece nao e
-	// executavel no mesmo estado.
-	if t.LoanAdvice > 0 && (t.LoanBlock == "" || t.LoanBlock == "open") {
-		return "sem caixa: veja [g]"
+	case api.StockNoTank:
+		return "tanque indisponivel"
+	case api.StockNoRoom:
+		return "cheio: despesque com [h]"
+	case api.StockNoBatch:
+		return "lotes no limite: despesque com [h]"
+	case api.StockNoCycle:
+		// O quanto falta so vira numero quando ha como levantar: com o recomeco na frente, o
+		// valor nao e acionavel e so ocupa a coluna.
+		if hint, actionable := raiseCashHint(s, t); actionable {
+			return "faltam " + coins(t.StockShort) + ": " + hint
+		}
+
+		return "sem caixa para o ciclo: recomece com [b]"
+	case api.StockNoCash:
+		hint, _ := raiseCashHint(s, t)
+
+		return "sem caixa: " + hint
 	}
 
-	// Despescar so e saida quando ha peixe em algum tanque: sem isso a frase troca um
-	// conselho impossivel por outro, e a unica tecla que ainda responde e a do recomeco.
-	if farmFish > 0 {
-		return "sem caixa e sem credito: venda peixe com [h]"
+	return ""
+}
+
+// raiseCashHint aponta a saida que responde no estado, e diz se ela levanta caixa. O [h] fica
+// de fora por decisao: a despesca age no tanque selecionado, e este esta vazio — citar a
+// tecla aqui e apontar a que o jogo recusa.
+func raiseCashHint(s api.Snapshot, t api.Tank) (string, bool) {
+	if t.LoanBlock == api.LoanOpen && t.LoanAdvice > 0 {
+		return "credito em [g]", true
+	}
+	if s.Fish > 0 {
+		return "venda peixe em outro tanque", true
 	}
 
-	return "sem caixa, sem credito e sem peixe: recomece com [b]"
+	return "recomece com [b]", false
 }
 
 // rule renders a section title followed by a line filling the width.
@@ -234,7 +255,7 @@ func (m Model) renderBatches() string {
 		if r.batch < 0 {
 			lines = append(lines, m.decorateRow(i,
 				fmt.Sprintf("%-7s %6s %6s %11s %11s  %s",
-					fmt.Sprintf("T%d", t.ID), "-", "-", "-", "-", "vazio, "+emptyTankAdvice(*t, m.snapshot.Fish)), false))
+					fmt.Sprintf("T%d", t.ID), "-", "-", "-", "-", "vazio, "+emptyTankAdvice(m.snapshot, *t)), false))
 
 			continue
 		}
@@ -315,7 +336,7 @@ func (m Model) renderDecision() string {
 	batch, ok := m.batch()
 	if !ok {
 		return rule(fmt.Sprintf("DECISAO T%d", tank.ID), decisionCol-panelInset) + "\n" +
-			dimStyle.Render("sem lote neste tanque: "+emptyTankAdvice(tank, m.snapshot.Fish))
+			dimStyle.Render("sem lote neste tanque: "+emptyTankAdvice(m.snapshot, tank))
 	}
 
 	d := batch.Decision

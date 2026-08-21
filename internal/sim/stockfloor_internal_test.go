@@ -21,7 +21,8 @@ func TestConselhoDePovoamentoNaoSugereLoteQueOJogoRecusa(t *testing.T) {
 
 		plan := b.CycleAt(TankEarthPond, s.Tick, s.Zone)
 
-		fish, _ := s.StockAdvice(b, id, plan)
+		offerFish := s.StockAdvice(b, id, plan)
+		fish, _ := offerFish.Fish, offerFish.PerFish
 		if fish <= 0 {
 			continue
 		}

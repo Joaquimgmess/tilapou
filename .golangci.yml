@@ -205,6 +205,12 @@ linters:
         text: "upgradeOrder is a global variable"
         linters:
           - gochecknoglobals
+      # Tabelas de conversao do enum do sim para o contrato: sao imutaveis e existem
+      # justamente para o compilador cobrar o motivo novo pela sentinela de tamanho.
+      - path: internal/farm/handler\.go
+        text: "(loanBlockAPI|stockBlockAPI) is a global variable"
+        linters:
+          - gochecknoglobals
       - path: internal/platform/httpx/metrics\.go
         text: "durationBuckets is a global variable"
         linters:

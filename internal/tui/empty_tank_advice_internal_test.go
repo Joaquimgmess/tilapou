@@ -7,56 +7,133 @@ import (
 	"github.com/Joaquimgmess/tilapou/internal/api"
 )
 
-// O conselho do tanque vazio nao pode apontar uma tecla que abre tela de recusa: com o
-// galpao bloqueado o [g] leva a "Emprestimo indisponivel", e a saida oferecida ao lado
-// ("pague o que deve") e desmentida pelo item vizinho, que diz que da para pagar 0,00.
-func TestConselhoDoTanqueVazioSoApontaCreditoQuandoOGalpaoAceita(t *testing.T) {
+// O conselho do tanque vazio sai do motivo tipado que o dominio calculou. Antes ele
+// readivinhava por StockAdvice <= 0, e por isso afirmava "sem caixa" com caixa no bolso e
+// apontava tecla que o jogo recusa.
+func TestConselhoDoTanqueVazioSaiDoMotivoENaoDoPalpite(t *testing.T) {
 	t.Parallel()
 
-	for _, block := range []string{"no_credit", "no_room", "no_need", "no_cycle"} {
-		tank := api.Tank{ID: 1, StockAdvice: 0, LoanAdvice: 0, LoanBlock: block}
-
-		if got := emptyTankAdvice(tank, 2_000); strings.Contains(got, "[g]") {
-			t.Errorf("com o galpao bloqueado por %s o conselho manda apertar [g]: %q", block, got)
-		}
+	casos := []struct {
+		nome    string
+		snap    api.Snapshot
+		tank    api.Tank
+		quer    []string
+		naoQuer []string
+	}{
+		{
+			nome: "povoar aberto",
+			snap: api.Snapshot{CashCents: 500_000, Fish: 2_000},
+			tank: api.Tank{ID: 1, StockBlock: api.StockOpen, StockAdvice: 300},
+			quer: []string{"[s]"},
+		},
+		{
+			nome:    "caixa positivo que nao fecha o ciclo",
+			snap:    api.Snapshot{CashCents: 49_995, Fish: 2_000},
+			tank:    api.Tank{ID: 1, StockBlock: api.StockNoCycle, StockShort: 120_000},
+			quer:    []string{"1200,00", "outro tanque"},
+			naoQuer: []string{"sem caixa"},
+		},
+		{
+			nome:    "caixa zero com credito aberto",
+			snap:    api.Snapshot{CashCents: 0, Fish: 2_000},
+			tank:    api.Tank{ID: 1, StockBlock: api.StockNoCash, LoanBlock: api.LoanOpen, LoanAdvice: 30_000},
+			quer:    []string{"sem caixa", "[g]"},
+			naoQuer: []string{"[h]", "[b]"},
+		},
+		{
+			nome:    "caixa zero, credito fechado, peixe na fazenda",
+			snap:    api.Snapshot{CashCents: 0, Fish: 2_000},
+			tank:    api.Tank{ID: 1, StockBlock: api.StockNoCash, LoanBlock: api.LoanNoCycle},
+			quer:    []string{"outro tanque"},
+			naoQuer: []string{"[g]", "[b]", "[h]"},
+		},
+		{
+			nome:    "caixa zero, credito fechado, fazenda sem peixe",
+			snap:    api.Snapshot{CashCents: 0, Fish: 0},
+			tank:    api.Tank{ID: 1, StockBlock: api.StockNoCash, LoanBlock: api.LoanNoCycle},
+			quer:    []string{"[b]"},
+			naoQuer: []string{"[h]", "[g]"},
+		},
+		{
+			nome:    "tanque cheio",
+			snap:    api.Snapshot{CashCents: 500_000, Fish: 5_000},
+			tank:    api.Tank{ID: 1, StockBlock: api.StockNoRoom},
+			quer:    []string{"cheio", "[h]"},
+			naoQuer: []string{"sem caixa"},
+		},
+		{
+			nome:    "lotes no limite",
+			snap:    api.Snapshot{CashCents: 500_000, Fish: 5_000},
+			tank:    api.Tank{ID: 1, StockBlock: api.StockNoBatch},
+			quer:    []string{"lote", "[h]"},
+			naoQuer: []string{"sem caixa"},
+		},
 	}
 
-	aberto := api.Tank{ID: 1, StockAdvice: 0, LoanAdvice: 30_000, LoanBlock: "open"}
-	if got := emptyTankAdvice(aberto, 2_000); !strings.Contains(got, "[g]") {
-		t.Errorf("com o galpao aceitando o conselho deixou de apontar o credito: %q", got)
+	for _, caso := range casos {
+		got := emptyTankAdvice(caso.snap, caso.tank)
+
+		for _, want := range caso.quer {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s: o conselho nao diz %q: %q", caso.nome, want, got)
+			}
+		}
+		for _, avoid := range caso.naoQuer {
+			if strings.Contains(got, avoid) {
+				t.Errorf("%s: o conselho diz %q, que nao vale neste estado: %q", caso.nome, avoid, got)
+			}
+		}
 	}
 }
 
-// A dica do galpao nao pode mandar pagar a divida quando nao ha caixa para pagar: as duas
-// unicas saidas da tela ficam impossiveis ao mesmo tempo.
-func TestDicaDoGalpaoNaoMandaPagarDividaSemCaixa(t *testing.T) {
+// A dica do galpao escolhe a saida pelo estado, e nao por um palpite sobre o caixa: mandar
+// pagar divida com caixa zerado, ou vender peixe sem peixe, e mandar fazer o que a tela ao
+// lado ja nega.
+func TestDicaDoGalpaoApontaSaidaQueResponde(t *testing.T) {
 	t.Parallel()
 
-	snap := sizedSnapshot()
-	snap.CashCents = 0
-	tank := snap.Tanks[0]
+	casos := []struct {
+		nome    string
+		snap    api.Snapshot
+		quer    string
+		naoQuer string
+	}{
+		{nome: "com caixa", snap: api.Snapshot{CashCents: 100_000, Fish: 2_000}, quer: "pague o que deve", naoQuer: "vendendo peixe"},
+		{nome: "sem caixa, com peixe", snap: api.Snapshot{CashCents: 0, Fish: 2_000}, quer: "venda peixe", naoQuer: "pague o que deve"},
+		{nome: "sem caixa, sem peixe", snap: api.Snapshot{CashCents: 0, Fish: 0}, quer: "[b]", naoQuer: "pague o que deve"},
+	}
 
-	for _, block := range []string{"no_credit", "no_cycle"} {
-		tank.LoanBlock = block
+	for _, caso := range casos {
+		tank := api.Tank{ID: 1, LoanBlock: api.LoanNoCycle}
 
-		if got := loanHint(snap, tank); strings.Contains(got, "pague o que deve") {
-			t.Errorf("com caixa 0 e bloqueio %s a dica manda pagar a divida: %q", block, got)
+		got := loanHint(caso.snap, tank)
+		if !strings.Contains(got, caso.quer) {
+			t.Errorf("%s: a dica nao diz %q: %q", caso.nome, caso.quer, got)
+		}
+		if strings.Contains(got, caso.naoQuer) {
+			t.Errorf("%s: a dica diz %q, que nao vale neste estado: %q", caso.nome, caso.naoQuer, got)
 		}
 	}
 }
 
-// Sem credito e sem peixe na fazenda inteira, mandar vender peixe e trocar um conselho
-// impossivel por outro: a saida real e o recomeco, que e a unica tecla que responde.
-func TestConselhoDoTanqueVazioNaoMandaVenderPeixeQueNaoExiste(t *testing.T) {
+// O objetivo do topo nao pode mandar vender peixe numa fazenda sem peixe — era a contradicao
+// que sobrava na mesma tela em que o conselho do tanque ja apontava o recomeco.
+func TestObjetivoDoTopoNaoMandaVenderPeixeQueNaoExiste(t *testing.T) {
 	t.Parallel()
 
-	tank := api.Tank{ID: 1, StockAdvice: 0, LoanAdvice: 0, LoanBlock: "no_cycle"}
-
-	if got := emptyTankAdvice(tank, 0); strings.Contains(got, "[h]") {
-		t.Errorf("sem um peixe na fazenda o conselho manda despescar: %q", got)
+	semPeixe, ok := crushingDebt(api.Snapshot{Debt: 700_000, CashCents: 0, Fish: 0})
+	if !ok {
+		t.Fatal("com divida e caixa zero o objetivo nao apareceu")
+	}
+	if strings.Contains(semPeixe.text, "Venda peixe") {
+		t.Errorf("sem um peixe na fazenda o objetivo manda vender peixe: %q", semPeixe.text)
 	}
 
-	if got := emptyTankAdvice(tank, 2_000); !strings.Contains(got, "[h]") {
-		t.Errorf("com peixe na fazenda o conselho deixou de apontar a despesca: %q", got)
+	comPeixe, ok := crushingDebt(api.Snapshot{Debt: 700_000, CashCents: 0, Fish: 2_000})
+	if !ok {
+		t.Fatal("com divida, caixa zero e peixe o objetivo nao apareceu")
+	}
+	if !strings.Contains(comPeixe.text, "Venda peixe") {
+		t.Errorf("com peixe na fazenda o objetivo deixou de apontar a despesca: %q", comPeixe.text)
 	}
 }

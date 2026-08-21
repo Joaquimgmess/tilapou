@@ -250,7 +250,7 @@ func (m Model) dialogue() string {
 	if index, ok := m.farm.pondAt(x, y); ok && index < len(m.snapshot.Tanks) {
 		tank := m.snapshot.Tanks[index]
 
-		return tankHeadline(tank) + "\n" + tankAdvice(tank, m.snapshot.Fish) + dimStyle.Render("   [z] opcoes")
+		return tankHeadline(tank) + "\n" + tankAdvice(m.snapshot, tank) + dimStyle.Render("   [z] opcoes")
 	}
 	if x == m.farm.shedX() && y == m.farm.shedY() {
 		return "GALPAO DE RACAO\n" + dimStyle.Render("[z] abre as compras")
@@ -284,10 +284,10 @@ func frontBatch(t api.Tank) (api.Batch, bool) {
 	return t.Batches[0], true
 }
 
-func tankAdvice(t api.Tank, farmFish int32) string {
+func tankAdvice(s api.Snapshot, t api.Tank) string {
 	front, ok := frontBatch(t)
 	if !ok {
-		return "tanque vazio: " + emptyTankAdvice(t, farmFish)
+		return "tanque vazio: " + emptyTankAdvice(s, t)
 	}
 
 	switch {

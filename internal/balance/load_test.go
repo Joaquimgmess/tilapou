@@ -227,7 +227,8 @@ func TestApertarPovoarDeNovoNaoLotaOTanqueSozinho(t *testing.T) {
 			capacity := s.Tanks[0].Capacity(&b)
 			plan := b.CycleAt(sim.TankEarthPond, s.Tick, s.Zone)
 
-			first, perFish := s.StockAdvice(&b, id, plan)
+			offerFirst := s.StockAdvice(&b, id, plan)
+			first, perFish := offerFirst.Fish, offerFirst.PerFish
 			if first <= 0 {
 				continue
 			}
@@ -235,7 +236,7 @@ func TestApertarPovoarDeNovoNaoLotaOTanqueSozinho(t *testing.T) {
 			s.StockTank(id, first, b.Growth.FingerlingMass, sim.Coins(int64(first))*perFish)
 			s.Cash -= sim.Coins(int64(first)) * perFish
 
-			if again, _ := s.StockAdvice(&b, id, plan); again > 0 {
+			if again := s.StockAdvice(&b, id, plan).Fish; again > 0 {
 				t.Errorf("caixa %d divida %d: povoou %d de %d e o conselho ainda manda povoar mais %d",
 					cash, debt, first, capacity, again)
 			}
@@ -393,7 +394,8 @@ func TestOsPeixesPrometidosPeloEmprestimoSaoOsQueOPovoarEntrega(t *testing.T) {
 
 		plan := b.CycleAt(sim.TankEarthPond, s.Tick, s.Zone)
 
-		before, _ := s.StockAdvice(&b, id, plan)
+		offerBefore := s.StockAdvice(&b, id, plan)
+		before, _ := offerBefore.Fish, offerBefore.PerFish
 
 		offer := s.LoanAdvice(&b, id, plan)
 		if offer.Block != sim.LoanOpen || offer.Cents <= 0 {
@@ -407,7 +409,8 @@ func TestOsPeixesPrometidosPeloEmprestimoSaoOsQueOPovoarEntrega(t *testing.T) {
 
 		// A oferta fala dos peixes que o emprestimo acrescenta, e o conselho fala do total:
 		// o que ela promete tem de caber no que o povoar passa a aceitar.
-		delivered, _ := after.StockAdvice(&b, id, plan)
+		offerDelivered := after.StockAdvice(&b, id, plan)
+		delivered, _ := offerDelivered.Fish, offerDelivered.PerFish
 		if added := int64(delivered) - int64(before); int64(offer.Fish) > added {
 			t.Errorf("com caixa %d a oferta promete %d peixes a mais e o povoar so aceita %d",
 				cash, offer.Fish, added)

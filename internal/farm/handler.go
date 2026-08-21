@@ -200,8 +200,8 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) api.Snapshot {
 	for i := range state.TankCount {
 		tank := &state.Tanks[i]
 		plan := p.at(b, tank.Kind, state.Tick, state.Zone)
-		fish, _ := state.StockAdvice(b, tank.ID, plan)
-		advice := int64(fish)
+		stock := state.StockAdvice(b, tank.ID, plan)
+		advice := int64(stock.Fish)
 		loan := state.LoanAdvice(b, tank.ID, plan)
 		tv := api.Tank{
 			ID:          uint32(tank.ID),
@@ -217,7 +217,9 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) api.Snapshot {
 			BreakEven:   int64(plan.BreakEven),
 			LoanAdvice:  int64(loan.Cents),
 			LoanFish:    int64(loan.Fish),
-			LoanBlock:   loan.Block.String(),
+			LoanBlock:   loanBlockAPI[loan.Block],
+			StockBlock:  stockBlockAPI[stock.Block],
+			StockShort:  int64(stock.Short),
 			ServedFor:   int64(tank.ServedUntil - state.Tick),
 			Upgrades:    upgradesOf(tank, b),
 		}
@@ -359,6 +361,30 @@ var upgradeOrder = [5]sim.AutoKind{
 }
 
 var _ [len(upgradeOrder) - sim.AutoKindCount]struct{}
+
+// loanBlockAPI e stockBlockAPI convertem os enums do sim para o contrato. A tabela indexada
+// pelo enum, e nao o String(), e o que faz o compilador cobrar o motivo novo: valor sem
+// entrada aqui derruba a sentinela abaixo, e nao vira string desconhecida na tela.
+var loanBlockAPI = [...]api.LoanBlock{
+	sim.LoanOpen:     api.LoanOpen,
+	sim.LoanNoCredit: api.LoanNoCredit,
+	sim.LoanNoRoom:   api.LoanNoRoom,
+	sim.LoanNoNeed:   api.LoanNoNeed,
+	sim.LoanNoCycle:  api.LoanNoCycle,
+}
+
+var _ [len(loanBlockAPI) - int(sim.LoanBlockCount)]struct{}
+
+var stockBlockAPI = [...]api.StockBlock{
+	sim.StockOpen:    api.StockOpen,
+	sim.StockNoTank:  api.StockNoTank,
+	sim.StockNoRoom:  api.StockNoRoom,
+	sim.StockNoBatch: api.StockNoBatch,
+	sim.StockNoCash:  api.StockNoCash,
+	sim.StockNoCycle: api.StockNoCycle,
+}
+
+var _ [len(stockBlockAPI) - int(sim.StockBlockCount)]struct{}
 
 func upgradesOf(tank *sim.Tank, b *sim.Balance) []api.Upgrade {
 	views := make([]api.Upgrade, 0, len(upgradeOrder))
