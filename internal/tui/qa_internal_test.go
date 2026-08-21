@@ -266,28 +266,68 @@ func qaFreshFarm(t *testing.T) {
 	waitFreshFarm(t)
 }
 
-// freshFarm le a fazenda e diz se ela ja e a nova. Erro de rede aqui e o daemon ainda
-// remontando, e nao defeito: quem decide desistir e o laco de espera.
-func freshFarm(t *testing.T, poller *http.Client, addr string) bool {
+// farmState diz em qual dos tres estados a leitura caiu. Sem isso, daemon fora do ar e daemon
+// servindo a fazenda velha viravam o mesmo silencio, e a falha mandava reiniciar um daemon
+// que nao estava rodando.
+type farmState uint8
+
+const (
+	daemonDown farmState = iota
+	farmStale
+	farmFresh
+)
+
+var errNoDaemon = errors.New("daemon nao respondeu")
+
+func (f farmState) String() string {
+	switch f {
+	case daemonDown:
+		return "daemon fora do ar"
+	case farmStale:
+		return "fazenda velha"
+	case farmFresh:
+		return "fazenda nova"
+	}
+
+	return "desconhecido"
+}
+
+// freshness classifica a leitura. Recebe o resultado ja lido para o teste poder cobrar os
+// tres ramos sem daemon nenhum.
+func freshness(t *testing.T, snap *api.Snapshot, err error) farmState {
+	t.Helper()
+
+	if err != nil || snap == nil {
+		return daemonDown
+	}
+	if snap.FarmID == "" || snap.Tick >= int64(sim.TicksPerDay) {
+		return farmStale
+	}
+
+	return farmFresh
+}
+
+// freshFarm le a fazenda e classifica o que veio.
+func freshFarm(t *testing.T, poller *http.Client, addr string) farmState {
 	t.Helper()
 
 	req, err := httpRequest(t, addr+"/v1/farm")
 	if err != nil {
-		return false
+		return freshness(t, nil, err)
 	}
 
 	resp, err := poller.Do(req)
 	if err != nil {
-		return false
+		return freshness(t, nil, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	var snap api.Snapshot
-	if json.NewDecoder(resp.Body).Decode(&snap) != nil {
-		return false
+	if decodeErr := json.NewDecoder(resp.Body).Decode(&snap); decodeErr != nil {
+		return freshness(t, nil, decodeErr)
 	}
 
-	return snap.FarmID != "" && snap.Tick < int64(sim.TicksPerDay)
+	return freshness(t, &snap, nil)
 }
 
 func httpRequest(t *testing.T, url string) (*http.Request, error) {
@@ -308,12 +348,18 @@ func waitFreshFarm(t *testing.T) {
 	addr := os.Getenv("TILAPOU_DAEMON")
 	poller := &http.Client{Timeout: 5 * time.Second}
 
+	ultimo := daemonDown
 	for range 20 {
-		if freshFarm(t, poller, addr) {
+		ultimo = freshFarm(t, poller, addr)
+		if ultimo == farmFresh {
 			return
 		}
 
 		time.Sleep(time.Second)
+	}
+
+	if ultimo == daemonDown {
+		t.Fatalf("nao ha daemon respondendo em %s: o portao precisa de um de pe, e nao e ele que sobe", addr)
 	}
 
 	t.Fatal("o daemon continua servindo a fazenda velha depois do banco ser limpo: ele guarda a sessao em memoria, entao reinicie o daemon antes de rodar o portao")

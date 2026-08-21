@@ -1,6 +1,10 @@
 package tui
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/Joaquimgmess/tilapou/internal/api"
+)
 
 // A :8099 e o daemon do dono, com o save de verdade. Nenhum teste pode escrever nele: as
 // teclas do roteiro vao para o daemon apontado, e o QA_DATABASE so protege o salto de dias.
@@ -62,5 +66,28 @@ func TestOPortaoRecusaConnInfoNoNomeDoBanco(t *testing.T) {
 		if err := qaDatabase(name); err != nil {
 			t.Errorf("o portao recusou %q, que e banco de teste: %v", name, err)
 		}
+	}
+}
+
+// A espera pela fazenda nova precisa separar dois estados que ela hoje confunde: daemon fora
+// do ar e daemon servindo a fazenda velha. Engolir os dois no mesmo silencio faz a falha
+// dizer "reinicie o daemon" quando nao ha daemon nenhum — a mensagem manda caçar o problema
+// errado, e foi o que aconteceu com o @qa.
+func TestAEsperaSeparaDaemonForaDoArDeFazendaVelha(t *testing.T) {
+	t.Parallel()
+
+	fora := freshness(t, nil, errNoDaemon)
+	if fora != daemonDown {
+		t.Errorf("sem daemon a espera classificou como %v", fora)
+	}
+
+	velha := freshness(t, &api.Snapshot{FarmID: "x", Tick: 100 * 24 * 60}, nil)
+	if velha != farmStale {
+		t.Errorf("com a fazenda velha a espera classificou como %v", velha)
+	}
+
+	nova := freshness(t, &api.Snapshot{FarmID: "x", Tick: 3}, nil)
+	if nova != farmFresh {
+		t.Errorf("com a fazenda nova a espera classificou como %v", nova)
 	}
 }
