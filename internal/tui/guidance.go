@@ -275,7 +275,7 @@ func underStocked(s api.Snapshot) (advice, bool) {
 		}
 
 		return advice{text: fmt.Sprintf(
-			"O tanque %d precisa de %d peixes para pagar a manutencao e o caixa so cobre %d. Pegue credito com [g]",
+			"O tanque %d paga a manutencao com %d peixes; o caixa compra %d. [g] mostra o credito com juro e margem",
 			t.ID, t.BreakEven, t.StockAdvice), urgent: true}, true
 	}
 

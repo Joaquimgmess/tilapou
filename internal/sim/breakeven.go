@@ -16,6 +16,8 @@ type CyclePlan struct {
 	Mass       Micrograms
 	PricePerKg Coins
 	BreakEven  FishCount
+	PerFish    Coins
+	Margin     Coins
 }
 
 // CycleAt returns the best-margin plan for the tank kind, or the zero value if no cycle completes.
@@ -34,18 +36,30 @@ func (b *Balance) cycleAtSeed(kind TankKind, at Tick, zone ZoneOffset, seed Seed
 	// sai sub-lotado e escolhe um ciclo que ninguem joga.
 	dense := max(probeStocking(b, kind)/probeDensityShare, probeFloor)
 
-	plan, denseCash, ok := probeBestCycle(&healthy, kind, at, zone, dense, seed)
+	best, ok := probeBestCycle(&healthy, kind, at, zone, dense, seed)
 	if !ok {
 		return CyclePlan{}
 	}
 
+	plan, denseCash := best.plan, best.cash
+	// A margem projetada do ciclo e o que a sonda fechou: e numero exibido, e nao trava —
+	// capar a oferta por ele seria balancear para baixo com outro nome (decision-012).
+	plan.Margin = best.cash
+
 	// A segunda sonda fica na faixa magra, perto do break-even, e fecha no dia do plano:
 	// sondas de ciclos diferentes nao formam reta. A reta entre as duas so descreve a curva
 	// nessa vizinhanca, entao mover probeThin move o numero — ele nao e uma constante livre.
-	thinCash, ok := probeCycleUntil(&healthy, kind, at, zone, probeThin, plan.Days, seed)
+	thin, ok := probeCycleUntil(&healthy, kind, at, zone, probeThin, plan.Days, seed)
 	if !ok {
 		return plan
 	}
+
+	thinCash := thin.cash
+
+	// O desembolso por peixe sai da diferenca entre as duas sondas: a sonda ja comprou a racao
+	// que o lote comeu, ja pagou a energia do aerador e ja viu o preco do dia. O
+	// caa_referencia e o peixe no papel.
+	plan.PerFish = Coins(max(int64(best.spent-thin.spent)/(dense-probeThin), 0))
 
 	// O break-even promete "N peixes pagam a manutencao": e a lotacao onde a fazenda fecha o
 	// ciclo com o caixa que comecou. A margem do lote nao ve a manutencao nem a energia, que
@@ -102,6 +116,20 @@ func outbreakLoss(spec DiseaseSpec) int64 {
 	}
 
 	return int64(UnitPPM) - alive
+}
+
+// OwedOn e o principal mais o juro que ele acumula ao longo do ciclo do plano. E propriedade
+// do ciclo, e nao do conselho de credito: numero exibido, nunca teto da oferta — capar o
+// principal por ele seria balancear o jogo para baixo com outro nome (decision-012).
+func OwedOn(b *Balance, plan CyclePlan, principal Coins) Coins {
+	if plan.Days <= 0 || principal <= 0 {
+		return principal
+	}
+
+	interest := mulDivCeil(int64(principal),
+		mulDivCeil(int64(b.Credit.DailyRatePPM), plan.Days, 1), int64(UnitPPM))
+
+	return Coins(addSat(int64(principal), interest))
 }
 
 // MinStockFish is the smallest stocking worth the name; below it the farm has no cycle.
@@ -201,10 +229,12 @@ func probeFarm(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish int64, 
 	return s, start, true
 }
 
-// probeDay is one day of the probe: the plan the farm could close on, and the cash it holds.
+// probeDay is one day of the probe: the plan the farm could close on, the cash it holds and
+// o que ja saiu do caixa para chegar ate ali, fora a racao que ficou no silo.
 type probeDay struct {
-	plan CyclePlan
-	cash Coins
+	plan  CyclePlan
+	cash  Coins
+	spent Coins
 }
 
 // probeStep roda um dia e devolve onde a fazenda ficou, ou false quando o lote se perdeu.
@@ -228,15 +258,16 @@ func probeStep(s *State, b *Balance, at Tick, day int64, start Coins) (probeDay,
 		int64(s.Tanks[0].FeedStock), int64(MicrogramsPerKilogram))
 
 	return probeDay{
-		plan: CyclePlan{Days: day + 1, At: at, Mass: batch.MeanMass, PricePerKg: price},
-		cash: s.Cash - start + Coins(value+left),
+		plan:  CyclePlan{Days: day + 1, At: at, Mass: batch.MeanMass, PricePerKg: price},
+		cash:  s.Cash - start + Coins(value+left),
+		spent: start - s.Cash - Coins(left),
 	}, true
 }
 
-func probeBestCycle(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish int64, seed Seed) (CyclePlan, Coins, bool) {
+func probeBestCycle(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish int64, seed Seed) (probeDay, bool) {
 	s, start, ok := probeFarm(b, kind, at, zone, fish, seed)
 	if !ok {
-		return CyclePlan{}, 0, false
+		return probeDay{}, false
 	}
 
 	var (
@@ -247,7 +278,7 @@ func probeBestCycle(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish in
 	for day := range int64(breakEvenCapDays) {
 		here, stepOK := probeStep(&s, b, at, day, start)
 		if !stepOK {
-			return CyclePlan{}, 0, false
+			return probeDay{}, false
 		}
 
 		batch := s.Tanks[0].Batches[0]
@@ -263,26 +294,26 @@ func probeBestCycle(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish in
 		}
 	}
 
-	return best.plan, best.cash, best.plan.Days > 0
+	return best, best.plan.Days > 0
 }
 
 // probeCycleUntil fecha o ciclo no dia pedido: sondas de lotacoes diferentes so se comparam
 // quando param no mesmo dia.
-func probeCycleUntil(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish, day int64, seed Seed) (Coins, bool) {
+func probeCycleUntil(b *Balance, kind TankKind, at Tick, zone ZoneOffset, fish, day int64, seed Seed) (probeDay, bool) {
 	s, start, ok := probeFarm(b, kind, at, zone, fish, seed)
 	if !ok {
-		return 0, false
+		return probeDay{}, false
 	}
 
 	var last probeDay
 	for i := range day {
 		last, ok = probeStep(&s, b, at, i, start)
 		if !ok {
-			return 0, false
+			return probeDay{}, false
 		}
 	}
 
-	return last.cash, day > 0
+	return last, day > 0
 }
 
 func topClass(b *Balance) Micrograms {

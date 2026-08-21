@@ -214,18 +214,26 @@ func loanHint(s api.Snapshot, t api.Tank) string {
 		return "o credito que sobra nao paga o ciclo: " + pagar
 	}
 
+	// Prometer que cobre o que falta e mentira quando o dinheiro nao chega la: quem sabe
+	// quantos peixes ele povoa e o daemon, que ja desconta o custo fixo do ciclo.
 	short := t.BreakEven - int64(t.Fish) - t.StockAdvice
 	if short > 0 && t.LoanFish > 0 && t.LoanFish < short {
-		// Prometer que cobre o que falta e mentira quando o dinheiro nao chega la: quem sabe
-		// quantos peixes ele povoa e o daemon, que ja desconta o custo fixo do ciclo.
-		return fmt.Sprintf("da para %d dos %d peixes que faltam no tanque %d",
-			t.LoanFish, short, t.ID)
-	}
-	if short > 0 {
-		return fmt.Sprintf("cobre os %d peixes que faltam para o tanque %d pagar a manutencao", short, t.ID)
+		return fmt.Sprintf("da para %d de %d; %s", t.LoanFish, short, creditCost(t))
 	}
 
-	return fmt.Sprintf("cobre o que falta para encher o tanque %d", t.ID)
+	return creditCost(t)
+}
+
+// creditCost e o custo do emprestimo em tres numeros, na ordem em que a decisao se forma: o
+// que entra hoje, o que volta no fim do ciclo e a margem que o ciclo projeta. Nenhum verbo de
+// recomendacao: o texto mostra o custo e a conclusao e do jogador (decision-012).
+func creditCost(t api.Tank) string {
+	custo := fmt.Sprintf("%s agora, %s de volta em %d d", coins(t.LoanAdvice), coins(t.LoanOwed), t.CycleDays)
+	if t.CycleMargin <= 0 {
+		return custo + "; o ciclo nao projeta margem"
+	}
+
+	return custo + "; margem projetada " + coins(t.CycleMargin)
 }
 
 func stockBlocked(t api.Tank) string {

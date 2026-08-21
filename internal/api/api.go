@@ -48,6 +48,9 @@ type Tank struct {
 	BreakEven   int64      `json:"break_even_fish"`
 	LoanAdvice  int64      `json:"loan_advice_cents"`
 	LoanFish    int64      `json:"loan_advice_fish"`
+	LoanOwed    int64      `json:"loan_owed_cents"`
+	CycleDays   int64      `json:"cycle_days"`
+	CycleMargin int64      `json:"cycle_margin_cents"`
 	LoanBlock   LoanBlock  `json:"loan_block"`
 	StockBlock  StockBlock `json:"stock_block"`
 	StockShort  int64      `json:"stock_short_cents"`

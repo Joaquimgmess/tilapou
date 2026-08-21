@@ -250,7 +250,12 @@ func (s *State) StockAdvice(b *Balance, tank TankID, plan CyclePlan) StockOffer 
 		return StockOffer{Block: StockNoTank}
 	}
 
-	perFish := b.Economy.FingerlingPrice + feedToRaise(b, s.Tick)
+	// O desembolso medido na sonda do plano manda: feedToRaise precifica a racao pela CAA de
+	// referencia, que e a do peixe no papel, e ignora a energia.
+	perFish := plan.PerFish
+	if perFish <= 0 {
+		perFish = b.Economy.FingerlingPrice + feedToRaise(b, s.Tick)
+	}
 	if perFish <= 0 {
 		return StockOffer{Block: StockNoTank}
 	}
