@@ -256,3 +256,41 @@ func TestADecisaoNomeiaOQueVeioDoContrato(t *testing.T) {
 		t.Errorf("sem contrato a linha existe e diz %q", got)
 	}
 }
+
+// O aerador era um interruptor cego: [a] respondia "alternando" e nada na tela dizia se ele
+// ficou ligado ou desligado — o @qa comparou os quadros antes e depois e as 32 linhas eram
+// identicas. A coluna ESTADO passa a dizer, como ja diz do trato e da racao.
+func TestOEstadoDizQuandoOAeradorEstaLigado(t *testing.T) {
+	t.Parallel()
+
+	tank := api.Tank{
+		ID: 1, FeedKg: 180, OxygenUgL: 5_400, ServedFor: 240, Aerating: true,
+	}
+	batch := api.Batch{Fish: 2_000, Decision: api.Decision{DaysOfFeed: 63}}
+
+	ligado, _ := rowState(&tank, &batch)
+	if !strings.Contains(ligado, "aerando") {
+		t.Errorf("com o aerador ligado o estado diz %q", ligado)
+	}
+
+	// E o par: desligado, a coluna volta a falar do que importa a seguir. Sem isso o teste
+	// passaria com a coluna dizendo "aerando" para sempre.
+	tank.Aerating = false
+	desligado, _ := rowState(&tank, &batch)
+	if strings.Contains(desligado, "aerando") {
+		t.Errorf("com o aerador desligado o estado ainda diz %q", desligado)
+	}
+
+	// Com oxigenio critico e o aerador DESLIGADO, o alerta vence: e a hora de ligar.
+	tank.Aerating, tank.OxygenUgL = false, 1_000
+	if got, alert := rowState(&tank, &batch); !alert || !strings.Contains(got, "O2") {
+		t.Errorf("com oxigenio critico e aerador desligado o estado diz %q (alerta=%v)", got, alert)
+	}
+
+	// Ligado, a mesma agua ruim mostra "aerando": o jogador precisa saber que ja esta agindo,
+	// e nao levar um alerta do que ele acabou de resolver.
+	tank.Aerating = true
+	if got, _ := rowState(&tank, &batch); !strings.Contains(got, "aerando") {
+		t.Errorf("com o aerador ligado contra oxigenio baixo o estado diz %q", got)
+	}
+}

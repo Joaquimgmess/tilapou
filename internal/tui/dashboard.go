@@ -321,6 +321,11 @@ func rowState(t *api.Tank, batch *api.Batch) (label string, alert bool) {
 		return "SEM RACAO", true
 	case t.ServedFor <= 0:
 		return "SEM TRATO", true
+	// O aerador era um interruptor cego: a tecla dizia "alternando" e a tela ficava identica,
+	// entao o jogador nao sabia se tinha ligado ou desligado. Vem depois dos alertas porque
+	// o alerta e mais urgente, e antes da racao porque a agua e o que mata primeiro.
+	case t.Aerating:
+		return "aerando", false
 	case batch.Decision.DaysOfFeed > 0:
 		return fmt.Sprintf("racao %d d", batch.Decision.DaysOfFeed), false
 	}
