@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -27,13 +28,25 @@ const (
 )
 
 var (
-	errNoQADatabase  = errors.New("QA_DATABASE nao esta definida")
-	errOwnerDatabase = errors.New("QA_DATABASE aponta para o banco do dono")
+	errNoQADatabase     = errors.New("QA_DATABASE nao esta definida")
+	errOwnerDatabase    = errors.New("QA_DATABASE aponta para o banco do dono")
+	errConnInfoDatabase = errors.New("QA_DATABASE tem de ser um nome de banco, e nao uma conninfo")
+
+	// identifier e o que o Postgres aceita como nome sem aspas. Qualquer coisa fora disso —
+	// espaco, '=', ':', '/' — abre a porta para conninfo.
+	identifier = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_$]*$`)
 )
 
+// qaDatabase recusa o banco do dono. O valor NAO e so um nome: ele vai para `psql -d`, que
+// aceita conninfo — 'dbname=tilapou' e 'postgres://.../tilapou' passavam por uma comparacao
+// de nome e caiam no save do jogador. Por isso se cobra um identificador, e nao uma string
+// diferente de "tilapou".
 func qaDatabase(name string) error {
 	if name == "" {
 		return errNoQADatabase
+	}
+	if !identifier.MatchString(name) {
+		return fmt.Errorf("%w: %q nao e um nome de banco", errConnInfoDatabase, name)
 	}
 	if name == ownerDatabase {
 		return errOwnerDatabase
