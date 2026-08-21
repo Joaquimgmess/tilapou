@@ -114,7 +114,7 @@ func TestTabRecusaComAMedidaQuandoOMapaNaoCabe(t *testing.T) {
 	if got.mode != ModeDashboard {
 		t.Error("tab trocou para o mapa numa tela que nao o comporta")
 	}
-	if !strings.Contains(got.message, "88") {
+	if !strings.Contains(got.message, "linhas") {
 		t.Errorf("tab recusou sem dizer a medida que falta: %q", got.message)
 	}
 }
@@ -140,8 +140,39 @@ func TestTabRecusaNosDoisModosQuandoOMapaNaoCabe(t *testing.T) {
 		if got.mode != mode {
 			t.Errorf("com o modo %v o tab trocou para %v numa tela que nao comporta o mapa", mode, got.mode)
 		}
-		if !strings.Contains(got.message, "88") {
+		if !strings.Contains(got.message, "linhas") {
 			t.Errorf("com o modo %v o tab nao disse a medida que falta: %q", mode, got.message)
 		}
+	}
+}
+
+// A recusa do tab nao pode ser a mesma frase que ja esta na tela: ela custa a linha do
+// conselho e devolve texto que o jogador acabou de ler, o que parece tecla que nao respondeu.
+// O que ela tem de dizer e quanto falta, que e o que ele pode fazer a respeito.
+func TestARecusaDoTabDizQuantoFaltaENaoRepeteATela(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 100, 32
+	m.mode = ModeGameBoy
+
+	depois, _ := m.onCommand("tab")
+	got, ok := depois.(Model)
+	if !ok {
+		t.Fatal("onCommand nao devolveu um Model")
+	}
+
+	frame := plain(got.render())
+	explicacao := "o mapa precisa de 88x35 e o terminal tem 100x32, entao ficam os numeros"
+	if !strings.Contains(frame, explicacao) {
+		t.Fatalf("a tela deixou de explicar por que os numeros estao no lugar do mapa:\n%s", frame)
+	}
+
+	if strings.Contains(explicacao, got.message) {
+		t.Errorf("a recusa do tab repete a linha que ja esta na tela: %q", got.message)
+	}
+	if !strings.Contains(got.message, "faltam") {
+		t.Errorf("a recusa do tab nao diz quanto falta: %q", got.message)
 	}
 }
