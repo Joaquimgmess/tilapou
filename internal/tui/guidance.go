@@ -60,14 +60,24 @@ const (
 	weightTurningPoint
 )
 
-func eventWeight(kind string) int {
+// eventWeight pesa o acontecimento. Switch exaustivo sobre o tipo do contrato, sem default:
+// os mudos moram AQUI, nomeados, e nao numa lista de teste que ninguem revisa — trocar o kind
+// de um evento apagou a fome da tela sem quebrar nada, e foi assim que ela sumiu por um dia.
+func eventWeight(kind api.EventKind) int {
 	switch kind {
-	case "bankrupt", "prestiged", "restarted":
+	case api.EventBankrupt, api.EventPrestiged, api.EventRestarted:
 		return weightTurningPoint
-	case "disease", "disease_deaths":
+	case api.EventDisease, api.EventDiseaseDeaths:
 		return weightThreat
-	case "starvation_began", "starvation_ended", "hypoxia_deaths", "feed_exhausted":
+	case api.EventStarvationBegan, api.EventStarvationEnded, api.EventHypoxiaDeaths,
+		api.EventFeedExhausted:
 		return weightLoss
+	// Mudos por decisao: o crescimento e o relatorio periodico, e o resto e confirmacao do que
+	// o jogador acabou de fazer — virar manchete seria repetir a tela para ele.
+	case api.EventUnknown, api.EventGrowth, api.EventHarvest, api.EventStocked,
+		api.EventTankBought, api.EventFeedBought, api.EventActionRejected,
+		api.EventUpgradeBought, api.EventBorrowed, api.EventRepaid, api.EventTreated:
+		return weightNone
 	}
 
 	return weightNone
@@ -100,27 +110,34 @@ func newestEvent(s api.Snapshot, seen uint64) uint64 {
 
 func eventHeadline(e *api.Event) (string, bool) {
 	switch e.Kind {
-	case "bankrupt":
+	case api.EventBankrupt:
 		return "A fazenda quebrou: a divida de " + coins(e.CashCents) +
 			" foi perdoada e voce recomeca com o lote inicial", true
-	case "prestiged":
+	case api.EventPrestiged:
 		return "Voce tilapou: a fazenda recomeca com as matrizes valendo para sempre", true
-	case "restarted":
+	case api.EventRestarted:
 		return "A fazenda recomecou do zero", true
-	case "disease":
+	case api.EventDisease:
 		return fmt.Sprintf("Surto de doenca no tanque %d: trate com [z] ou aceite as perdas", e.Tank), true
-	case "disease_deaths":
+	case api.EventDiseaseDeaths:
 		return fmt.Sprintf("A doenca matou %s no tanque %d", fishCount(e.Fish), e.Tank), true
-	case "starvation_began":
+	case api.EventStarvationBegan:
 		return fmt.Sprintf("O lote do tanque %d comecou a morrer de fome", e.Tank), true
-	case "starvation_ended":
+	case api.EventStarvationEnded:
 		// O total so existe aqui: a abertura sai com o morto do primeiro tick, e e este numero
 		// que diz o tamanho da perda.
 		return fmt.Sprintf("A fome no tanque %d acabou: %s %s", e.Tank, fishCount(e.Fish), died(e.Fish)), true
-	case "hypoxia_deaths":
+	case api.EventHypoxiaDeaths:
 		return fmt.Sprintf("%s do tanque %d %s sem oxigenio", fishCount(e.Fish), e.Tank, died(e.Fish)), true
-	case "feed_exhausted":
+	case api.EventFeedExhausted:
 		return fmt.Sprintf("A racao do tanque %d acabou", e.Tank), true
+	// Sem manchete por decisao: o crescimento e relatorio periodico, e o resto e confirmacao
+	// do que o jogador acabou de fazer. O peso deles ja e weightNone, e o teste guarda que as
+	// duas listas nao podem divergir.
+	case api.EventUnknown, api.EventGrowth, api.EventHarvest, api.EventStocked,
+		api.EventTankBought, api.EventFeedBought, api.EventActionRejected,
+		api.EventUpgradeBought, api.EventBorrowed, api.EventRepaid, api.EventTreated:
+		return "", false
 	}
 
 	return "", false

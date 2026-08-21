@@ -28,7 +28,7 @@ const (
 	EventDiseaseDeaths
 	EventTreated
 	EventBankrupt
-	eventKindCount
+	EventKindCount
 )
 
 var eventKindNames = [...]string{
@@ -54,10 +54,10 @@ var eventKindNames = [...]string{
 	EventBankrupt:        "bankrupt",
 }
 
-var _ [len(eventKindNames) - int(eventKindCount)]struct{}
+var _ [len(eventKindNames) - int(EventKindCount)]struct{}
 
 func (k EventKind) String() string {
-	if k >= eventKindCount {
+	if k >= EventKindCount {
 		return invalidName
 	}
 

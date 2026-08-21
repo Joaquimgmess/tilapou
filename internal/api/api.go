@@ -71,6 +71,35 @@ const (
 	LoanNoCycle  LoanBlock = "no_cycle"
 )
 
+// EventKind e o tipo do acontecimento. Tipado, e nao string nua: trocar o nome de um evento
+// apagou a fome da tela sem quebrar nada, e o teste que guardava a escolha da manchete ficou
+// inerte porque montava um kind que ninguem mais emitia.
+type EventKind string
+
+// Acontecimentos que a simulacao emite.
+const (
+	EventUnknown         EventKind = "unknown"
+	EventGrowth          EventKind = "growth"
+	EventHypoxiaDeaths   EventKind = "hypoxia_deaths"
+	EventStarvationBegan EventKind = "starvation_began"
+	EventStarvationEnded EventKind = "starvation_ended"
+	EventFeedExhausted   EventKind = "feed_exhausted"
+	EventHarvest         EventKind = "harvest"
+	EventStocked         EventKind = "stocked"
+	EventTankBought      EventKind = "tank_bought"
+	EventFeedBought      EventKind = "feed_bought"
+	EventActionRejected  EventKind = "action_rejected"
+	EventUpgradeBought   EventKind = "upgrade_bought"
+	EventPrestiged       EventKind = "prestiged"
+	EventRestarted       EventKind = "restarted"
+	EventBorrowed        EventKind = "borrowed"
+	EventRepaid          EventKind = "repaid"
+	EventDisease         EventKind = "disease"
+	EventDiseaseDeaths   EventKind = "disease_deaths"
+	EventTreated         EventKind = "treated"
+	EventBankrupt        EventKind = "bankrupt"
+)
+
 // RejectReason e o motivo pelo qual o jogo recusou a acao. Tipado, e nao string nua: motivo
 // novo no dominio passava a existir sem que nada obrigasse a escrever a frase, e o jogador
 // via a mensagem generica.
@@ -139,7 +168,7 @@ const (
 // Event is the event in the API, with mass in grams and cash in cents.
 type Event struct {
 	Seq       uint64       `json:"seq"`
-	Kind      string       `json:"kind"`
+	Kind      EventKind    `json:"kind"`
 	From      int64        `json:"from_tick"`
 	To        int64        `json:"to_tick"`
 	Tank      uint32       `json:"tank_id"`

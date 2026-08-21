@@ -214,7 +214,7 @@ linters:
       # Tabelas de conversao do enum do sim para o contrato: sao imutaveis e existem
       # justamente para o compilador cobrar o motivo novo pela sentinela de tamanho.
       - path: internal/farm/handler\.go
-        text: "(loanBlockAPI|stockBlockAPI|rejectReasonAPI) is a global variable"
+        text: "(loanBlockAPI|stockBlockAPI|rejectReasonAPI|eventKindAPI) is a global variable"
         linters:
           - gochecknoglobals
       # Conjunto imutavel dos motivos que o contrato conhece: existe para o motivo lido do

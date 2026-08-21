@@ -239,7 +239,7 @@ func viewOf(snap Snapshot, b *sim.Balance, p *plans) api.Snapshot {
 	for _, e := range snap.Events {
 		view.Events = append(view.Events, api.Event{
 			Seq:       e.Seq,
-			Kind:      e.Kind,
+			Kind:      api.EventKind(e.Kind),
 			From:      int64(e.From),
 			To:        int64(e.To),
 			Tank:      uint32(e.Tank),
@@ -380,6 +380,33 @@ var _ [len(upgradeOrder) - sim.AutoKindCount]struct{}
 // rejectReasonAPI converte o motivo do dominio para o contrato. Tabela indexada pelo enum, e
 // nao String(): motivo novo no sim sem entrada aqui derruba a sentinela abaixo, em vez de
 // virar string desconhecida que a tela nao sabe traduzir.
+// eventKindAPI converte o acontecimento do dominio para o contrato: kind novo no sim sem
+// entrada aqui derruba a sentinela, em vez de virar string que a tela nao pesa nem nomeia.
+var eventKindAPI = [...]api.EventKind{
+	sim.EventUnknown:         api.EventUnknown,
+	sim.EventGrowth:          api.EventGrowth,
+	sim.EventHypoxiaDeaths:   api.EventHypoxiaDeaths,
+	sim.EventStarvationBegan: api.EventStarvationBegan,
+	sim.EventStarvationEnded: api.EventStarvationEnded,
+	sim.EventFeedExhausted:   api.EventFeedExhausted,
+	sim.EventHarvest:         api.EventHarvest,
+	sim.EventStocked:         api.EventStocked,
+	sim.EventTankBought:      api.EventTankBought,
+	sim.EventFeedBought:      api.EventFeedBought,
+	sim.EventActionRejected:  api.EventActionRejected,
+	sim.EventUpgradeBought:   api.EventUpgradeBought,
+	sim.EventPrestiged:       api.EventPrestiged,
+	sim.EventRestarted:       api.EventRestarted,
+	sim.EventBorrowed:        api.EventBorrowed,
+	sim.EventRepaid:          api.EventRepaid,
+	sim.EventDisease:         api.EventDisease,
+	sim.EventDiseaseDeaths:   api.EventDiseaseDeaths,
+	sim.EventTreated:         api.EventTreated,
+	sim.EventBankrupt:        api.EventBankrupt,
+}
+
+var _ [len(eventKindAPI) - int(sim.EventKindCount)]struct{}
+
 var rejectReasonAPI = [...]api.RejectReason{
 	sim.RejectNone:              api.RejectNone,
 	sim.RejectUnknownKind:       api.RejectUnknownKind,

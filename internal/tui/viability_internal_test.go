@@ -329,3 +329,36 @@ func TestAFomeApareceNaManchete(t *testing.T) {
 		t.Errorf("o fechamento nao diz quantos morreram: %q", fim)
 	}
 }
+
+// Peso e manchete andam juntos: acontecimento que pesa tem de ter frase, senao ele disputa a
+// manchete e ganha o silencio — foi o que aconteceu com a fome quando o kind mudou. O teste
+// guarda o invariante DERIVADO, e nao uma lista de kinds: a lista mora no switch exaustivo,
+// onde o lint cobra.
+func TestTodoAcontecimentoQuePesaTemManchete(t *testing.T) {
+	t.Parallel()
+
+	kinds := []api.EventKind{
+		api.EventUnknown, api.EventGrowth, api.EventHypoxiaDeaths, api.EventStarvationBegan,
+		api.EventStarvationEnded, api.EventFeedExhausted, api.EventHarvest, api.EventStocked,
+		api.EventTankBought, api.EventFeedBought, api.EventActionRejected,
+		api.EventUpgradeBought, api.EventPrestiged, api.EventRestarted, api.EventBorrowed,
+		api.EventRepaid, api.EventDisease, api.EventDiseaseDeaths, api.EventTreated,
+		api.EventBankrupt,
+	}
+
+	pesados := 0
+	for _, kind := range kinds {
+		if eventWeight(kind) == weightNone {
+			continue
+		}
+
+		pesados++
+		if _, ok := eventHeadline(&api.Event{Kind: kind, Tank: 1, Fish: 2}); !ok {
+			t.Errorf("%q pesa na disputa da manchete e nao tem frase: ele ganha e a tela cala", kind)
+		}
+	}
+
+	if pesados == 0 {
+		t.Fatal("nenhum acontecimento pesa: o teste nao cobrou nada")
+	}
+}
