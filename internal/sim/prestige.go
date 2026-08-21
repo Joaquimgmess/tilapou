@@ -69,9 +69,16 @@ func (s *State) stuck(b *Balance, plans Plans) bool {
 	return true
 }
 
-// cheapestCycle e o piso do ciclo: dimensionar um alevino dizia que havia saida onde o jogo
-// nao deixa povoar tao pouco e o galpao nao empresta tao pouco.
+// cheapestCycle e a menor compra que ainda melhora este tanque, e tem de ser a mesma unidade
+// que lendable solta: tanque com lote dentro pede racao, e ai o piso e o saco; tanque vazio
+// pede ciclo, e ai o piso e o povoamento minimo. Medir um lado em ciclo e o outro em saco
+// marcava como quebrada a fazenda com o lote vivo, e a falencia por dias sem saida trocava o
+// lote crescido pelo inicial.
 func (s *State) cheapestCycle(b *Balance, t *Tank, plan CyclePlan) Coins {
+	if t.Fish() > 0 {
+		return feedSackAt(b, plan.At)
+	}
+
 	return cycleFloor(b, t, plan, s.Debt)
 }
 
