@@ -149,7 +149,10 @@ type Decision struct {
 	HoldCostCents int64 `json:"hold_cost_cents"`
 	// HoldReached diz que a projecao alcanca o alvo dentro do teto de dias, e nao que o
 	// peixe ja chegou la: com 30 g e alvo de 400 g ela e verdadeira e correta.
-	HoldReached    bool  `json:"hold_reached"`
+	HoldReached bool `json:"hold_reached"`
+	// ContractCents e quanto do "vender agora" vem do bonus de contrato. Zero quer dizer que
+	// o tanque nao tem contrato: o upgrade mudava o caixa e nao aparecia em lugar nenhum.
+	ContractCents  int64 `json:"contract_cents"`
 	BreakEvenPerKg int64 `json:"break_even_per_kg_cents"`
 	GainPerDayMg   int64 `json:"gain_per_day_mg"`
 	FeedPerDayG    int64 `json:"feed_per_day_grams"`

@@ -272,7 +272,10 @@ func qaFreshFarm(t *testing.T) {
 	waitFreshFarm(t)
 }
 
-var errDatabaseMismatch = errors.New("o daemon nao confirma o banco de teste")
+var (
+	errDatabaseMismatch = errors.New("o daemon nao confirma o banco de teste")
+	errJSONQuebrado     = errors.New("corpo do /healthz nao e JSON")
+)
 
 // healthRead e o que a leitura do /healthz devolveu. Guardar o status e o erro separados e o
 // que permite a recusa dizer a causa: quatro estados diferentes caiam na mesma frase, e so
@@ -286,8 +289,13 @@ type healthRead struct {
 // checkDatabase decide se da para escrever, e diz por que nao quando nao da.
 func checkDatabase(want string, got healthRead) error {
 	switch {
-	case got.err != nil || got.status == 0:
+	case got.status == 0:
 		return fmt.Errorf("%w: o daemon nao respondeu", errDatabaseMismatch)
+	case got.err != nil:
+		// Respondeu, mas com corpo que nao da para ler. Dizer "nao respondeu" aqui mandava
+		// cacar o problema errado — o status que a struct guarda existe para separar isso.
+		return fmt.Errorf("%w: o daemon respondeu %d e nao entendi o corpo: %w",
+			errDatabaseMismatch, got.status, got.err)
 	case got.status != http.StatusOK:
 		return fmt.Errorf("%w: o daemon respondeu %d no /healthz", errDatabaseMismatch, got.status)
 	case got.database == "":

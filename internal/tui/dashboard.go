@@ -362,6 +362,10 @@ func (m Model) renderDecision() string {
 		fmt.Sprintf("  vender agora    %12s  %s", coins(d.SellNowCents), signedCoins(d.SellNowMargin)),
 	}
 
+	if line := contractLine(batch); line != "" {
+		lines = append(lines, dimStyle.Render("    "+line))
+	}
+
 	if d.HoldToGrams > 0 && d.HoldReached {
 		better := ""
 		if holdWins(d) {
@@ -483,7 +487,10 @@ func (m Model) renderMarket() string {
 		lines = append(lines, "",
 			labelStyle.Render("ULTIMO CICLO"),
 			fmt.Sprintf("%d peixes, %d kg", cycle.Fish, cycle.MassGrams/gramsPerKg),
-			fmt.Sprintf("custo %s/kg  venda %s/kg", coins(cycle.CostPerKg), coins(cycle.PricePerKg)),
+			// "recebido", e nao "venda": este numero e a receita REALIZADA por quilo, que ja
+			// divergia do mercado por preco de outros dias e por classe. O rotulo e que
+			// mentia, e chamar de venda fazia o jogador achar que o mercado dele era outro.
+			fmt.Sprintf("custo %s  recebido %s/kg", coins(cycle.CostPerKg), coins(cycle.PricePerKg)),
 			fmt.Sprintf("margem %s  CAA %s", signedCoins(cycle.MarginCents), ratio(cycle.FCRPPM)))
 	}
 
@@ -502,6 +509,16 @@ func history(points int) string {
 // preco do dia; resultado do lote e do painel ao lado, que tem o custo do peixe. Dizer "da
 // lucro" aqui punha os dois a discordar no mesmo quadro. A cor continua dando a leitura
 // rapida, e o numero ensina o limiar em vez de gasta-lo num adjetivo.
+// contractLine nomeia quanto do "vender agora" vem do contrato. Sem contrato ela nao existe:
+// nao se gasta linha para dizer zero, e o upgrade mudava o caixa sem aparecer em lugar nenhum.
+func contractLine(batch api.Batch) string {
+	if batch.Decision.ContractCents <= 0 {
+		return ""
+	}
+
+	return fmt.Sprintf("dos quais %s vem do contrato", coins(batch.Decision.ContractCents))
+}
+
 func viability(now, viable int64) string {
 	piso := "piso " + ratio(viable)
 	if now < viable {

@@ -7,11 +7,9 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
-	neturl "net/url"
 	"os"
 	"os/signal"
 	"runtime/debug"
-	"strings"
 	"syscall"
 	"time"
 
@@ -87,7 +85,7 @@ func runServe(args []string) error {
 	)
 	httpx.RegisterHealth(router, pool.Ping,
 		httpx.WithBuild(buildRevision()),
-		httpx.WithDatabase(databaseName(cfg.DatabaseURL)))
+		httpx.WithDatabase(pool.Config().ConnConfig.Database))
 	farm.RegisterRoutes(api, sessions, player, &rules)
 
 	server := &http.Server{
@@ -144,23 +142,6 @@ func buildRevision() (string, bool) {
 	}
 
 	return revision, modified
-}
-
-// databaseName tira o nome do banco da URL de conexao, pela MESMA leitura que o driver faz:
-// o pgx honra dbname= na query, e ela vence o path. Publicar o path deixava o daemon anunciar
-// um banco e escrever em outro — foi o quinto caminho ate o save do jogador, e o unico que
-// rachava o portao em dois, mandando a limpeza para um banco e as teclas para outro.
-func databaseName(url string) string {
-	parsed, err := neturl.Parse(url)
-	if err != nil {
-		return ""
-	}
-
-	if name := parsed.Query().Get("dbname"); name != "" {
-		return name
-	}
-
-	return strings.TrimPrefix(parsed.Path, "/")
 }
 
 func runHealth(args []string) error {

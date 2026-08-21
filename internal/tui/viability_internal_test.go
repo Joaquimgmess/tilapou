@@ -209,3 +209,50 @@ func TestAFaixaDeRacaoCurtaCitaOCreditoQuandoEleExiste(t *testing.T) {
 		t.Errorf("sem credito a linha aponta [g]: %q", got)
 	}
 }
+
+// "venda X TC/kg" e receita REALIZADA por quilo, e nao o preco de mercado: ela ja divergia do
+// mercado por preco de outros dias e por classe, e o bonus de contrato era o terceiro motivo.
+// O rotulo e que mentia, entao ele muda; a conta fica.
+func TestOUltimoCicloDizRecebidoENaoVenda(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 120, 40
+	m.snapshot.LastCycle = api.Cycle{Fish: 2_000, MassGrams: 800_000, CostPerKg: 1_017, PricePerKg: 1_114, MarginCents: 21_336}
+
+	frame := ansi.Strip(m.renderDashboard())
+	if !strings.Contains(frame, "recebido") {
+		t.Errorf("o painel do ultimo ciclo nao diz o que foi recebido:\n%s", frame)
+	}
+	if strings.Contains(frame, "venda 11,14") {
+		t.Errorf("o painel ainda chama receita realizada de venda:\n%s", frame)
+	}
+}
+
+// O contrato deixa de ser invisivel: ele muda o que o jogador recebe, e a linha nomeia quanto
+// veio dele. Sem contrato, a linha nao existe — nao se gasta uma linha para dizer zero.
+func TestADecisaoNomeiaOQueVeioDoContrato(t *testing.T) {
+	t.Parallel()
+
+	comContrato := api.Snapshot{
+		Tanks: []api.Tank{{
+			ID: 1, Fish: 2_000, Upgrades: []api.Upgrade{{Kind: "contrato", Owned: true}},
+			Batches: []api.Batch{{
+				ID: 1, Fish: 2_000, MeanGrams: 400, PriceKgCents: 717,
+				Decision: api.Decision{SellNowCents: 26_887, ContractCents: 5_377},
+			}},
+		}},
+	}
+
+	got := contractLine(comContrato.Tanks[0].Batches[0])
+	if !strings.Contains(got, "53,77") || !strings.Contains(got, "contrato") {
+		t.Errorf("a linha nao nomeia o que veio do contrato: %q", got)
+	}
+
+	semContrato := comContrato.Tanks[0].Batches[0]
+	semContrato.Decision.ContractCents = 0
+	if got := contractLine(semContrato); got != "" {
+		t.Errorf("sem contrato a linha existe e diz %q", got)
+	}
+}

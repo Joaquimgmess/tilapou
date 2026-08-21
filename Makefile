@@ -10,14 +10,17 @@ BIN := bin/tilapou
 build:
 	go build -o $(BIN) ./cmd/tilapou
 
+# -buildvcs=true carimba o commit tambem sob go run: sem ele o daemon publica revision vazio,
+# que e indistinguivel de um build anterior ao /healthz — e ai a checagem de build do portao
+# nao pode ser ligada.
 run:
-	go run ./cmd/tilapou serve
+	go run -buildvcs=true ./cmd/tilapou serve
 
 play:
-	TILAPOU_DAEMON=$(TILAPOU_DAEMON) go run ./cmd/tilapou play
+	TILAPOU_DAEMON=$(TILAPOU_DAEMON) go run -buildvcs=true ./cmd/tilapou play
 
 status:
-	TILAPOU_DAEMON=$(TILAPOU_DAEMON) go run ./cmd/tilapou status
+	TILAPOU_DAEMON=$(TILAPOU_DAEMON) go run -buildvcs=true ./cmd/tilapou status
 
 test:
 	go test ./... -race

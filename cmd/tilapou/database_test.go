@@ -1,24 +1,34 @@
 package main
 
-import "testing"
+import (
+	"testing"
 
-// O nome do banco tem de sair da mesma leitura que o driver faz. Lendo so o PATH, a URL
-// abaixo publica "tilapou_qa7" e o pgx escreve em "tilapou" — foi o quinto caminho para o
-// save do jogador, e ele racha o portao em dois: a limpeza vai para um banco e as teclas do
-// roteiro para outro, com tudo verde.
-func TestONomeDoBancoSaiDoQueODriverUsa(t *testing.T) {
-	t.Parallel()
+	"github.com/jackc/pgx/v5/pgxpool"
+)
 
-	casos := map[string]string{
-		"postgres://u:p@localhost:5433/tilapou_qa?sslmode=disable":                 "tilapou_qa",
-		"postgres://u:p@localhost:5433/tilapou_qa7?sslmode=disable&dbname=tilapou": "tilapou",
-		"postgres://u:p@localhost:5433/?dbname=tilapou_qa":                         "tilapou_qa",
-		"postgres://u:p@localhost:5433/tilapou":                                    "tilapou",
+// O nome do banco tem de sair da CONEXAO, e nao da string: enquanto a fonte for o texto da
+// URL, todo parametro que nao esteja nele abre caminho — PGDATABASE fazia o daemon conectar
+// no banco do dono publicando database vazio, e PGHOST/PGPORT trocam ate o servidor sem mudar
+// uma letra do que a tela mostra.
+func TestONomeDoBancoSaiDaConexaoENaoDaString(t *testing.T) {
+	cfg, err := pgxpool.ParseConfig("postgres://u:p@localhost:5433/tilapou_qa?sslmode=disable")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
 	}
 
-	for url, want := range casos {
-		if got := databaseName(url); got != want {
-			t.Errorf("%s: o daemon publica %q e o driver usa %q", url, got, want)
-		}
+	if got := cfg.ConnConfig.Database; got != "tilapou_qa" {
+		t.Fatalf("a conexao diz %q", got)
+	}
+
+	// A env vence a URL, e e por isso que ler a string nao serve de guarda.
+	t.Setenv("PGDATABASE", "tilapou")
+
+	comEnv, err := pgxpool.ParseConfig("postgres://u:p@localhost:5433/?sslmode=disable")
+	if err != nil {
+		t.Fatalf("parse com env: %v", err)
+	}
+
+	if got := comEnv.ConnConfig.Database; got != "tilapou" {
+		t.Errorf("com PGDATABASE=tilapou a conexao diz %q: a guarda nao veria o banco do dono", got)
 	}
 }

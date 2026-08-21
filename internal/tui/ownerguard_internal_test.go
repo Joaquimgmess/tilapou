@@ -130,6 +130,9 @@ func TestARecusaDoBancoDizACausaCerta(t *testing.T) {
 		{"daemon com erro", healthRead{status: 500}, "respondeu 500"},
 		{"daemon sem o campo", healthRead{status: 200}, "nao publica"},
 		{"banco diferente", healthRead{status: 200, database: "tilapou"}, "escreve em"},
+		// 200 com corpo que nao e JSON: o daemon responde, e dizer "nao respondeu" manda
+		// cacar o problema errado. O proprio daemon serve 200 text/html em /docs.
+		{"200 com corpo ilegivel", healthRead{status: 200, err: errJSONQuebrado}, "nao entendi"},
 	}
 
 	for _, caso := range casos {
