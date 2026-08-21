@@ -118,3 +118,30 @@ func TestTabRecusaComAMedidaQuandoOMapaNaoCabe(t *testing.T) {
 		t.Errorf("tab recusou sem dizer a medida que falta: %q", got.message)
 	}
 }
+
+// A recusa do tab nao pode depender de qual modo o modelo guarda por dentro: em 100x32 ele
+// nasce em modo mapa, e guardar so o caso do painel deixava o primeiro tab passar reto,
+// trocando o modo em silencio e apagando a linha que explica a medida que falta.
+func TestTabRecusaNosDoisModosQuandoOMapaNaoCabe(t *testing.T) {
+	t.Parallel()
+
+	for _, mode := range []Mode{ModeGameBoy, ModeDashboard} {
+		m := New(nil)
+		m.snapshot = sizedSnapshot()
+		m.width, m.height = 100, 32
+		m.mode = mode
+
+		depois, _ := m.onCommand("tab")
+		got, ok := depois.(Model)
+		if !ok {
+			t.Fatal("onCommand nao devolveu um Model")
+		}
+
+		if got.mode != mode {
+			t.Errorf("com o modo %v o tab trocou para %v numa tela que nao comporta o mapa", mode, got.mode)
+		}
+		if !strings.Contains(got.message, "88") {
+			t.Errorf("com o modo %v o tab nao disse a medida que falta: %q", mode, got.message)
+		}
+	}
+}

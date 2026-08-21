@@ -419,7 +419,10 @@ func (m Model) openShed() (tea.Model, tea.Cmd) {
 // cabe deixaria a tela igual e as teclas mudas, que e o defeito que a recusa existe para nao
 // ter.
 func (m Model) onToggleMode() (tea.Model, tea.Cmd) {
-	if m.mode == ModeDashboard && !m.fitsGameBoy() {
+	// A guarda e do tamanho da tela, e nao do modo guardado: em 100x32 o modelo nasce em modo
+	// mapa, e checar so o painel deixava o primeiro tab trocar o modo em silencio e apagar a
+	// linha que explica a medida que falta.
+	if !m.fitsGameBoy() {
 		return m.say(m.gameBoyDeficit()), nil
 	}
 
