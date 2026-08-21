@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -277,6 +278,9 @@ var (
 	errJSONQuebrado     = errors.New("corpo do /healthz nao e JSON")
 )
 
+// healthBodyLimit e o teto do que se le do /healthz: corpo maior que isso e outra coisa.
+const healthBodyLimit = 64 << 10
+
 // healthRead e o que a leitura do /healthz devolveu. Guardar o status e o erro separados e o
 // que permite a recusa dizer a causa: quatro estados diferentes caiam na mesma frase, e so
 // um deles era o que ela afirmava.
@@ -289,13 +293,15 @@ type healthRead struct {
 // checkDatabase decide se da para escrever, e diz por que nao quando nao da.
 func checkDatabase(want string, got healthRead) error {
 	switch {
-	case got.status == 0:
-		return fmt.Errorf("%w: o daemon nao respondeu", errDatabaseMismatch)
 	case got.err != nil:
 		// Respondeu, mas com corpo que nao da para ler. Dizer "nao respondeu" aqui mandava
 		// cacar o problema errado — o status que a struct guarda existe para separar isso.
+		// O erro vem antes do status: com status zero e erro de transporte, dizer "nao
+		// respondeu" mandava reiniciar um daemon que estava no ar.
 		return fmt.Errorf("%w: o daemon respondeu %d e nao entendi o corpo: %w",
 			errDatabaseMismatch, got.status, got.err)
+	case got.status == 0:
+		return fmt.Errorf("%w: o daemon nao respondeu", errDatabaseMismatch)
 	case got.status != http.StatusOK:
 		return fmt.Errorf("%w: o daemon respondeu %d no /healthz", errDatabaseMismatch, got.status)
 	case got.database == "":
@@ -369,14 +375,12 @@ func daemonHealth(t *testing.T) healthRead {
 	}
 	defer func() { _ = resp.Body.Close() }()
 
-	var health struct {
-		Database string `json:"database"`
-	}
-	if decodeErr := json.NewDecoder(resp.Body).Decode(&health); decodeErr != nil {
-		return healthRead{status: resp.StatusCode, err: decodeErr}
+	database, err := decodeHealth(resp.Body)
+	if err != nil {
+		return healthRead{status: resp.StatusCode, err: err}
 	}
 
-	return healthRead{status: resp.StatusCode, database: health.Database}
+	return healthRead{status: resp.StatusCode, database: database}
 }
 
 // freshFarm le a fazenda e classifica o que veio.
@@ -435,4 +439,23 @@ func waitFreshFarm(t *testing.T) {
 	}
 
 	t.Fatal("o daemon continua servindo a fazenda velha depois do banco ser limpo: ele guarda a sessao em memoria, entao reinicie o daemon antes de rodar o portao")
+}
+
+// decodeHealth le o corpo inteiro e recusa o que sobra depois do JSON: o decoder de fluxo
+// aceita '{"database":"x"} LIXO' e devolve o primeiro valor, entao um corpo meio valido
+// passava pela guarda e a limpeza seguia — apagando fazenda por engano.
+func decodeHealth(body io.Reader) (string, error) {
+	raw, err := io.ReadAll(io.LimitReader(body, healthBodyLimit))
+	if err != nil {
+		return "", fmt.Errorf("%w: %w", errJSONQuebrado, err)
+	}
+
+	var health struct {
+		Database string `json:"database"`
+	}
+	if unmarshalErr := json.Unmarshal(raw, &health); unmarshalErr != nil {
+		return "", fmt.Errorf("%w: %w", errJSONQuebrado, unmarshalErr)
+	}
+
+	return health.Database, nil
 }

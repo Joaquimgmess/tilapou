@@ -151,3 +151,50 @@ func TestARecusaDoBancoDizACausaCerta(t *testing.T) {
 		t.Errorf("banco igual foi recusado: %v", err)
 	}
 }
+
+// Duas causas que ainda caiam no balde errado, as duas achadas medindo:
+//
+//  1. status zero era testado ANTES do erro, entao daemon de pe com endereco sem esquema
+//     virava "o daemon nao respondeu" — mandando reiniciar um daemon que esta no ar.
+//  2. o decoder aceitava lixo depois do JSON, entao um corpo meio valido passava pela guarda
+//     inteira. Isso nao e frase errada: e a fazenda sendo apagada por engano.
+func TestARecusaSeparaTransporteDeCorpoQuebrado(t *testing.T) {
+	t.Parallel()
+
+	comErro := healthRead{status: 0, err: errJSONQuebrado}
+	if err := checkDatabase("tilapou_qa", comErro); err == nil ||
+		!strings.Contains(err.Error(), "nao entendi") {
+		t.Errorf("erro de transporte com status zero virou %v", err)
+	}
+
+	semNada := healthRead{}
+	if err := checkDatabase("tilapou_qa", semNada); err == nil ||
+		!strings.Contains(err.Error(), "nao respondeu") {
+		t.Errorf("daemon fora do ar virou %v", err)
+	}
+}
+
+// Corpo com JSON valido seguido de lixo tem de ser recusado: o decoder de fluxo devolvia o
+// primeiro valor e seguia em frente, entao a guarda inteira passava com um corpo que ninguem
+// escreveu de caso — e ai a limpeza apaga a fazenda que estiver la.
+func TestOPortaoRecusaCorpoComLixoDepoisDoJSON(t *testing.T) {
+	t.Parallel()
+
+	casos := map[string]string{
+		"lixo depois":  `{"database":"tilapou_qa"} LIXO NAO JSON`,
+		"html":         `<!doctype html><title>docs</title>`,
+		"vazio":        ``,
+		"json cortado": `{"database":"tilap`,
+	}
+
+	for nome, corpo := range casos {
+		if _, err := decodeHealth(strings.NewReader(corpo)); err == nil {
+			t.Errorf("%s: o portao aceitou o corpo %q", nome, corpo)
+		}
+	}
+
+	got, err := decodeHealth(strings.NewReader(`{"database":"tilapou_qa"}`))
+	if err != nil || got != "tilapou_qa" {
+		t.Errorf("corpo valido devolveu %q, %v", got, err)
+	}
+}
