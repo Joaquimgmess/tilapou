@@ -126,7 +126,7 @@ func keepManaged(s *State, b *Balance, tank TankID) {
 
 func closeForecast(s *State, b *Balance, batch *Batch, spent Coins, ate Micrograms, days int64, reached bool) Forecast {
 	price := b.PriceFor(batch.MeanMass, s.Tick)
-	value := Coins(mulDivFloor(int64(price), int64(batch.Biomass()), int64(MicrogramsPerKilogram)))
+	value := GrossValue(price, batch.Biomass())
 
 	return Forecast{
 		Reached:    reached,

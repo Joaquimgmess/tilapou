@@ -93,16 +93,11 @@ var playable = [...]playableFor{
 // que percorre o registro e recusa entrada vazia.
 var _ [len(playable) - int(actionKindCount)]struct{}
 
-// tankWorth e a receita bruta a mercado dos lotes do tanque, no tick de agora.
+// tankWorth e o que este tanque creditaria se fosse despescado agora — com o bonus de
+// contrato, porque quem repovoa e o caixa que entra. Ignorar o bonus so errava para baixo, e
+// para baixo e a direcao cara: marca fazenda viva como quebrada.
 func tankWorth(b *Balance, t *Tank, at Tick) Coins {
-	var total int64
-	for i := range t.BatchCount {
-		batch := &t.Batches[i]
-		price := b.PriceFor(batch.MeanMass, at)
-		total = addSat(total, mulDivFloor(int64(price), int64(batch.Biomass()), int64(MicrogramsPerKilogram)))
-	}
-
-	return Coins(total)
+	return TankPayout(b, t, at)
 }
 
 // harvestWorth e o que a fazenda inteira levantaria despescando agora. Existe para o teste

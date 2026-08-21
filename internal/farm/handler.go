@@ -269,8 +269,11 @@ func batchViewOf(state *sim.State, b *sim.Balance, tank *sim.Tank, batch *sim.Ba
 		bv.NextClassGrams, bv.NextClassGain = entry.Grams(), int64(gain)
 	}
 
+	// O valor sai da mesma conta que a despesca credita: truncar a biomassa em quilos inteiros
+	// congelava a coluna num degrau de 1 kg e, com a despesca decidindo por valor, chegava a
+	// mostrar o lado errado do piso que diz se a fazenda ainda tem jogada.
 	kilos := int64(batch.Biomass()) / int64(sim.MicrogramsPerKilogram)
-	bv.ValueCents = bv.PriceKgCents * kilos
+	bv.ValueCents = int64(sim.GrossValue(sim.Coins(bv.PriceKgCents), batch.Biomass()))
 	bv.MarginCents = bv.ValueCents - bv.CostCents
 
 	if kilos > 0 {

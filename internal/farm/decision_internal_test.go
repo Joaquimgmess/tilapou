@@ -49,10 +49,20 @@ func checkCoherent(t *testing.T, step string, tv api.Tank) {
 			step, d.HoldMargin, d.HoldCents, bv.CostCents, d.HoldCostCents, want)
 	}
 
-	kilos := int64(bv.Fish) * bv.MeanGrams / gramsPerKilo
-	if want := bv.PriceKgCents * kilos; d.SellNowCents != want {
-		t.Errorf("%s: sell_now_cents = %d, mas %d kg a %d c/kg dao %d",
-			step, d.SellNowCents, kilos, bv.PriceKgCents, want)
+	// A coluna VALOR sai da mesma conta: era ela que truncava a biomassa em quilos inteiros,
+	// congelando o numero num degrau de 1 kg — e, depois que a despesca passou a decidir por
+	// valor, chegando a mostrar o lado errado do piso que diz se a fazenda tem jogada.
+	if want := int64(sim.GrossValue(sim.Coins(bv.PriceKgCents), massOf(bv))); bv.ValueCents != want {
+		t.Errorf("%s: value_cents = %d, mas %d peixes de %d g a %d c/kg dao %d",
+			step, bv.ValueCents, bv.Fish, bv.MeanGrams, bv.PriceKgCents, want)
+	}
+
+	// A conferencia sai da conta do dominio, e nao de uma copia da linha do handler: recopiar
+	// a formula fazia este teste ser tautologia — ele nao podia falhar, e foi por isso que a
+	// divergencia da coluna VALOR viveu ate o @qa medi-la contra o caixa.
+	if want := int64(sim.GrossValue(sim.Coins(bv.PriceKgCents), massOf(bv))); d.SellNowCents != want {
+		t.Errorf("%s: sell_now_cents = %d, mas %d peixes de %d g a %d c/kg dao %d",
+			step, d.SellNowCents, bv.Fish, bv.MeanGrams, bv.PriceKgCents, want)
 	}
 }
 
@@ -130,5 +140,46 @@ func TestChaveDaDecisaoNaoMudaATodoTick(t *testing.T) {
 
 	if changes > budget {
 		t.Errorf("a chave da decisao mudou %d vezes em um dia, o teto e %d: o cache morreu", changes, budget)
+	}
+}
+
+// massOf e a biomassa do lote em micrograma, a partir do que o payload publica.
+func massOf(bv api.Batch) sim.Micrograms {
+	return sim.Micrograms(int64(bv.Fish) * bv.MeanGrams * int64(sim.MicrogramsPerGram))
+}
+
+// O lote do outro teste tem 405 kg cravados, e ai truncar em quilos inteiros da o mesmo
+// numero — foi por isso que a mutacao sobreviveu quando eu tentei. Aqui a biomassa NAO fecha
+// em quilo, que e a faixa em que a coluna congelava: de 370 a 380 peixes ela imprimia o mesmo
+// valor, e chegava a mostrar o lado errado do piso que decide se a fazenda tem jogada.
+func TestAColunaValorNaoTruncaEmQuilos(t *testing.T) {
+	t.Parallel()
+
+	b, err := balance.Load()
+	if err != nil {
+		t.Fatalf("carregando o balance: %v", err)
+	}
+
+	vistos := make(map[int64]bool)
+
+	for fish := int32(370); fish <= 380; fish++ {
+		s := stockedForDecision(t, &b)
+		batch := &s.Tanks[0].Batches[0]
+		batch.Fish, batch.MeanMass = sim.FishCount(fish), 24*sim.MicrogramsPerGram
+
+		view := viewOf(Snapshot{Farm: Farm{State: s}, Projection: sim.Project(&s)}, &b, newPlans())
+		bv := view.Tanks[0].Batches[0]
+
+		want := int64(sim.GrossValue(sim.Coins(bv.PriceKgCents), batch.Biomass()))
+		if bv.ValueCents != want {
+			t.Errorf("%d peixes: a coluna VALOR diz %d e a conta que a despesca credita da %d",
+				fish, bv.ValueCents, want)
+		}
+
+		vistos[bv.ValueCents] = true
+	}
+
+	if len(vistos) < 11 {
+		t.Errorf("onze lotes diferentes imprimiram %d valores distintos: a coluna esta congelada num degrau de quilo", len(vistos))
 	}
 }

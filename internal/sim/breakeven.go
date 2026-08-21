@@ -284,7 +284,7 @@ func probeStep(s *State, b *Balance, at Tick, day int64, start Coins) (probeDay,
 
 	batch := s.Tanks[0].Batches[0]
 	price := b.PriceFor(batch.MeanMass, s.Tick)
-	value := mulDivFloor(int64(price), int64(batch.Biomass()), int64(MicrogramsPerKilogram))
+	value := int64(GrossValue(price, batch.Biomass()))
 	// A racao no silo foi paga mas nao comida: e estoque, nao prejuizo, e o comedouro compra
 	// em lote, entao a sobra muda com a lotacao.
 	left := mulDivFloor(int64(MarketAt(b, s.Tick).FeedKg),

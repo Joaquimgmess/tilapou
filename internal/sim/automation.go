@@ -170,10 +170,7 @@ func sell(s *State, b *Balance, t *Tank, batch *Batch, count FishCount, tick Tic
 
 	mass := Micrograms(mulDivFloor(int64(batch.MeanMass), int64(count), 1))
 	price := b.PriceFor(batch.MeanMass, tick)
-	revenue := Coins(mulDivFloor(int64(price), int64(mass), int64(MicrogramsPerKilogram)))
-	if t.Owns(AutoContract) {
-		revenue = Coins(mulDivFloor(int64(revenue), int64(UnitPPM)+int64(b.Progression.ContractBonusPPM), int64(UnitPPM)))
-	}
+	revenue := applyContract(b, t, GrossValue(price, mass))
 
 	closeCycle(s, batch, count, mass, revenue)
 
