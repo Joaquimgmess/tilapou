@@ -194,3 +194,44 @@ func menorCaixa(t *testing.T, b *Balance, plan CyclePlan, responde func(*State, 
 
 	return baixo
 }
+
+// Recomecar e tilapar reconstroem a fazenda igual, mas tilapar devolve mais pontos. Com
+// prestigio a colher, o [b] e a mesma porta com premio menor — e ele e irreversivel. O jogo
+// recusa em vez de deixar o jogador queimar o que ja ganhou.
+func TestRecomecarRecusaEnquantoDaParaTilapar(t *testing.T) {
+	t.Parallel()
+
+	b := testBalance(t)
+
+	s := NewState(1, 0, 0)
+	s.Cash = 0
+	s.Debt = b.Credit.MaxPrincipal
+	s.LifetimeEarned = Coins(b.Progression.PrestigeDivisor) * 400
+
+	if _, ok := s.AddTank(b, TankEarthPond, b.Tanks[TankEarthPond].Litres); !ok {
+		t.Fatal("sem tanque")
+	}
+
+	var plans Plans
+	plans[TankEarthPond] = b.CycleAt(TankEarthPond, s.Tick, s.Zone)
+
+	if !s.Broke(b, plans) {
+		t.Fatal("a fazenda deste teste precisa estar quebrada")
+	}
+	if PrestigePointsFor(s.LifetimeEarned, b.Progression.PrestigeDivisor) <= s.Prestige {
+		t.Fatal("a fazenda deste teste precisa ter prestigio a colher")
+	}
+
+	// A copia sai antes: restart reconstroi a fazenda, e comparar depois seria comparar com o
+	// resultado do proprio conserto.
+	sem := s
+	sem.LifetimeEarned = 0
+
+	if reason := restart(&s, b, s.Tick, &eventSink{}, plans); reason == RejectNone {
+		t.Error("o jogo aceitou recomecar com prestigio a colher: o jogador troca a mesma reconstrucao por menos pontos")
+	}
+
+	if reason := restart(&sem, b, sem.Tick, &eventSink{}, plans); reason != RejectNone {
+		t.Errorf("sem prestigio a colher o jogo recusou recomecar: %v", reason)
+	}
+}

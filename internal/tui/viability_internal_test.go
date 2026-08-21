@@ -94,3 +94,51 @@ func TestAFazendaQuebradaNaoEnumeraMotivos(t *testing.T) {
 		t.Errorf("a frase nao diz o que e verdade — que nao resta jogada: %q", got.text)
 	}
 }
+
+// Com prestigio a colher, a tela nao pode oferecer o recomeco: as duas portas reconstroem a
+// mesma fazenda e tilapar devolve mais pontos, entao o [b] ali e a jogada dominada — e ela e
+// irreversivel. A regra e "nunca as duas".
+func TestComPrestigioAColherATelaOfereceTilaparENaoRecomecar(t *testing.T) {
+	t.Parallel()
+
+	m := New(nil)
+	m.snapshot = sizedSnapshot()
+	m.width, m.height = 120, 40
+	m.snapshot.Broke, m.snapshot.Prestige, m.snapshot.PrestigeNow = true, 3, 7
+
+	rodape := strings.Join(m.keyHints(), " ")
+	if strings.Contains(rodape, "b recomecar") {
+		t.Errorf("o rodape oferece o recomeco com prestigio a colher: %q", rodape)
+	}
+	if !strings.Contains(rodape, "p tilapar") {
+		t.Errorf("o rodape nao oferece tilapar com prestigio a colher: %q", rodape)
+	}
+
+	objetivo, ok := broke(m.snapshot)
+	if !ok {
+		t.Fatal("com a fazenda quebrada o objetivo nao apareceu")
+	}
+	if strings.Contains(objetivo.text, "[b]") {
+		t.Errorf("o objetivo aponta o recomeco com prestigio a colher: %q", objetivo.text)
+	}
+	if !strings.Contains(objetivo.text, "[p]") {
+		t.Errorf("o objetivo nao aponta tilapar: %q", objetivo.text)
+	}
+	// O verbo do [b] tem de estar na frase do [p], senao o jogador le tilapar como algo
+	// guardado para depois e aperta o que ele entende.
+	if !strings.Contains(objetivo.text, "recomeca do zero") {
+		t.Errorf("o objetivo nao diz que tilapar recomeca do zero: %q", objetivo.text)
+	}
+	if !strings.Contains(objetivo.text, "4 matrizes") {
+		t.Errorf("o objetivo nao diz quantas matrizes o jogador ganha: %q", objetivo.text)
+	}
+
+	// E o par: sem prestigio a colher, o recomeco continua sendo a saida oferecida.
+	m.snapshot.PrestigeNow = 3
+	if rodape := strings.Join(m.keyHints(), " "); !strings.Contains(rodape, "b recomecar") {
+		t.Errorf("sem prestigio a colher o rodape deixou de oferecer o recomeco: %q", rodape)
+	}
+	if semPrestigio, _ := broke(m.snapshot); !strings.Contains(semPrestigio.text, "[b]") {
+		t.Errorf("sem prestigio a colher o objetivo deixou de apontar o recomeco: %q", semPrestigio.text)
+	}
+}

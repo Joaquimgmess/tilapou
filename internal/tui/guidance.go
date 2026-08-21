@@ -296,6 +296,16 @@ func broke(s api.Snapshot) (advice, bool) {
 		return advice{}, false
 	}
 
+	// Com prestigio a colher a saida e tilapar: reconstroi a mesma fazenda e ainda devolve os
+	// pontos que a partida rendeu. Oferecer o recomeco aqui seria oferecer a porta pior.
+	// "recomeca do zero" e o verbo que o jogador ja associa ao [b]: sem ele, o [p] e lido como
+	// algo guardado para depois, e a diferenca (as matrizes) e a unica coisa que o [b] nao tem.
+	if s.PrestigeNow > s.Prestige {
+		return advice{text: fmt.Sprintf(
+			"A fazenda quebrou: tilapar com [p] recomeca do zero e ainda da %d matrizes",
+			s.PrestigeNow-s.Prestige), urgent: true}, true
+	}
+
 	// Diz o que e verdade e nada mais: enumerar motivos obriga a verificar cada um, e a lista
 	// antiga afirmava "sem peixe" com 500 peixes vivos e "sem credito" com o galpao aberto na
 	// mesma tela.
@@ -479,6 +489,8 @@ func rejectMessage(reason string) (string, bool) {
 	switch reason {
 	case "not_broke":
 		return "a fazenda ainda tem como se virar", true
+	case "prestige_first":
+		return "ha prestigio a colher: [p] recomeca do zero igual, e ainda da as matrizes", true
 	case "credit_limit":
 		return "o emprestimo passa do limite de credito: pague o que deve antes", true
 	case "no_debt":

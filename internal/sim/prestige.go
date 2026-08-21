@@ -67,6 +67,12 @@ func restart(s *State, b *Balance, at Tick, sink *eventSink, plans Plans) Reject
 	if !s.Broke(b, plans) {
 		return RejectNotBroke
 	}
+	// Tilapar reconstroi a mesma fazenda e ainda devolve os pontos que a partida rendeu:
+	// recomecar aqui e a porta pior, e ela nao tem volta. O jogo recusa em vez de deixar o
+	// jogador trocar a jogada certa pela que ele apertou por habito.
+	if PrestigePointsFor(s.LifetimeEarned, b.Progression.PrestigeDivisor) > s.Prestige {
+		return RejectPrestigeFirst
+	}
 
 	rebuild(s, b, at, s.Prestige)
 

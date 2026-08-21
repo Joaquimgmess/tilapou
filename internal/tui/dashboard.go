@@ -533,6 +533,12 @@ func (m Model) renderKeys() string {
 func (m Model) keyHints() []string {
 	hints := []string{"j/k lote", "z opcoes", "g galpao", "f trato", "c racao"}
 
+	// Nunca as duas: tilapar e recomecar reconstroem a mesma fazenda, e tilapar devolve mais
+	// pontos. Oferecer as duas e pedir para o jogador escolher entre uma jogada e a mesma
+	// jogada com premio menor, num movimento que nao tem volta.
+	if m.snapshot.PrestigeNow > m.snapshot.Prestige {
+		return append(hints, "p tilapar")
+	}
 	if m.snapshot.Broke {
 		// Fazenda quebrada nao tem o que povoar nem despescar: a saida dela e a unica tecla
 		// que importa, e hoje o jogo so a cita no texto de objetivo.

@@ -382,6 +382,11 @@ func (m Model) askRestart() (tea.Model, tea.Cmd) {
 	if !m.snapshot.Broke {
 		return m.say("So da para recomecar quando a fazenda quebra de vez"), nil
 	}
+	// A recusa e local, e nao ida e volta ao daemon: apertar e nao ver nada por um refresh faz
+	// o jogador apertar de novo, e esta e a tecla que nao tem volta.
+	if m.snapshot.PrestigeNow > m.snapshot.Prestige {
+		return m.say("ha prestigio a colher: [p] recomeca do zero igual, e ainda da as matrizes"), nil
+	}
 
 	m = m.say(fmt.Sprintf("Recomecar zera %s de divida e devolve o lote inicial, sem ganhar prestigio. Confirma? [y/n]",
 		coins(m.snapshot.Debt)))

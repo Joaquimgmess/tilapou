@@ -91,6 +91,7 @@ const (
 	RejectNotBroke
 	RejectNothingSick
 	RejectStaleView
+	RejectPrestigeFirst
 	rejectReasonCount
 )
 
@@ -112,6 +113,7 @@ var rejectReasonNames = [...]string{
 	RejectNotBroke:          "not_broke",
 	RejectNothingSick:       "nothing_sick",
 	RejectStaleView:         "stale_view",
+	RejectPrestigeFirst:     "prestige_first",
 }
 
 // RejectReasonNamed returns RejectNone and false for an unknown name.
