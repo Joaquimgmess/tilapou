@@ -9,7 +9,7 @@ require (
 	github.com/charmbracelet/x/ansi v0.11.8
 	github.com/charmbracelet/x/exp/teatest/v2 v2.0.0-20260813141921-f091cedeaf78
 	github.com/danielgtaylor/huma/v2 v2.39.1
-	github.com/go-chi/chi/v5 v5.3.1
+	github.com/go-chi/chi/v5 v5.3.2
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pressly/goose/v3 v3.27.3
